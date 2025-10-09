@@ -41,6 +41,7 @@ const TabNavigation = () => {
       borderRadius: 30,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: Colors.tabBarBackground,
     },
     profileImage: {
       width: 55,
