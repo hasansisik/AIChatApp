@@ -1,4 +1,6 @@
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
+import { useRouter } from 'expo-router';
 import { Colors } from "@/hooks/useThemeColor";
 import Header from '@/components/Home/Header';
 import Categories from '@/components/Home/Categories';
@@ -6,6 +8,8 @@ import AIListing from '@/components/Home/AIListing';
 import { AICategory } from '@/data/AICategories';
 
 const Home = () => {
+  const router = useRouter();
+
   const handleSearchPress = () => {
     // Handle search functionality
     console.log('Search pressed');
@@ -22,8 +26,8 @@ const Home = () => {
   };
 
   const handleAICategoryPress = (item: AICategory) => {
-    // Handle AI category navigation
-    console.log(`${item.title} pressed`);
+    // Navigate to AI detail page
+    router.push(`/ai-detail?id=${item.id}`);
   };
 
   return (

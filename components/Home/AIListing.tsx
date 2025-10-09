@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import ReusableText from '@/components/ui/ReusableText';
-import { Colors } from '@/hooks/useThemeColor';
 import AIItem from './AIItem';
 import CategoryFilterComponent from './CategoryFilter';
 import { AICategory, aiCategories, categoryFilters } from '@/data/AICategories';
