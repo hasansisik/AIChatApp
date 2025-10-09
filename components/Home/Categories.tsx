@@ -13,33 +13,33 @@ const Categories: React.FC<CategoriesProps> = ({ onCategoryPress }) => {
     <View style={styles.container}>
 
       <View style={styles.cardsContainer}>
-        {/* Left side - Large Chat with AI Card */}
+        {/* Left side - Large Live Chat Card */}
         <CategoryCard
-          title="Chat with AI"
-          icon="chatbubbles"
+          title="Live Conversation"
+          icon="mic"
           backgroundColor={Colors.lightYellow}
           iconBackgroundColor={Colors.lightYellow}
-          onPress={() => onCategoryPress?.('Chat with AI')}
+          onPress={() => onCategoryPress?.('Live Conversation')}
           isLarge={true}
         />
 
         {/* Right side - Two smaller cards stacked */}
         <View style={styles.rightColumn}>
           <CategoryCard
-            title="Create AI Image"
-            icon="image"
+            title="Vocabulary Practice"
+            icon="book"
             backgroundColor={Colors.lightPurple}
             iconBackgroundColor={Colors.lightPurple}
-            onPress={() => onCategoryPress?.('Create AI Image')}
+            onPress={() => onCategoryPress?.('Vocabulary Practice')}
             isLarge={false}
           />
           
           <CategoryCard
-            title="Create AI Video"
-            icon="videocam"
+            title="Grammar Lessons"
+            icon="school"
             backgroundColor={Colors.lightPink}
             iconBackgroundColor={Colors.lightPink}
-            onPress={() => onCategoryPress?.('Create AI Video')}
+            onPress={() => onCategoryPress?.('Grammar Lessons')}
             isLarge={false}
           />
         </View>
