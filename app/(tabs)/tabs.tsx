@@ -129,7 +129,7 @@ const TabNavigation = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={Home}
+        component={Profile}
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
