@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import React from 'react'
+import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
 import { Colors } from "@/hooks/useThemeColor";
 import Header from '@/components/Home/Header';
 import Categories from '@/components/Home/Categories';
+import AIListing from '@/components/Home/AIListing';
+import { AICategory } from '@/data/AICategories';
 
 const Home = () => {
   const handleSearchPress = () => {
@@ -21,16 +21,22 @@ const Home = () => {
     console.log(`${category} pressed`);
   };
 
+  const handleAICategoryPress = (item: AICategory) => {
+    // Handle AI category navigation
+    console.log(`${item.title} pressed`);
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Header 
         onSearchPress={handleSearchPress}
         onProfilePress={handleProfilePress}
       />
       <ScrollView style={styles.content}>
         <Categories onCategoryPress={handleCategoryPress} />
+        <AIListing onItemPress={handleAICategoryPress} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -38,6 +44,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    paddingTop: Platform.OS === "ios" ? 40 : 20 ,
   },
   content: {
     flex: 1,

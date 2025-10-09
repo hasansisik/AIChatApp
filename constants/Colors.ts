@@ -47,7 +47,7 @@ export const Colors = {
     nagivationPrimary: '#2E2E2E',
     tabBarActiveBackground: '#8B5CF6',
     tabBarBackground: '#F5F5F5',
-    tabBarGradientEnd: '#F97316',
+    tabBarGradientEnd: '#69E3FF',
     tabBarGradientStart: '#8B5CF6',
     tabBarInactiveBackground: '#E5E5E5',
     tabIconDefault: '#687076',

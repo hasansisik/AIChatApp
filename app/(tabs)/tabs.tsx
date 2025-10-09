@@ -11,7 +11,7 @@ const Tab = createBottomTabNavigator();
 
 const styles = StyleSheet.create({
   tabBarStyle: {
-    backgroundColor: Colors.lightInput, 
+    backgroundColor: 'rgba(255, 255, 255, 0.6)', 
     height: 70,
     paddingTop: 15,
     position: "absolute",
