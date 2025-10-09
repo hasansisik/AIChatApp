@@ -2,7 +2,8 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Colors } from "@/hooks/useThemeColor";
-import { StyleSheet, Image } from "react-native";
+import { StyleSheet, Image, View, Text } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
 import Home from "@/app/(tabs)/home";
 import Profile from "./profile";
 
@@ -10,13 +11,34 @@ const Tab = createBottomTabNavigator();
 
 const styles = StyleSheet.create({
   tabBarStyle: {
-    backgroundColor: Colors.background, 
-    paddingTop: 10,
-    height: 85,
+    backgroundColor: Colors.tabBarBackground, 
+    height: 80,
+    paddingTop: 20,
     position: "absolute",
+    borderRadius: 60,
+    marginHorizontal: 40,
+    marginBottom: 30,
+    borderTopWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   tabBarLabelStyle: {
-    marginTop: 3,
+    display: 'none',
+  },
+  activeTabContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inactiveTabContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.tabBarInactiveBackground,
   },
 });
 
@@ -28,8 +50,9 @@ const TabNavigation = () => {
         tabBarHideOnKeyboard: true,
         headerShown: false,
         tabBarStyle: styles.tabBarStyle, 
-        tabBarShowLabel: true,
-        tabBarActiveTintColor: Colors.black,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: Colors.light,
+        tabBarInactiveTintColor: Colors.light,
         tabBarLabelStyle: styles.tabBarLabelStyle,
       }}
     >
@@ -38,13 +61,29 @@ const TabNavigation = () => {
         component={Home}  
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "home" : "home-outline"}
-              color={Colors.black}
-              size={focused ? 28 : 24}
-            />
+            <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
+              {focused ? (
+                <LinearGradient
+                  colors={[Colors.tabBarGradientStart, Colors.tabBarGradientEnd]}
+                  style={styles.activeTabContainer}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="chef-hat"
+                    color={Colors.white}
+                    size={24}
+                  />
+                </LinearGradient>
+              ) : (
+                <MaterialCommunityIcons
+                  name="chef-hat"
+                  color={Colors.light}
+                  size={24}
+                />
+              )}
+            </View>
           ),
-          tabBarLabel: 'Ana Sayfa',
         }}
       />
       <Tab.Screen
@@ -52,13 +91,29 @@ const TabNavigation = () => {
         component={Home}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "search" : "search-outline"}
-              color={Colors.black}
-              size={focused ? 28 : 24}
-            />
+            <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
+              {focused ? (
+                <LinearGradient
+                  colors={[Colors.tabBarGradientStart, Colors.tabBarGradientEnd]}
+                  style={styles.activeTabContainer}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="record-rec"
+                    color={Colors.white}
+                    size={24}
+                  />
+                </LinearGradient>
+              ) : (
+                <MaterialCommunityIcons
+                  name="record-rec"
+                  color={Colors.light}
+                  size={24}
+                />
+              )}
+            </View>
           ),
-          tabBarLabel: 'Arama',
         }}
       />
       <Tab.Screen
@@ -66,41 +121,59 @@ const TabNavigation = () => {
         component={Home}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "heart" : "heart-outline"}
-              color={Colors.black}
-              size={focused ? 28 : 24}
-            />
+            <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
+              {focused ? (
+                <LinearGradient
+                  colors={[Colors.tabBarGradientStart, Colors.tabBarGradientEnd]}
+                  style={styles.activeTabContainer}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="folder"
+                    color={Colors.white}
+                    size={24}
+                  />
+                </LinearGradient>
+              ) : (
+                <MaterialCommunityIcons
+                  name="folder"
+                  color={Colors.light}
+                  size={24}
+                />
+              )}
+            </View>
           ),
-          tabBarLabel: 'Favoriler',
         }}
       />
       <Tab.Screen
-        name="Notifications"
+        name="Settings"
         component={Home}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "notifications" : "notifications-outline"}
-              color={Colors.black}
-              size={focused ? 28 : 24}
-            />
+            <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
+              {focused ? (
+                <LinearGradient
+                  colors={[Colors.tabBarGradientStart, Colors.tabBarGradientEnd]}
+                  style={styles.activeTabContainer}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="cog"
+                    color={Colors.white}
+                    size={24}
+                  />
+                </LinearGradient>
+              ) : (
+                <MaterialCommunityIcons
+                  name="cog"
+                  color={Colors.light}
+                  size={24}
+                />
+              )}
+            </View>
           ),
-          tabBarLabel: 'Bildirimler',
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={Profile}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "person" : "person-outline"}
-              color={Colors.black}
-              size={focused ? 28 : 24}
-            />
-          ),
-          tabBarLabel: 'Profil',
         }}
       />
     </Tab.Navigator>

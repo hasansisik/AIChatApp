@@ -40,6 +40,11 @@ export const Colors = {
     description: '#71727A',
     lightInput: '#F5F5F5',
     backgroundBox: '#EDEDED',
+    tabBarBackground: '#F5F5F5',
+    tabBarActiveBackground: '#8B5CF6',
+    tabBarInactiveBackground: '#E5E5E5',
+    tabBarGradientStart: '#8B5CF6',
+    tabBarGradientEnd: '#F97316',
   },
   dark: {
     text: '#FBFBFB',
@@ -74,5 +79,10 @@ export const Colors = {
     description: '#BBBBBB',
     lightInput: '#2A2A2A',
     backgroundBox: '#2A2A2A',
+    tabBarBackground: '#1A1A1A',
+    tabBarActiveBackground: '#8B5CF6',
+    tabBarInactiveBackground: '#2A2A2A',
+    tabBarGradientStart: '#8B5CF6',
+    tabBarGradientEnd: '#F97316',
   },
 };
