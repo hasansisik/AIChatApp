@@ -1,7 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Colors } from "@/hooks/useThemeColor";
+import { Colors, useTheme } from "@/hooks/useThemeColor";
 import { StyleSheet, Image, View, Text } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import Home from "@/app/(tabs)/home";
@@ -9,51 +9,51 @@ import Profile from "./profile";
 
 const Tab = createBottomTabNavigator();
 
-const styles = StyleSheet.create({
-  tabBarStyle: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)', 
-    height: 70,
-    paddingTop: 15,
-    position: "absolute",
-    borderRadius: 60,
-    marginHorizontal: 100,
-    marginBottom: 30,
-    borderTopWidth: 0,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  tabBarLabelStyle: {
-    display: 'none',
-  },
-  activeTabContainer: {
-    width: 55,
-    height: 55,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  inactiveTabContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.tabBarInactiveBackground,
-  },
-  profileImage: {
-    width: 55,
-    height: 55,
-    borderRadius: 27.5,
-  },
-  profileImageInactive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    opacity: 0.7,
-  },
-});
-
 const TabNavigation = () => {
+  const { isDark } = useTheme();
+  
+  const styles = StyleSheet.create({
+    tabBarStyle: {
+      backgroundColor: isDark ? 'rgba(18, 18, 18, 0.6)' : 'rgba(255, 255, 255, 0.6)', 
+      height: 70,
+      paddingTop: 15,
+      position: "absolute",
+      borderRadius: 60,
+      marginHorizontal: 100,
+      marginBottom: 30,
+      borderTopWidth: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+    },
+    tabBarLabelStyle: {
+      display: 'none',
+    },
+    activeTabContainer: {
+      width: 55,
+      height: 55,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    inactiveTabContainer: {
+      width: 50,
+      height: 50,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    profileImage: {
+      width: 55,
+      height: 55,
+      borderRadius: 27.5,
+    },
+    profileImageInactive: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      opacity: 0.7,
+    },
+  });
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -89,7 +89,7 @@ const TabNavigation = () => {
               ) : (
                 <MaterialCommunityIcons
                   name="home-variant-outline"
-                  color={Colors.light}
+                  color={Colors.black}
                   size={24}
                 />
               )}
@@ -119,7 +119,7 @@ const TabNavigation = () => {
               ) : (
                 <MaterialCommunityIcons
                   name="view-grid-outline"
-                  color={Colors.light}
+                  color={Colors.black}
                   size={24}
                 />
               )}

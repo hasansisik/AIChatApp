@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import AIItem from './AIItem';
@@ -36,15 +36,6 @@ const AIListing: React.FC<AIListingProps> = ({ onItemPress }) => {
     ? items 
     : items.filter(item => item.categoryType === selectedFilter);
 
-  const renderItem = ({ item }: { item: AICategory }) => (
-    <AIItem
-      item={item}
-      onPress={onItemPress}
-      onFavoritePress={handleFavoritePress}
-      onCategoryPress={handleCategoryPress}
-    />
-  );
-
   return (
     <View style={styles.container}>
       <CategoryFilterComponent
@@ -53,15 +44,22 @@ const AIListing: React.FC<AIListingProps> = ({ onItemPress }) => {
         onFilterPress={handleFilterPress}
       />
       
-      <FlatList
-        data={filteredItems}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
+      <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
-      />
+      >
+        <View style={styles.gridContainer}>
+          {filteredItems.map((item) => (
+            <AIItem
+              key={item.id}
+              item={item}
+              onPress={onItemPress}
+              onFavoritePress={handleFavoritePress}
+              onCategoryPress={handleCategoryPress}
+            />
+          ))}
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -73,9 +71,10 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 20,
   },
-  row: {
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 0,
   },
 });
 

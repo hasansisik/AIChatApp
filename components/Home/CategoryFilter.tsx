@@ -31,7 +31,7 @@ const CategoryFilterComponent: React.FC<CategoryFilterProps> = ({
           text={item.name}
           family={isSelected ? "bold" : "medium"}
           size={14}
-          color={isSelected ? Colors.white : Colors.dark}
+          color={isSelected ? Colors.lightWhite : Colors.black}
           style={styles.filterText}
         />
       </TouchableOpacity>
@@ -64,9 +64,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.lightInput,
+    backgroundColor: Colors.backgroundBox,
     borderWidth: 1,
-    borderColor: Colors.lightInput,
+    borderColor: Colors.backgroundBox,
   },
   selectedFilterItem: {
     backgroundColor: Colors.primary,

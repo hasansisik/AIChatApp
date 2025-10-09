@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
-import { Colors } from '@/hooks/useThemeColor';
+import { Colors, useTheme } from '@/hooks/useThemeColor';
 import ReusableText from '@/components/ui/ReusableText';
 
 interface HeaderProps {
@@ -11,6 +11,8 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
+  const { isDark } = useTheme();
+  
   return (
     <View style={styles.headerContainer}>
       {/* Top Row: Search, Logo, Profile */}
@@ -23,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
         {/* Video Logo */}
         <View style={styles.logoContainer}>
           <Video
-            source={require('@/assets/video/Tlogotm.mp4')}
+            source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
             style={styles.video}
             shouldPlay
             isLooping

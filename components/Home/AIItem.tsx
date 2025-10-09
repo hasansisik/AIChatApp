@@ -47,7 +47,7 @@ const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress, onCateg
         <Ionicons
           name={item.isFavorite ? "heart" : "heart-outline"}
           size={20}
-          color={item.isFavorite ? Colors.error : Colors.white}
+          color={item.isFavorite ? Colors.error : Colors.lightWhite}
         />
       </TouchableOpacity>
 
@@ -61,14 +61,14 @@ const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress, onCateg
           text={item.category}
           family="medium"
           size={10}
-          color={Colors.white}
+          color={Colors.lightWhite}
           style={styles.categoryLabel}
         />
         <ReusableText
           text={item.title}
           family="bold"
           size={FontSizes.small}
-          color={Colors.white}
+          color={Colors.lightWhite}
           style={styles.categoryTitle}
         />
       </TouchableOpacity>
