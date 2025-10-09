@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,12 +8,17 @@ import {
   Dimensions,
   SafeAreaView,
   ScrollView,
+  Animated,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import ReusableText from '@/components/ui/ReusableText';
+import SelectionModal from '@/components/ui/SelectionModal';
+import BottomTextContent from '@/components/ui/BottomTextContent';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory, aiCategories } from '@/data/AICategories';
 
@@ -22,6 +27,15 @@ const { width, height } = Dimensions.get('window');
 const AIDetailPage = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [isGradientVisible, setIsGradientVisible] = useState(true);
+  const [isTextVisible, setIsTextVisible] = useState(true);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isSelectionModalVisible, setIsSelectionModalVisible] = useState(false);
+  const [selectedDetectionMethod, setSelectedDetectionMethod] = useState('keyboard');
+  const gradientOpacity = useRef(new Animated.Value(1)).current;
+  const bottomAreaOpacity = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(1)).current;
+  const overlayOpacity = useRef(new Animated.Value(1)).current;
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
@@ -36,6 +50,62 @@ const AIDetailPage = () => {
 
   const handleGoBack = () => {
     router.back();
+  };
+
+  const handleStartPress = () => {
+    // Animate gradient fade out, text fade out, overlay fade out, and bottom area fade in
+    Animated.parallel([
+      Animated.timing(gradientOpacity, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bottomAreaOpacity, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsGradientVisible(false);
+      setIsTextVisible(false);
+    });
+  };
+
+  const handleKeyboardPress = () => {
+    setIsKeyboardVisible(true);
+    // Keyboard will be handled by TextInput focus
+  };
+
+  const handleMicrophonePress = () => {
+    setIsSelectionModalVisible(true);
+  };
+
+
+  const handleTextPress = () => {
+    // Modal açılmıyor, sadece text modu aktif oluyor
+    console.log('Text mode activated');
+  };
+
+  const handleAutoDetectPress = () => {
+    setSelectedDetectionMethod('microphone');
+    setIsSelectionModalVisible(false);
+    // Modal açılmıyor, sadece icon değişiyor
+  };
+
+  const handleHandDetectPress = () => {
+    setSelectedDetectionMethod('hand');
+    setIsSelectionModalVisible(false);
+    // Modal açılmıyor, sadece icon değişiyor
   };
 
   return (
@@ -54,14 +124,18 @@ const AIDetailPage = () => {
       />
       
       {/* Dark Overlay */}
-      <View style={styles.overlay} />
+      <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]} />
       
       {/* Purple Gradient at Bottom */}
-      <LinearGradient
-        colors={['transparent', 'rgba(75, 0, 130, 0.2)', 'rgba(75, 0, 130, 0.6)', 'rgba(75, 0, 130, 0.9)', 'rgba(75, 0, 130, 1)']}
-        locations={[0.2, 0.4, 0.6, 0.8, 1.0]}
-        style={styles.bottomGradient}
-      />
+      {isGradientVisible && (
+        <Animated.View style={[styles.gradientContainer, { opacity: gradientOpacity }]}>
+          <LinearGradient
+            colors={['transparent', 'rgba(75, 0, 130, 0.2)', 'rgba(75, 0, 130, 0.6)', 'rgba(75, 0, 130, 0.9)', 'rgba(75, 0, 130, 1)']}
+            locations={[0.2, 0.4, 0.6, 0.8, 1.0]}
+            style={styles.bottomGradient}
+          />
+        </Animated.View>
+      )}
       
       {/* Header */}
       <SafeAreaView style={styles.header}>
@@ -115,57 +189,67 @@ const AIDetailPage = () => {
         <View style={styles.spacer} />
       </ScrollView>
       
-      {/* Bottom Text - Work Alexander */}
-      <View style={styles.bottomTextContainer}>
-        <ReusableText
-          text={item.category}
-          family="bold"
-          size={18}
-          color={Colors.lightWhite}
-          style={styles.categoryText}
-        />
-        <ReusableText
-          text={item.title}
-          family="bold"
-          size={24}
-          color={Colors.lightWhite}
-          style={styles.nameText}
-        />
-        <ReusableText
-          text={item.description}
-          family="regular"
-          size={14}
-          color={Colors.lightWhite}
-          style={styles.descriptionText}
-        />
-        
-        {/* Start Button */}
-        <TouchableOpacity
-          style={styles.startButton}
-          onPress={() => {
-            // Handle start button press
-            console.log('Start button pressed');
-          }}
-          activeOpacity={0.8}
-        >
-          <ReusableText
-            text="Hemen Başla"
-            family="medium"
-            size={16}
-            color={Colors.lightWhite}
-            style={styles.startButtonText}
-          />
-          <View style={styles.startButtonIconContainer}>
-            <MaterialIcons 
-              name="arrow-outward" 
-              size={24} 
-              color="white" 
-              style={styles.startButtonIcon}
-            />
-         </View>
+      {/* Bottom Text Content */}
+      <BottomTextContent
+        item={item}
+        isVisible={isTextVisible}
+        opacity={textOpacity}
+        onStartPress={handleStartPress}
+      />
+      
+      {/* Bottom Area - appears after animation */}
+      <Animated.View style={[
+        styles.bottomArea, 
+        { opacity: bottomAreaOpacity },
+        isKeyboardVisible && styles.bottomAreaKeyboard
+      ]}>
+        <View style={styles.bottomAreaContent}>
+          
+          {/* 4 Circle Icons */}
+          <View style={styles.iconCirclesContainer}>
+            <TouchableOpacity style={styles.circleButton} onPress={handleKeyboardPress}>
+              <MaterialIcons name="keyboard" size={28} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.circleButton} onPress={handleMicrophonePress}>
+              {selectedDetectionMethod === 'microphone' ? (
+                <Ionicons name="mic-outline" size={28} color="white" />
+              ) : selectedDetectionMethod === 'hand' ? (
+                <Ionicons name="hand-left-outline" size={28} color="white" />
+              ) : (
+                <Ionicons name="mic-outline" size={28} color="white" />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.circleButton} onPress={handleTextPress}>
+              <Ionicons name="text-outline" size={28} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.circleButton, styles.redCircleButton]}>
+              <Ionicons name="call" size={28} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
 
-        </TouchableOpacity>
-      </View>
+      {/* Keyboard Input */}
+      {isKeyboardVisible && (
+        <View style={styles.keyboardInputContainer}>
+          <TextInput
+            style={styles.keyboardInput}
+            placeholder="Mesajınızı yazın..."
+            placeholderTextColor="rgba(255, 255, 255, 0.6)"
+            multiline
+            autoFocus
+            onBlur={() => setIsKeyboardVisible(false)}
+          />
+        </View>
+      )}
+
+      {/* Selection Modal */}
+      <SelectionModal
+        visible={isSelectionModalVisible}
+        onClose={() => setIsSelectionModalVisible(false)}
+        onAutoDetectPress={handleAutoDetectPress}
+        onHandDetectPress={handleHandDetectPress}
+      />
     </View>
   );
 };
@@ -188,12 +272,76 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
-  bottomGradient: {
+  gradientContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 1, // Cover bottom half of screen
+    height: height * 1,
+  },
+  bottomGradient: {
+    width: '100%',
+    height: '100%',
+  },
+  bottomArea: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  bottomAreaKeyboard: {
+    bottom: 350,
+  },
+  bottomAreaContent: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  bottomAreaTitle: {
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  iconCirclesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 30,
+  },
+  circleButton: {
+    padding: 15,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  redCircleButton: {
+    backgroundColor: 'rgba(255, 0, 0, 0.6)',
+    borderColor: 'rgba(255, 0, 0, 0.8)',
+  },
+  keyboardInputContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 20,
+    zIndex: 1,
+  },
+  keyboardInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    color: 'white',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   header: {
     position: 'absolute',
@@ -255,49 +403,6 @@ const styles = StyleSheet.create({
   },
   spacer: {
     flex: 1,
-  },
-  bottomTextContainer: {
-    position: 'absolute',
-    bottom: 60,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-  },
-  categoryText: {
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  descriptionText: {
-    marginTop: 8,
-    textAlign: 'center',
-    opacity: 0.9,
-    lineHeight: 18,
-  },
-  startButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    paddingHorizontal: 2,
-    paddingLeft: 15,
-    paddingVertical: 2,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: Colors.lightWhite,
-  },
-  startButtonText: {
-    marginRight: 8,
-  },
-  startButtonIconContainer: {
-    borderWidth: 2,
-    borderColor: Colors.lightWhite,
-    padding: 10,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startButtonIcon: {
-    // Icon styling
   },
 });
 
