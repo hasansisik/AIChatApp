@@ -12,11 +12,11 @@ const Tab = createBottomTabNavigator();
 const styles = StyleSheet.create({
   tabBarStyle: {
     backgroundColor: Colors.tabBarBackground, 
-    height: 80,
-    paddingTop: 20,
+    height: 70,
+    paddingTop: 15,
     position: "absolute",
     borderRadius: 60,
-    marginHorizontal: 40,
+    marginHorizontal: 100,
     marginBottom: 30,
     borderTopWidth: 0,
     elevation: 0,
@@ -26,19 +26,30 @@ const styles = StyleSheet.create({
     display: 'none',
   },
   activeTabContainer: {
-    width: 60,
-    height: 60,
+    width: 55,
+    height: 55,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
   inactiveTabContainer: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.tabBarInactiveBackground,
+  },
+  profileImage: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+  },
+  profileImageInactive: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    opacity: 0.7,
   },
 });
 
@@ -70,14 +81,14 @@ const TabNavigation = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   <MaterialCommunityIcons
-                    name="chef-hat"
+                    name="home-variant"
                     color={Colors.white}
                     size={24}
                   />
                 </LinearGradient>
               ) : (
                 <MaterialCommunityIcons
-                  name="chef-hat"
+                  name="home-variant-outline"
                   color={Colors.light}
                   size={24}
                 />
@@ -100,14 +111,14 @@ const TabNavigation = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   <MaterialCommunityIcons
-                    name="record-rec"
+                    name="view-grid"
                     color={Colors.white}
                     size={24}
                   />
                 </LinearGradient>
               ) : (
                 <MaterialCommunityIcons
-                  name="record-rec"
+                  name="view-grid-outline"
                   color={Colors.light}
                   size={24}
                 />
@@ -117,7 +128,7 @@ const TabNavigation = () => {
         }}
       />
       <Tab.Screen
-        name="Favorites"
+        name="Profile"
         component={Home}
         options={{
           tabBarIcon: ({ focused }) => (
@@ -129,47 +140,17 @@ const TabNavigation = () => {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <MaterialCommunityIcons
-                    name="folder"
-                    color={Colors.white}
-                    size={24}
+                  <Image
+                    source={{ uri: 'https://plus.unsplash.com/premium_photo-1690407617542-2f210cf20d7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVyc29ufGVufDB8fDB8fHww' }}
+                    style={styles.profileImage}
+                    resizeMode="cover"
                   />
                 </LinearGradient>
               ) : (
-                <MaterialCommunityIcons
-                  name="folder"
-                  color={Colors.light}
-                  size={24}
-                />
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={Home}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
-              {focused ? (
-                <LinearGradient
-                  colors={[Colors.tabBarGradientStart, Colors.tabBarGradientEnd]}
-                  style={styles.activeTabContainer}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <MaterialCommunityIcons
-                    name="cog"
-                    color={Colors.white}
-                    size={24}
-                  />
-                </LinearGradient>
-              ) : (
-                <MaterialCommunityIcons
-                  name="cog"
-                  color={Colors.light}
-                  size={24}
+                <Image
+                  source={{ uri: 'https://plus.unsplash.com/premium_photo-1690407617542-2f210cf20d7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVyc29ufGVufDB8fDB8fHww' }}
+                  style={styles.profileImageInactive}
+                  resizeMode="cover"
                 />
               )}
             </View>
