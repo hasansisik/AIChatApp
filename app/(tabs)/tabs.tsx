@@ -5,6 +5,7 @@ import { Colors, useTheme } from "@/hooks/useThemeColor";
 import { StyleSheet, Image, View, Text } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import Home from "@/app/(tabs)/home";
+import List from "@/app/(tabs)/list";
 import Profile from "./profile";
 
 const Tab = createBottomTabNavigator();
@@ -14,12 +15,12 @@ const TabNavigation = () => {
   
   const styles = StyleSheet.create({
     tabBarStyle: {
-      backgroundColor: isDark ? 'rgba(18, 18, 18, 0.6)' : 'rgba(255, 255, 255, 0.6)', 
+      backgroundColor: isDark ? 'rgba(18, 18, 18, 0.6)' : 'rgba(18, 18, 18, 0.6)', 
       height: 70,
       paddingTop: 15,
       position: "absolute",
       borderRadius: 60,
-      marginHorizontal: 100,
+      marginHorizontal: 105,
       marginBottom: 30,
       borderTopWidth: 0,
       elevation: 0,
@@ -29,29 +30,29 @@ const TabNavigation = () => {
       display: 'none',
     },
     activeTabContainer: {
-      width: 55,
-      height: 55,
-      borderRadius: 30,
+      width: 65,
+      height: 65,
+      borderRadius: 50,
       justifyContent: 'center',
       alignItems: 'center',
     },
     inactiveTabContainer: {
-      width: 50,
-      height: 50,
-      borderRadius: 30,
+      width: 60,
+      height: 60,
+      borderRadius: 50,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: Colors.tabBarBackground,
     },
     profileImage: {
-      width: 55,
-      height: 55,
-      borderRadius: 27.5,
+      width: 60,
+      height: 60,
+      borderRadius: 35,
     },
     profileImageInactive: {
-      width: 50,
-      height: 50,
-      borderRadius: 25,
+      width: 60,
+      height: 60,
+      borderRadius: 35,
       opacity: 0.7,
     },
   });
@@ -99,8 +100,8 @@ const TabNavigation = () => {
         }}
       />
       <Tab.Screen
-        name="Search"
-        component={Home}
+        name="List"
+        component={List}
         options={{
           tabBarIcon: ({ focused }) => (
             <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
@@ -112,14 +113,14 @@ const TabNavigation = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   <MaterialCommunityIcons
-                    name="view-grid"
+                    name="view-list"
                     color={Colors.white}
                     size={24}
                   />
                 </LinearGradient>
               ) : (
                 <MaterialCommunityIcons
-                  name="view-grid-outline"
+                  name="view-list-outline"
                   color={Colors.black}
                   size={24}
                 />
