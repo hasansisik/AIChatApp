@@ -34,7 +34,6 @@ const global = StyleSheet.create({
   // Companent Styles
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: Colors.white,
     justifyContent: "space-between",
   },
@@ -53,10 +52,10 @@ const global = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 10,
-    backgroundColor: Colors.white,
   },
   statusBar: {
     paddingTop: 50,
+    backgroundColor: Colors.lightWhite,
   },
   label: {
     fontFamily: "regular",

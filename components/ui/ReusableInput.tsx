@@ -71,7 +71,7 @@ const ReusableInput: React.FC<ReusableInputProps> = ({
 
 const inputContainerStyle = (error: boolean, isFocused: boolean): ViewStyle => ({
   borderWidth: isFocused ? 2 : 1,
-  borderRadius: 10,
+  borderRadius: 30,
   borderColor: error ? Colors.error : isFocused ? Colors.dark : Colors.gray,
   overflow: "hidden",
 });

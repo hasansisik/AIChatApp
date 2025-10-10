@@ -98,9 +98,9 @@ const ForgotPassword = () => {
           <ReusableButton
             btnText={t("auth.forgotPassword.sendButton")}
             width={Sizes.screenWidth - 40}
-            height={45}
-            borderRadius={Sizes.small}
-            backgroundColor={Colors.lightBlack}
+            height={55}
+            borderRadius={Sizes.xxlarge}
+            backgroundColor={Colors.purple}
             textColor={Colors.lightWhite}
             textFontFamily={"regular"}
             onPress={formik.handleSubmit}

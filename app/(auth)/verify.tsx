@@ -108,9 +108,9 @@ const Verify: React.FC = () => {
           <ReusableButton
             btnText={t("auth.verify.verifyButton")}
             width={Sizes.screenWidth - 40}
-            height={45}
-            borderRadius={Sizes.small}
-            backgroundColor={Colors.lightBlack}
+            height={55}
+            borderRadius={Sizes.xxlarge}
+            backgroundColor={Colors.purple}
             textColor={Colors.lightWhite}
             textFontFamily={"regular"}
             onPress={submitHandler}
