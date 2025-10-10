@@ -1,4 +1,13 @@
-import { Text, View, TouchableOpacity, StyleSheet } from "react-native";
+import { 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  StyleSheet, 
+  KeyboardAvoidingView, 
+  Platform, 
+  Keyboard, 
+  Animated 
+} from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { login } from "@/redux/actions/userActions";
@@ -31,7 +40,10 @@ const Login: React.FC<LoginProps> = () => {
 
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const toastRef = useRef<any>(null);
+  const inputAnimation = useRef(new Animated.Value(0)).current;
+  const textAnimation = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (status && message) {
@@ -42,6 +54,46 @@ const Login: React.FC<LoginProps> = () => {
       });
     }
   }, [status, message]);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setIsKeyboardVisible(true);
+        Animated.timing(inputAnimation, {
+          toValue: 50,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+        Animated.timing(textAnimation, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setIsKeyboardVisible(false);
+        Animated.timing(inputAnimation, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+        Animated.timing(textAnimation, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, [inputAnimation, textAnimation]);
 
   const formik = useFormik({
     initialValues: { email: "", password: "" },
@@ -60,98 +112,135 @@ const Login: React.FC<LoginProps> = () => {
   });
 
   return (
-    <GestureHandlerRootView style={loginStyles.container}>
-      <View style={[styles.container, styles.statusBar, loginStyles.mainContainer]}>
-        <Toast ref={toastRef} />
-        <AppBar
-          top={0}
-          left={0}
-          right={20}
-          onPress={() => router.back()}
-          color={Colors.white}
-        />
-        
-        {/* Video Background */}
-        <View style={loginStyles.videoContainer}>
-          <Video
-            source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
-            style={loginStyles.video}
-            resizeMode={ResizeMode.CONTAIN}
-            shouldPlay
-            isLooping
-            isMuted
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      style={{ flex: 1 }}
+    >
+      <GestureHandlerRootView style={loginStyles.container}>
+        <View style={[styles.container, styles.statusBar, loginStyles.mainContainer]}>
+          <Toast ref={toastRef} />
+          <AppBar
+            top={0}
+            left={0}
+            right={20}
+            onPress={() => router.back()}
+            color={Colors.white}
           />
-        </View>
-        
-        <View style={loginStyles.contentContainer}>
-          <View>
-            {/* Text */}
-            <ReusableText
-              text={t("auth.login.title")}
-              family={"bold"}
-              size={FontSizes.xLarge}
-              color={Colors.black}
+          
+          {/* Video Background */}
+          <Animated.View
+            style={[
+              loginStyles.videoContainer,
+              {
+                opacity: textAnimation,
+                transform: [
+                  {
+                    translateY: textAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-50, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Video
+              source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
+              style={loginStyles.video}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              isLooping
+              isMuted
             />
-            <HeightSpacer height={20} />
-            {/* Email Input */}
-            <ReusableInput
-              label={t("auth.login.email")}
-              value={formik.values.email}
-              onChangeText={formik.handleChange("email")}
-              touched={formik.touched.password}
-              error={formik.errors.email}
-              loading={formik.isSubmitting}
-              labelColor={Colors.black}
-            />
-            {/* Password Input */}
-            <ReusableInput
-              label={t("auth.login.password")}
-              secureTextEntry={true}
-              value={formik.values.password}
-              onChangeText={formik.handleChange("password")}
-              touched={formik.touched.password}
-              error={formik.errors.password}
-            />
-            {/* Forgot Password */}
-            <TouchableOpacity
-              onPress={() => router.push("/(auth)/forgotpassword")}
-            >
-              <Text style={[styles.label, loginStyles.forgotPasswordText]}>
-                {t("auth.login.forgotPassword")}
-              </Text>
-            </TouchableOpacity>
-            <HeightSpacer height={20} />
-            {/* Login Button */}
-            <ReusableButton
-              btnText={t("auth.login.loginButton")}
-              width={Sizes.screenWidth - 40}
-              height={55}
-              borderRadius={Sizes.xxlarge}
-              backgroundColor={Colors.purple}
-              textColor={Colors.lightWhite}
-              onPress={formik.handleSubmit}
-            />
-          </View>
-          <HeightSpacer height={30} />
-          <View style={styles.footer}>
-            <ReusableText
-              text={t("auth.login.noAccount")}
-              family={"regular"}
-              size={FontSizes.small}
-              color={Colors.description}
-            />
-            <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+          </Animated.View>
+          
+          {/* Content Container */}
+          <Animated.View
+            style={[
+              loginStyles.contentContainer,
+              {
+                transform: [
+                  {
+                    translateY: inputAnimation,
+                  },
+                ],
+                justifyContent: isKeyboardVisible ? 'flex-end' : 'center',
+              },
+            ]}
+          >
+            <View>
+              {/* Text */}
               <ReusableText
-                text={t("auth.login.register")}
+                text={t("auth.login.title")}
                 family={"bold"}
-                size={FontSizes.small}
-                color={Colors.lightBlack}
+                size={FontSizes.xLarge}
+                color={Colors.black}
+                align={"center"}
               />
-            </TouchableOpacity>
-          </View>
+              <HeightSpacer height={20} />
+              {/* Email Input */}
+              <ReusableInput
+                label={t("auth.login.email")}
+                value={formik.values.email}
+                onChangeText={formik.handleChange("email")}
+                touched={formik.touched.password}
+                error={formik.errors.email}
+                loading={formik.isSubmitting}
+                labelColor={Colors.black}
+              />
+              {/* Password Input */}
+              <ReusableInput
+                label={t("auth.login.password")}
+                secureTextEntry={true}
+                value={formik.values.password}
+                onChangeText={formik.handleChange("password")}
+                touched={formik.touched.password}
+                error={formik.errors.password}
+              />
+              {/* Forgot Password */}
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/forgotpassword")}
+              >
+                <Text style={[styles.label, loginStyles.forgotPasswordText]}>
+                  {t("auth.login.forgotPassword")}
+                </Text>
+              </TouchableOpacity>
+              <HeightSpacer height={20} />
+              {/* Login Button */}
+              <ReusableButton
+                btnText={t("auth.login.loginButton")}
+                width={Sizes.screenWidth - 40}
+                height={55}
+                borderRadius={Sizes.xxlarge}
+                backgroundColor={Colors.purple}
+                textColor={Colors.lightWhite}
+                onPress={formik.handleSubmit}
+              />
+            </View>
+            <HeightSpacer height={30} />
+            {!isKeyboardVisible && (
+              <View style={styles.footer}>
+                <ReusableText
+                  text={t("auth.login.noAccount")}
+                  family={"regular"}
+                  size={FontSizes.small}
+                  color={Colors.description}
+                />
+                <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+                  <ReusableText
+                    text={t("auth.login.register")}
+                    family={"bold"}
+                    size={FontSizes.small}
+                    color={Colors.lightBlack}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+          </Animated.View>
         </View>
-      </View>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </KeyboardAvoidingView>
   );
 };
 

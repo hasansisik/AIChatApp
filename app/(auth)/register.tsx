@@ -1,4 +1,13 @@
-import { View, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { 
+  View, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Platform, 
+  KeyboardAvoidingView, 
+  Keyboard, 
+  Animated,
+  ScrollView 
+} from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useFormik } from "formik";
@@ -23,7 +32,10 @@ const Register = () => {
 
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const toastRef = useRef<any>(null);
+  const inputAnimation = useRef(new Animated.Value(0)).current;
+  const textAnimation = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (status && message) {
@@ -34,6 +46,46 @@ const Register = () => {
       });
     }
   }, [status, message]);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setIsKeyboardVisible(true);
+        Animated.timing(inputAnimation, {
+          toValue: 50,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+        Animated.timing(textAnimation, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setIsKeyboardVisible(false);
+        Animated.timing(inputAnimation, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+        Animated.timing(textAnimation, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, [inputAnimation, textAnimation]);
 
   const formik = useFormik({
     initialValues: {
@@ -69,10 +121,14 @@ const Register = () => {
   });
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.container}>
-        <Toast ref={toastRef} />
-        <View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      style={{ flex: 1 }}
+    >
+      <GestureHandlerRootView style={registerStyles.container}>
+        <View style={[styles.container, registerStyles.mainContainer]}>
+          <Toast ref={toastRef} />
           <AppBar
             top={0}
             left={0}
@@ -80,98 +136,149 @@ const Register = () => {
             onPress={() => router.back()}
             color={Colors.white}
           />
-          <HeightSpacer height={15} />
-          <ReusableText
-            text={t("auth.register.title")}
-            family={"bold"}
-            size={FontSizes.xLarge}
-            color={Colors.black}
-          />
-          <HeightSpacer height={15} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, marginRight: 5 }}>
-              <ReusableInput
-                label={t("auth.register.name")}
-                labelColor={Colors.black}
-                value={formik.values.name}
-                onChangeText={formik.handleChange("name")}
-                touched={formik.touched.name}
-                error={formik.errors.name}
+          
+          
+          {/* Content Container */}
+          <Animated.View
+            style={[
+              registerStyles.contentContainer,
+              {
+                transform: [
+                  {
+                    translateY: inputAnimation,
+                  },
+                ],
+                justifyContent: isKeyboardVisible ? 'flex-end' : 'center',
+              },
+            ]}
+          >
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={registerStyles.scrollContent}
+            >
+              {/* Text */}
+              <ReusableText
+                text={t("auth.register.title")}
+                family={"bold"}
+                size={FontSizes.xLarge}
+                color={Colors.black}
+                align={"center"}
               />
-            </View>
-            <View style={{ flex: 1, marginLeft: 5 }}>
+              <HeightSpacer height={20} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1, marginRight: 5 }}>
+                  <ReusableInput
+                    label={t("auth.register.name")}
+                    labelColor={Colors.black}
+                    value={formik.values.name}
+                    onChangeText={formik.handleChange("name")}
+                    touched={formik.touched.name}
+                    error={formik.errors.name}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 5 }}>
+                  <ReusableInput
+                    label={t("auth.register.surname")}
+                    labelColor={Colors.black}
+                    value={formik.values.surname}
+                    onChangeText={formik.handleChange("surname")}
+                    touched={formik.touched.surname}
+                    error={formik.errors.surname}
+                  />
+                </View>
+              </View>
               <ReusableInput
-                label={t("auth.register.surname")}
+                label={t("auth.register.email")}
                 labelColor={Colors.black}
-                value={formik.values.surname}
-                onChangeText={formik.handleChange("surname")}
-                touched={formik.touched.surname}
-                error={formik.errors.surname}
+                value={formik.values.email}
+                onChangeText={formik.handleChange("email")}
+                touched={formik.touched.email}
+                error={formik.errors.email}
               />
-            </View>
-          </View>
-          <ReusableInput
-            label={t("auth.register.email")}
-            labelColor={Colors.black}
-            value={formik.values.email}
-            onChangeText={formik.handleChange("email")}
-            touched={formik.touched.email}
-            error={formik.errors.email}
-          />
-          <ReusableInput
-            label={t("auth.register.password")}
-            secureTextEntry={true}
-            labelColor={Colors.black}
-            value={formik.values.password}
-            onChangeText={formik.handleChange("password")}
-            touched={formik.touched.password}
-            error={formik.errors.password}
-          />
-          <ReusableInput
-            label={t("auth.register.confirmPassword")}
-            secureTextEntry={true}
-            labelColor={Colors.black}
-            value={formik.values.confirmPassword}
-            onChangeText={formik.handleChange("confirmPassword")}
-            touched={formik.touched.confirmPassword}
-            error={formik.errors.confirmPassword}
-          />
-          <ReusableButton
-            btnText={t("auth.register.registerButton")}
-            width={Sizes.screenWidth - 40}
-            height={55}
-            borderRadius={Sizes.xxlarge}
-            backgroundColor={Colors.purple}
-            textColor={Colors.lightWhite}
-            textFontFamily={"regular"}
-            onPress={formik.handleSubmit}
-          />
+              <ReusableInput
+                label={t("auth.register.password")}
+                secureTextEntry={true}
+                labelColor={Colors.black}
+                value={formik.values.password}
+                onChangeText={formik.handleChange("password")}
+                touched={formik.touched.password}
+                error={formik.errors.password}
+              />
+              <ReusableInput
+                label={t("auth.register.confirmPassword")}
+                secureTextEntry={true}
+                labelColor={Colors.black}
+                value={formik.values.confirmPassword}
+                onChangeText={formik.handleChange("confirmPassword")}
+                touched={formik.touched.confirmPassword}
+                error={formik.errors.confirmPassword}
+              />
+              <HeightSpacer height={20} />
+              <ReusableButton
+                btnText={t("auth.register.registerButton")}
+                width={Sizes.screenWidth - 40}
+                height={55}
+                borderRadius={Sizes.xxlarge}
+                backgroundColor={Colors.purple}
+                textColor={Colors.lightWhite}
+                textFontFamily={"regular"}
+                onPress={formik.handleSubmit}
+              />
+            
+            </ScrollView>
+          </Animated.View>
         </View>
-        <View style={styles.footer}>
-          <ReusableText
-            text={t("auth.register.haveAccount")}
-            family={"regular"}
-            size={FontSizes.small}
-            color={Colors.description}
-          />
-          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-            <ReusableText
-              text={t("auth.register.login")}
-              family={"bold"}
-              size={FontSizes.small}
-              color={Colors.lightBlack}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </GestureHandlerRootView>
+        {!isKeyboardVisible && (
+                <View style={styles.footer}>
+                  <ReusableText
+                    text={t("auth.register.haveAccount")}
+                    family={"regular"}
+                    size={FontSizes.small}
+                    color={Colors.description}
+                  />
+                  <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+                    <ReusableText
+                      text={t("auth.register.login")}
+                      family={"bold"}
+                      size={FontSizes.small}
+                      color={Colors.lightBlack}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+      </GestureHandlerRootView>
+    </KeyboardAvoidingView>
   );
 };
+
+const registerStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.lightWhite,
+  },
+  mainContainer: {
+    justifyContent: 'flex-end',
+  },
+  contentContainer: {
+    justifyContent: 'flex-end',
+    paddingBottom: 100,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+    paddingHorizontal: 20,
+    paddingTop: 30,
+    borderTopLeftRadius: Sizes.xxlarge,
+    borderTopRightRadius: Sizes.xxlarge,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     paddingTop: Platform.OS === "ios" ? 40 : 20, 
     backgroundColor: Colors.white,
     justifyContent: "space-between",
@@ -199,6 +306,9 @@ const styles = StyleSheet.create({
     color: Colors.dark,
   },
   footer: {
+    position: "absolute",
+    bottom: 20,
+    width: "100%",
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
