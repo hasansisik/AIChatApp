@@ -6,12 +6,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { loadUser } from '../redux/actions/userActions';
 import TabNavigation from './(tabs)/tabs';
+import StepOnboardingScreen from '../components/Onboarding/StepOnboardingScreen';
 
 const Stack = createNativeStackNavigator();
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasToken, setHasToken] = useState(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state: any) => state.user);
 
@@ -19,6 +21,12 @@ const Index = () => {
     const checkToken = async () => {
       try {
         const token = await AsyncStorage.getItem('accessToken');
+        const onboardingCompleted = await AsyncStorage.getItem('onboardingCompleted');
+        
+        if (onboardingCompleted === 'true') {
+          setHasCompletedOnboarding(true);
+        }
+        
         if (token) {
           setHasToken(true);
           await dispatch(loadUser() as any);
@@ -33,6 +41,15 @@ const Index = () => {
     checkToken();
   }, [dispatch]);
 
+  const handleOnboardingComplete = async () => {
+    try {
+      await AsyncStorage.setItem('onboardingCompleted', 'true');
+      setHasCompletedOnboarding(true);
+    } catch (error) {
+      console.error('Error saving onboarding completion:', error);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -44,7 +61,14 @@ const Index = () => {
 
   return (
     <Stack.Navigator>
-      {(isAuthenticated || hasToken) ? (
+      {!hasCompletedOnboarding ? (
+        <Stack.Screen 
+          name="Onboarding" 
+          options={{ headerShown: false }}
+        >
+          {() => <StepOnboardingScreen onComplete={handleOnboardingComplete} />}
+        </Stack.Screen>
+      ) : (isAuthenticated || hasToken) ? (
         <Stack.Screen name="(tabs)/tabs" component={TabNavigation} options={{ headerShown: false }} />
       ) : (
         <Stack.Screen name="(auth)/login" component={require('./(auth)/login').default} options={{ headerShown: false }} />
