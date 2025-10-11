@@ -43,12 +43,14 @@ const Verify: React.FC = () => {
       verifyEmail({ email: emailString, verificationCode }) as any
     );
     if (verifyEmail.fulfilled.match(actionResult)) {
-      router.push({
-        pathname: "/(auth)/login",
-        params: { email: emailString },
-      });
       setStatus("success");
       setMessage(t("auth.verify.success"));
+      // Onboarding'e yönlendir
+      setTimeout(() => {
+        router.push({
+          pathname: "/onboarding-demo",
+        });
+      }, 2000);
     } else if (verifyEmail.rejected.match(actionResult)) {
       const NoticeMessage = actionResult.payload as string;
       setStatus("error");

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import OnboardingScreen from '@/components/Onboarding/OnboardingScreen';
+import StepOnboardingScreen from '@/components/Onboarding/StepOnboardingScreen';
 import TabNavigation from './(tabs)/tabs';
 
 const OnboardingDemo = () => {
@@ -11,7 +11,7 @@ const OnboardingDemo = () => {
   };
 
   if (showOnboarding) {
-    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+    return <StepOnboardingScreen onComplete={handleOnboardingComplete} />;
   }
 
   return <TabNavigation />;
