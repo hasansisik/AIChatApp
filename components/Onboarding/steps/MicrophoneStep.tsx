@@ -3,7 +3,9 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import ReusableText from '@/components/ui/ReusableText';
 import ReusableButton from '@/components/ui/ReusableButton';
@@ -18,8 +20,20 @@ interface MicrophoneStepProps {
 }
 
 const MicrophoneStep: React.FC<MicrophoneStepProps> = ({ data, onUpdate }) => {
-  const handleEnable = () => {
-    onUpdate('microphoneEnabled', true);
+  const handleEnable = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status === 'granted') {
+        onUpdate('microphoneEnabled', true);
+        Alert.alert('Başarılı', 'Mikrofon erişimi etkinleştirildi!');
+      } else {
+        Alert.alert('İzin Gerekli', 'Mikrofon için izin verilmedi.');
+        onUpdate('microphoneEnabled', false);
+      }
+    } catch (error) {
+      Alert.alert('Hata', 'Mikrofon izni alınırken bir hata oluştu.');
+      onUpdate('microphoneEnabled', false);
+    }
   };
 
   const handleDisable = () => {
@@ -97,8 +111,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: Colors.backgroundBox,
+    borderRadius: 20, // Square with rounded corners
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,

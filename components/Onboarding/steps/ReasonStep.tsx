@@ -108,9 +108,9 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     width: (Sizes.screenWidth - 80) / 2,
-    height: 120,
+    height: 100,
     backgroundColor: Colors.white,
-    borderRadius: 20,
+    borderRadius: 15, // Rounded rectangle
     borderWidth: 2,
     borderColor: Colors.lightGray,
     justifyContent: 'center',
@@ -119,11 +119,11 @@ const styles = StyleSheet.create({
     shadowColor: Colors.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
   },
   optionButtonSelected: {
     backgroundColor: Colors.primary,
@@ -131,9 +131,11 @@ const styles = StyleSheet.create({
   },
   emoji: {
     marginBottom: 8,
+    fontSize: 28,
   },
   optionText: {
-    lineHeight: 20,
+    lineHeight: 18,
+    fontSize: 15,
   },
 });
 

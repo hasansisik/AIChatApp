@@ -124,15 +124,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   optionButton: {
-    width: (Sizes.screenWidth - 80) / 2,
-    height: 120,
+    width: (Sizes.screenWidth - 100) / 4, // 4 columns
+    height: (Sizes.screenWidth - 100) / 4, // Square to make it circular
     backgroundColor: Colors.white,
-    borderRadius: 20,
+    borderRadius: (Sizes.screenWidth - 100) / 8, // Perfect circle
     borderWidth: 2,
     borderColor: Colors.lightGray,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
     shadowColor: Colors.black,
     shadowOffset: {
       width: 0,
@@ -147,10 +147,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   emoji: {
-    marginBottom: 8,
+    marginBottom: 2,
+    fontSize: 16,
   },
   optionText: {
-    lineHeight: 20,
+    lineHeight: 14,
+    fontSize: 10,
   },
 });
 

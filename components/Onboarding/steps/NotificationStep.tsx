@@ -3,7 +3,9 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import ReusableText from '@/components/ui/ReusableText';
 import ReusableButton from '@/components/ui/ReusableButton';
@@ -18,8 +20,20 @@ interface NotificationStepProps {
 }
 
 const NotificationStep: React.FC<NotificationStepProps> = ({ data, onUpdate }) => {
-  const handleEnable = () => {
-    onUpdate('notificationsEnabled', true);
+  const handleEnable = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === 'granted') {
+        onUpdate('notificationsEnabled', true);
+        Alert.alert('Başarılı', 'Bildirimler etkinleştirildi!');
+      } else {
+        Alert.alert('İzin Gerekli', 'Bildirimler için izin verilmedi.');
+        onUpdate('notificationsEnabled', false);
+      }
+    } catch (error) {
+      Alert.alert('Hata', 'Bildirim izni alınırken bir hata oluştu.');
+      onUpdate('notificationsEnabled', false);
+    }
   };
 
   const handleDisable = () => {
@@ -97,8 +111,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: Colors.backgroundBox,
+    borderRadius: 20, // Square with rounded corners
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,

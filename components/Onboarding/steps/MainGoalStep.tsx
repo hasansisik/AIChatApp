@@ -101,21 +101,22 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     paddingHorizontal: 10,
+    gap: 12,
   },
   optionButton: {
-    width: (Sizes.screenWidth - 80) / 2,
-    height: 120,
+    width: '100%',
+    height: 60,
     backgroundColor: Colors.white,
-    borderRadius: 20,
+    borderRadius: 30, // Pill shape
     borderWidth: 2,
     borderColor: Colors.lightGray,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 12,
     shadowColor: Colors.black,
     shadowOffset: {
       width: 0,
@@ -130,10 +131,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   emoji: {
-    marginBottom: 8,
+    marginRight: 12,
+    fontSize: 24,
   },
   optionText: {
     lineHeight: 20,
+    fontSize: 16,
   },
 });
 
