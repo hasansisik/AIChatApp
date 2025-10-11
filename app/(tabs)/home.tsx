@@ -10,16 +10,6 @@ import { AICategory } from '@/data/AICategories';
 const Home = () => {
   const router = useRouter();
 
-  const handleSearchPress = () => {
-    // Handle search functionality
-    console.log('Search pressed');
-  };
-
-  const handleProfilePress = () => {
-    // Handle profile navigation
-    console.log('Profile pressed');
-  };
-
   const handleCategoryPress = (category: string) => {
     // Handle category navigation
     console.log(`${category} pressed`);
@@ -32,10 +22,7 @@ const Home = () => {
 
   return (
     <View style={styles.container}>
-      <Header 
-        onSearchPress={handleSearchPress}
-        onProfilePress={handleProfilePress}
-      />
+      <Header />
       <ScrollView style={styles.content}>
         <Categories onCategoryPress={handleCategoryPress} />
         <AIListing onItemPress={handleAICategoryPress} />

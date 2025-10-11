@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
+import { useRouter } from 'expo-router';
 import { Colors, useTheme } from '@/hooks/useThemeColor';
 import ReusableText from '@/components/ui/ReusableText';
 
@@ -12,13 +13,32 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
   const { isDark } = useTheme();
+  const router = useRouter();
+
+  const handleProfilePress = () => {
+    if (onProfilePress) {
+      onProfilePress();
+    } else {
+      // Default navigation to profile tab
+      router.push('/(tabs)/profile');
+    }
+  };
+
+  const handleSearchPress = () => {
+    if (onSearchPress) {
+      onSearchPress();
+    } else {
+      // Default navigation to search page
+      router.push('/search');
+    }
+  };
   
   return (
     <View style={styles.headerContainer}>
       {/* Top Row: Search, Logo, Profile */}
       <View style={styles.topRow}>
         {/* Search Icon */}
-        <TouchableOpacity style={styles.iconContainer} onPress={onSearchPress}>
+        <TouchableOpacity style={styles.iconContainer} onPress={handleSearchPress}>
           <Ionicons name="search" size={24} color={Colors.text} />
         </TouchableOpacity>
 
@@ -34,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
         </View>
 
         {/* Profile Photo */}
-        <TouchableOpacity style={styles.profileContainer} onPress={onProfilePress}>
+        <TouchableOpacity style={styles.profileContainer} onPress={handleProfilePress}>
           <Image
             source={{ uri: 'https://plus.unsplash.com/premium_photo-1690407617542-2f210cf20d7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVyc29ufGVufDB8fDB8fHww' }}
             style={styles.profileImage}

@@ -10,16 +10,6 @@ import { AICategory } from '@/data/AICategories';
 const List = () => {
   const router = useRouter();
 
-  const handleSearchPress = () => {
-    // Handle search functionality
-    console.log('Search pressed');
-  };
-
-  const handleProfilePress = () => {
-    // Handle profile navigation
-    console.log('Profile pressed');
-  };
-
   const handleItemPress = (item: AICategory) => {
     // Navigate to AI detail page
     router.push(`/ai-detail?id=${item.id}`);
@@ -37,10 +27,7 @@ const List = () => {
 
   return (
     <View style={styles.container}>
-      <HeaderList 
-        onSearchPress={handleSearchPress}
-        onProfilePress={handleProfilePress}
-      />
+      <HeaderList />
       <ScrollView style={styles.content}>
         <HorizontalList 
           onItemPress={handleItemPress}
