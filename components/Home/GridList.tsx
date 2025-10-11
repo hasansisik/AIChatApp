@@ -6,20 +6,17 @@ import GridItem from './GridItem';
 interface GridListProps {
   onItemPress?: (item: AICategory) => void;
   onFavoritePress?: (item: AICategory) => void;
-  onCategoryPress?: (categoryType: string) => void;
 }
 
 const GridList: React.FC<GridListProps> = ({ 
   onItemPress, 
-  onFavoritePress, 
-  onCategoryPress 
+  onFavoritePress
 }) => {
   const renderItem = ({ item }: { item: AICategory }) => (
     <GridItem
       item={item}
       onPress={onItemPress}
       onFavoritePress={onFavoritePress}
-      onCategoryPress={onCategoryPress}
     />
   );
 

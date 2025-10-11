@@ -9,7 +9,6 @@ import { FontSizes } from '@/constants/Fonts';
 interface HorizontalListProps {
   onItemPress?: (item: AICategory) => void;
   onFavoritePress?: (item: AICategory) => void;
-  onCategoryPress?: (categoryType: string) => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -19,8 +18,7 @@ const snapInterval = itemWidth + gap;
 
 const HorizontalList: React.FC<HorizontalListProps> = ({ 
   onItemPress, 
-  onFavoritePress, 
-  onCategoryPress 
+  onFavoritePress
 }) => {
   const flatListRef = useRef<FlatList>(null);
 
@@ -45,7 +43,6 @@ const HorizontalList: React.FC<HorizontalListProps> = ({
         item={item}
         onPress={onItemPress}
         onFavoritePress={onFavoritePress}
-        onCategoryPress={onCategoryPress}
       />
     </View>
   );

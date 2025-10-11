@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Platform, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from "@/hooks/useThemeColor";
@@ -38,10 +38,6 @@ const Search = () => {
     console.log('Favorite pressed:', item);
   };
 
-  const handleCategoryPress = (categoryType: string) => {
-    // Handle category press
-    console.log('Category pressed:', categoryType);
-  };
 
   const clearSearch = () => {
     setSearchQuery('');
@@ -89,7 +85,7 @@ const Search = () => {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.content}>
         {!isSearching && searchQuery.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="search" size={64} color={Colors.gray} />
@@ -135,20 +131,24 @@ const Search = () => {
               color={Colors.gray}
               style={styles.resultsCount}
             />
-            <View style={styles.gridContainer}>
-              {filteredItems.map((item) => (
+            <FlatList
+              data={filteredItems}
+              renderItem={({ item }) => (
                 <AIItem
-                  key={item.id}
                   item={item}
                   onPress={handleItemPress}
                   onFavoritePress={handleFavoritePress}
-                  onCategoryPress={handleCategoryPress}
                 />
-              ))}
-            </View>
+              )}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.gridContainer}
+              columnWrapperStyle={styles.row}
+            />
           </View>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -212,6 +212,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  row: {
+    justifyContent: 'space-between',
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -229,10 +232,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
+    paddingBottom: 20,
   },
 });
 

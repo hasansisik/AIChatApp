@@ -26,9 +26,6 @@ const AIListing: React.FC<AIListingProps> = ({ onItemPress }) => {
     setSelectedFilter(filterType);
   };
 
-  const handleCategoryPress = (categoryType: string) => {
-    setSelectedFilter(categoryType);
-  };
 
   const filteredItems = selectedFilter === 'all' 
     ? items 
@@ -53,7 +50,6 @@ const AIListing: React.FC<AIListingProps> = ({ onItemPress }) => {
               item={item}
               onPress={onItemPress}
               onFavoritePress={handleFavoritePress}
-              onCategoryPress={handleCategoryPress}
             />
           ))}
         </View>

@@ -10,19 +10,14 @@ interface AIItemProps {
   item: AICategory;
   onPress?: (item: AICategory) => void;
   onFavoritePress?: (item: AICategory) => void;
-  onCategoryPress?: (categoryType: string) => void;
 }
 
 const { width } = Dimensions.get('window');
 const itemWidth = (width - 48) / 2; // 48 = padding (16*2) + gap (16)
 
-const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress, onCategoryPress }) => {
+const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress }) => {
   const handleFavoritePress = () => {
     onFavoritePress?.(item);
-  };
-
-  const handleCategoryPress = () => {
-    onCategoryPress?.(item.categoryType);
   };
 
   return (
@@ -52,11 +47,7 @@ const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress, onCateg
       </TouchableOpacity>
 
       {/* Category Overlay */}
-      <TouchableOpacity 
-        style={styles.categoryOverlay}
-        onPress={handleCategoryPress}
-        activeOpacity={0.8}
-      >
+      <View style={styles.categoryOverlay}>
         <ReusableText
           text={item.category}
           family="medium"
@@ -71,7 +62,7 @@ const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress, onCateg
           color={Colors.lightWhite}
           style={styles.categoryTitle}
         />
-      </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 };

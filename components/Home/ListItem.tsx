@@ -10,19 +10,14 @@ interface ListItemProps {
   item: AICategory;
   onPress?: (item: AICategory) => void;
   onFavoritePress?: (item: AICategory) => void;
-  onCategoryPress?: (categoryType: string) => void;
 }
 
 const { width } = Dimensions.get('window');
 const itemWidth = width * 0.7; // 70% of screen width for horizontal scroll
 
-const ListItem: React.FC<ListItemProps> = ({ item, onPress, onFavoritePress, onCategoryPress }) => {
+const ListItem: React.FC<ListItemProps> = ({ item, onPress, onFavoritePress }) => {
   const handleFavoritePress = () => {
     onFavoritePress?.(item);
-  };
-
-  const handleCategoryPress = () => {
-    onCategoryPress?.(item.categoryType);
   };
 
   return (
@@ -52,11 +47,7 @@ const ListItem: React.FC<ListItemProps> = ({ item, onPress, onFavoritePress, onC
       </TouchableOpacity>
 
       {/* Category Overlay */}
-      <TouchableOpacity 
-        style={styles.categoryOverlay}
-        onPress={handleCategoryPress}
-        activeOpacity={0.8}
-      >
+      <View style={styles.categoryOverlay}>
         <ReusableText
           text={item.category}
           family="medium"
@@ -71,7 +62,7 @@ const ListItem: React.FC<ListItemProps> = ({ item, onPress, onFavoritePress, onC
           color={Colors.lightWhite}
           style={styles.categoryTitle}
         />
-      </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 };

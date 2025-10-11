@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from "@/hooks/useThemeColor";
 import HeaderList from '@/components/Home/HeaderList';
@@ -20,26 +20,20 @@ const List = () => {
     console.log('Favorite pressed:', item);
   };
 
-  const handleCategoryPress = (categoryType: string) => {
-    // Handle category press
-    console.log('Category pressed:', categoryType);
-  };
 
   return (
     <View style={styles.container}>
       <HeaderList />
-      <ScrollView style={styles.content}>
+      <View style={styles.content}>
         <HorizontalList 
           onItemPress={handleItemPress}
           onFavoritePress={handleFavoritePress}
-          onCategoryPress={handleCategoryPress}
         />
         <GridList 
           onItemPress={handleItemPress}
           onFavoritePress={handleFavoritePress}
-          onCategoryPress={handleCategoryPress}
         />
-      </ScrollView>
+      </View>
     </View>
   )
 }
