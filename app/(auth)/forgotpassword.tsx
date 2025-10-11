@@ -66,10 +66,10 @@ const ForgotPassword = () => {
         <Toast ref={toastRef} />
         <View>
           <AppBar
-            top={0}
+            top={10}
             left={0}
             right={20}
-            color={Colors.white}
+            color={Colors.lightWhite}
             onPress={() => router.back()}
           />
           <HeightSpacer height={15} />

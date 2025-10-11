@@ -69,10 +69,10 @@ const Verify: React.FC = () => {
           {/* Header */}
           <View style={{ height: 80 }}>
             <AppBar
-              top={30}
+              top={20}
               left={0}
               right={20}
-              color={Colors.white}
+              color={Colors.lightWhite}
               onPress={() => router.back()}
             />
           </View>

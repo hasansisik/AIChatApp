@@ -70,11 +70,11 @@ const ResetPassword = () => {
         <Toast ref={toastRef} />
         <View>
           <AppBar
-            top={0}
+            top={10}
             left={0}
             right={20}
             onPress={() => router.back()}
-            color={Colors.white}
+            color={Colors.lightWhite}
           />
           <HeightSpacer height={15} />
           <ReusableText

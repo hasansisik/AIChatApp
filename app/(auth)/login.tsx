@@ -120,13 +120,7 @@ const Login: React.FC<LoginProps> = () => {
       <GestureHandlerRootView style={loginStyles.container}>
         <View style={[styles.container, styles.statusBar, loginStyles.mainContainer]}>
           <Toast ref={toastRef} />
-          <AppBar
-            top={0}
-            left={0}
-            right={20}
-            onPress={() => router.back()}
-            color={Colors.white}
-          />
+
           
           {/* Video Background */}
           <Animated.View
@@ -187,7 +181,6 @@ const Login: React.FC<LoginProps> = () => {
                 touched={formik.touched.password}
                 error={formik.errors.email}
                 loading={formik.isSubmitting}
-                labelColor={Colors.black}
               />
               {/* Password Input */}
               <ReusableInput
@@ -247,17 +240,18 @@ const Login: React.FC<LoginProps> = () => {
 const loginStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.lightWhite,
+    backgroundColor: Colors.background,
   },
   mainContainer: {
     justifyContent: 'flex-end',
+    backgroundColor: Colors.background,
   },
   videoContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    backgroundColor: Colors.lightWhite,
+    backgroundColor: Colors.background,
   },
   video: {
     width: '100%',

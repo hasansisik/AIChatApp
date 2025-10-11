@@ -1,12 +1,12 @@
-import { 
-  View, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Platform, 
-  KeyboardAvoidingView, 
-  Keyboard, 
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
+  Keyboard,
   Animated,
-  ScrollView 
+  ScrollView
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 import { useDispatch } from "react-redux";
@@ -126,18 +126,19 @@ const Register = () => {
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       style={{ flex: 1 }}
     >
+
       <GestureHandlerRootView style={registerStyles.container}>
-        <View style={[styles.container, registerStyles.mainContainer]}>
+
+        <View style={[styles.container]}>
           <Toast ref={toastRef} />
           <AppBar
-            top={0}
-            left={0}
+            top={10}
+            left={20}
             right={20}
             onPress={() => router.back()}
-            color={Colors.white}
+            color={Colors.lightWhite}
           />
-          
-          
+
           {/* Content Container */}
           <Animated.View
             style={[
@@ -152,7 +153,7 @@ const Register = () => {
               },
             ]}
           >
-            <ScrollView 
+            <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={registerStyles.scrollContent}
             >
@@ -216,7 +217,7 @@ const Register = () => {
               <HeightSpacer height={20} />
               <ReusableButton
                 btnText={t("auth.register.registerButton")}
-                width={Sizes.screenWidth - 40}
+                width={Sizes.screenWidth - 42}
                 height={55}
                 borderRadius={Sizes.xxlarge}
                 backgroundColor={Colors.purple}
@@ -224,28 +225,28 @@ const Register = () => {
                 textFontFamily={"regular"}
                 onPress={formik.handleSubmit}
               />
-            
+
             </ScrollView>
           </Animated.View>
         </View>
         {!isKeyboardVisible && (
-                <View style={styles.footer}>
-                  <ReusableText
-                    text={t("auth.register.haveAccount")}
-                    family={"regular"}
-                    size={FontSizes.small}
-                    color={Colors.description}
-                  />
-                  <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-                    <ReusableText
-                      text={t("auth.register.login")}
-                      family={"bold"}
-                      size={FontSizes.small}
-                      color={Colors.lightBlack}
-                    />
-                  </TouchableOpacity>
-                </View>
-              )}
+          <View style={styles.footer}>
+            <ReusableText
+              text={t("auth.register.haveAccount")}
+              family={"regular"}
+              size={FontSizes.small}
+              color={Colors.description}
+            />
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+              <ReusableText
+                text={t("auth.register.login")}
+                family={"bold"}
+                size={FontSizes.small}
+                color={Colors.lightBlack}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </GestureHandlerRootView>
     </KeyboardAvoidingView>
   );
@@ -256,12 +257,8 @@ const registerStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.lightWhite,
   },
-  mainContainer: {
-    justifyContent: 'flex-end',
-  },
   contentContainer: {
-    justifyContent: 'flex-end',
-    paddingBottom: 100,
+    flex: 1,
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.lightGray,
@@ -269,19 +266,19 @@ const registerStyles = StyleSheet.create({
     paddingTop: 30,
     borderTopLeftRadius: Sizes.xxlarge,
     borderTopRightRadius: Sizes.xxlarge,
+    marginTop: 20,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: 300,
   },
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 40 : 20, 
-    backgroundColor: Colors.white,
-    justifyContent: "space-between",
+    paddingTop: Platform.OS === "ios" ? 40 : 20,
+    backgroundColor: Colors.lightWhite,
   },
   wrapper: {
     marginBottom: 20,
