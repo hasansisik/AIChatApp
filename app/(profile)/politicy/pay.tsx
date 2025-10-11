@@ -30,7 +30,7 @@ const PayPolicyScreen: React.FC<PayPolicyScreenProps> = () => {
         top={0}
         left={20}
         right={20}
-        color={Colors.white}
+        color={Colors.light}
         onPress={() => router.back()}
       />
       {/* Scrollable Content */}

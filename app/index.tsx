@@ -71,7 +71,7 @@ const Index = () => {
       ) : (isAuthenticated || hasToken) ? (
         <Stack.Screen name="(tabs)/tabs" component={TabNavigation} options={{ headerShown: false }} />
       ) : (
-        <Stack.Screen name="(auth)/login" component={require('./(auth)/login').default} options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" component={require('./(tabs)/tabs').default} options={{ headerShown: false }} />
       )}
     </Stack.Navigator>
   );

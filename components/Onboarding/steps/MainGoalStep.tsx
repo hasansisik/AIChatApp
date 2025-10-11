@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
-import { Sizes } from '@/constants/Sizes';
 
 interface MainGoalStepProps {
   data: {

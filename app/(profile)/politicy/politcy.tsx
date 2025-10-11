@@ -30,7 +30,7 @@ const Politcy = () => {
         top={0}
         left={15}
         right={20}
-        color={Colors.white}
+        color={Colors.light}
         onPress={() => router.back()}
       />
       <View

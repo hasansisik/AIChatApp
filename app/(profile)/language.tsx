@@ -76,7 +76,7 @@ const LanguageScreen = () => {
         top={0}
         left={20}
         right={20}
-        color={Colors.white}
+        color={Colors.light}
         onPress={() => router.back()}
       />
       

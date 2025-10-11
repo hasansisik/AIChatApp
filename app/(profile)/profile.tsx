@@ -119,7 +119,7 @@ const Profile = () => {
             left={0}
             right={20}
             onPress={() => router.back()}
-            color={Colors.white}
+            color={Colors.light}
             />
           <TouchableOpacity
             style={styles.editButton}

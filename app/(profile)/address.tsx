@@ -124,8 +124,8 @@ const AddressPage: React.FC = () => {
           left={20}
           right={20}
           onPress={() => router.back()}
-          color={Colors.white}
-        />
+          color={Colors.light}
+          />
         <ScrollView 
           style={styles.container}
           showsVerticalScrollIndicator={false}
