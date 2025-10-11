@@ -104,10 +104,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   optionButton: {
-    width: (Sizes.screenWidth - 150) / 2,
-    height: (Sizes.screenWidth - 150) / 2,
+    width: (Sizes.screenWidth - 80) / 2,
+    height: 120,
     backgroundColor: Colors.white,
-    borderRadius: 100,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: Colors.lightGray,
     justifyContent: 'center',

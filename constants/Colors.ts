@@ -11,7 +11,7 @@ export const Colors = {
     background: '#fff',
     text: '#11181C',
     transparent: 'transparent',
-    primary: '#0062FF',
+    primary: '#8A2BE2',
     secondary: '#2ecc71',
     error: '#e74c3c',
     info: '#00C8FF',
