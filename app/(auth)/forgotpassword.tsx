@@ -69,7 +69,7 @@ const ForgotPassword = () => {
             top={10}
             left={0}
             right={20}
-            color={Colors.lightWhite}
+            color={Colors.light}
             onPress={() => router.back()}
           />
           <HeightSpacer height={15} />

@@ -39,7 +39,7 @@ const AppBar: React.FC<AppBarProps> = ({
   text1,
   isAbsolute, 
 }) => {
-  const color2 = color === Colors.lightWhite ? Colors.black : Colors.lightWhite;
+  const color2 = color === Colors.light ? Colors.black : Colors.lightWhite;
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
   
   // Update screen width when dimensions change (e.g., rotation)

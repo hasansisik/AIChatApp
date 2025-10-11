@@ -74,7 +74,7 @@ const Verify: React.FC = () => {
               top={20}
               left={0}
               right={20}
-              color={Colors.lightWhite}
+              color={Colors.light}
               onPress={() => router.back()}
             />
           </View>

@@ -74,7 +74,7 @@ const ResetPassword = () => {
             left={0}
             right={20}
             onPress={() => router.back()}
-            color={Colors.lightWhite}
+            color={Colors.light}
           />
           <HeightSpacer height={15} />
           <ReusableText

@@ -126,7 +126,6 @@ const Register = () => {
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       style={{ flex: 1 }}
     >
-
       <GestureHandlerRootView style={registerStyles.container}>
 
         <View style={[styles.container]}>
@@ -136,7 +135,7 @@ const Register = () => {
             left={20}
             right={20}
             onPress={() => router.back()}
-            color={Colors.lightWhite}
+            color={Colors.light}
           />
 
           {/* Content Container */}
@@ -255,7 +254,7 @@ const Register = () => {
 const registerStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.lightWhite,
+    backgroundColor: Colors.background,
   },
   contentContainer: {
     flex: 1,
@@ -278,7 +277,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: Platform.OS === "ios" ? 40 : 20,
-    backgroundColor: Colors.lightWhite,
+    backgroundColor: Colors.background,
   },
   wrapper: {
     marginBottom: 20,
