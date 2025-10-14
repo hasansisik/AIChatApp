@@ -4,54 +4,52 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
-import { loadUser } from '../redux/actions/userActions';
+import { loadUser, checkInitialAuth } from '../redux/actions/userActions';
+import { useAuth } from '../hooks/useAuth';
 import TabNavigation from './(tabs)/tabs';
 import StepOnboardingScreen from '../components/Onboarding/StepOnboardingScreen';
+import Login from './(auth)/login';
 
 const Stack = createNativeStackNavigator();
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [hasToken, setHasToken] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state: any) => state.user);
+  const { isAuthenticated, loading, isOnboardingCompleted } = useAuth();
 
   useEffect(() => {
-    const checkToken = async () => {
+    const initializeApp = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const onboardingCompleted = await AsyncStorage.getItem('onboardingCompleted');
+        // Check initial authentication status first
+        await dispatch(checkInitialAuth() as any);
         
-        if (onboardingCompleted === 'true') {
-          setHasCompletedOnboarding(true);
-        }
-        
-        if (token) {
-          setHasToken(true);
+        // If user is authenticated, load user data to check onboarding status
+        if (isAuthenticated) {
           await dispatch(loadUser() as any);
         }
       } catch (error) {
-        console.error('Error checking token:', error);
+        console.error('Error initializing app:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkToken();
-  }, [dispatch]);
+    initializeApp();
+  }, [dispatch, isAuthenticated]);
 
   const handleOnboardingComplete = async () => {
     try {
-      await AsyncStorage.setItem('onboardingCompleted', 'true');
+      // Onboarding completed, no need to save to AsyncStorage
+      // The backend will handle the completion status
       setHasCompletedOnboarding(true);
     } catch (error) {
-      console.error('Error saving onboarding completion:', error);
+      console.error('Error completing onboarding:', error);
     }
   };
 
 
-  if (isLoading) {
+  if (isLoading || loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Yükleniyor...</Text>
@@ -61,17 +59,17 @@ const Index = () => {
 
   return (
     <Stack.Navigator>
-      {!hasCompletedOnboarding ? (
+      {!isAuthenticated ? (
+        <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
+      ) : !isOnboardingCompleted ? (
         <Stack.Screen 
           name="Onboarding" 
           options={{ headerShown: false }}
         >
           {() => <StepOnboardingScreen onComplete={handleOnboardingComplete} />}
         </Stack.Screen>
-      ) : (isAuthenticated || hasToken) ? (
-        <Stack.Screen name="(tabs)/tabs" component={TabNavigation} options={{ headerShown: false }} />
       ) : (
-        <Stack.Screen name="(auth)/login" component={require('./(tabs)/tabs').default} options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)/tabs" component={TabNavigation} options={{ headerShown: false }} />
       )}
     </Stack.Navigator>
   );

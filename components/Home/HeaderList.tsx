@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { useRouter } from 'expo-router';
+import { useSelector } from 'react-redux';
 import { Colors, useTheme } from '@/hooks/useThemeColor';
 
 interface HeaderListProps {
@@ -13,6 +14,7 @@ interface HeaderListProps {
 const HeaderList: React.FC<HeaderListProps> = ({ onSearchPress, onProfilePress }) => {
   const { isDark } = useTheme();
   const router = useRouter();
+  const { user } = useSelector((state: any) => state.user);
 
   const handleProfilePress = () => {
     if (onProfilePress) {
@@ -55,7 +57,11 @@ const HeaderList: React.FC<HeaderListProps> = ({ onSearchPress, onProfilePress }
         {/* Profile Photo */}
         <TouchableOpacity style={styles.profileContainer} onPress={handleProfilePress}>
           <Image
-            source={{ uri: 'https://plus.unsplash.com/premium_photo-1690407617542-2f210cf20d7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVyc29ufGVufDB8fDB8fHww' }}
+            source={
+              user?.profile?.picture
+                ? { uri: user.profile.picture }
+                : require("@/assets/images/person.png")
+            }
             style={styles.profileImage}
             resizeMode="cover"
           />

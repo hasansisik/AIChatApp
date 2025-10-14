@@ -8,14 +8,14 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useDispatch } from 'react-redux';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
+import { updateOnboardingData } from '@/redux/actions/userActions';
 import InterestStep from './steps/InterestStep';
 import MainGoalStep from './steps/MainGoalStep';
 import ReasonStep from './steps/ReasonStep';
 import FavoriteStep from './steps/FavoriteStep';
-import NotificationStep from './steps/NotificationStep';
-import MicrophoneStep from './steps/MicrophoneStep';
 
 
 interface StepOnboardingScreenProps {
@@ -27,19 +27,17 @@ interface OnboardingData {
   mainGoal: string;
   reason: string;
   favorites: string[];
-  notificationsEnabled: boolean;
-  microphoneEnabled: boolean;
 }
 
 const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete }) => {
+  const dispatch = useDispatch();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     interest: '',
     mainGoal: '',
     reason: '',
     favorites: [],
-    notificationsEnabled: false,
-    microphoneEnabled: false,
   });
 
   const steps = [
@@ -47,16 +45,36 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
     { id: 1, title: 'Ana Hedef', component: MainGoalStep },
     { id: 2, title: 'Neden', component: ReasonStep },
     { id: 3, title: 'Favoriler', component: FavoriteStep },
-    { id: 4, title: 'Bildirimler', component: NotificationStep },
-    { id: 5, title: 'Mikrofon', component: MicrophoneStep },
   ];
 
   const totalSteps = steps.length;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < totalSteps - 1) {
       setCurrentStep(currentStep + 1);
     } else {
+      // Save onboarding data when completing the favorites step (step 3)
+      if (currentStep === 3) {
+        setIsLoading(true);
+        try {
+          const actionResult = await dispatch(updateOnboardingData({
+            interest: onboardingData.interest,
+            mainGoal: onboardingData.mainGoal,
+            reason: onboardingData.reason,
+            favorites: onboardingData.favorites,
+          }) as any);
+          
+          if (updateOnboardingData.fulfilled.match(actionResult)) {
+            console.log('Onboarding data saved successfully');
+          } else {
+            console.error('Failed to save onboarding data:', actionResult.payload);
+          }
+        } catch (error) {
+          console.error('Error saving onboarding data:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
       onComplete();
     }
   };
@@ -67,7 +85,27 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    // User skipped onboarding, mark as completed without saving data
+    setIsLoading(true);
+    try {
+      const actionResult = await dispatch(updateOnboardingData({
+        interest: 'dil-ogrenmek', // Default value
+        mainGoal: 'konusma', // Default value
+        reason: 'hobi', // Default value
+        favorites: [], // Empty array
+      }) as any);
+      
+      if (updateOnboardingData.fulfilled.match(actionResult)) {
+        console.log('Skipped onboarding data saved successfully');
+      } else {
+        console.error('Failed to save skipped onboarding data:', actionResult.payload);
+      }
+    } catch (error) {
+      console.error('Error saving skipped onboarding:', error);
+    } finally {
+      setIsLoading(false);
+    }
     onComplete();
   };
 
@@ -149,12 +187,12 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
 
         <TouchableOpacity 
           onPress={handleNext} 
-          style={styles.navButton}
+          style={[styles.navButton, isLoading && styles.navButtonDisabled]}
         >
           <Ionicons 
             name="chevron-forward-outline" 
             size={24} 
-            color={Colors.black} 
+            color={isLoading ? Colors.lightGray : Colors.black} 
           />
         </TouchableOpacity>
       </View>

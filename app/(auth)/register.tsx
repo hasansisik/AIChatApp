@@ -21,7 +21,7 @@ import AppBar from "@/components/ui/AppBar";
 import { useRouter } from "expo-router";
 import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { register } from "@/redux/actions/userActions";
+import { register, loadUser } from "@/redux/actions/userActions";
 import { Colors } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
 
@@ -106,6 +106,8 @@ const Register = () => {
         }) as any
       );
       if (register.fulfilled.match(actionResult)) {
+        // Load user data after successful registration
+        await dispatch(loadUser() as any);
         router.push({
           pathname: "/(auth)/verify",
           params: { email: values.email },
@@ -215,7 +217,7 @@ const Register = () => {
               />
               <HeightSpacer height={20} />
               <ReusableButton
-                btnText={t("auth.register.registerButton")}
+                btnText={formik.isSubmitting ? "Kayıt oluşturuluyor..." : t("auth.register.registerButton")}
                 width={Sizes.screenWidth - 42}
                 height={55}
                 borderRadius={Sizes.xxlarge}
@@ -223,6 +225,7 @@ const Register = () => {
                 textColor={Colors.lightWhite}
                 textFontFamily={"regular"}
                 onPress={formik.handleSubmit}
+                disable={formik.isSubmitting}
               />
 
             </ScrollView>

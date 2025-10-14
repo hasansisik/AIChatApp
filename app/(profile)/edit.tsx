@@ -2,6 +2,7 @@ import { View, ScrollView, Text, StyleSheet, Modal, Image, TouchableOpacity, Ale
 import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from 'yup';
+import { useSelector, useDispatch } from "react-redux";
 import AppBar from "@/components/ui/AppBar";
 import { Colors } from "@/hooks/useThemeColor";
 import { Sizes } from "@/constants/Sizes";
@@ -16,25 +17,19 @@ import ReusableText from "@/components/ui/ReusableText";
 import * as ImagePicker from "expo-image-picker";
 import OpenGalleryCameraModal from "@/components/other/OpenGalleryCameraModal";
 import { useTranslation } from "react-i18next";
-
-// Example user data for testing
-const exampleUser = {
-  name: "Ahmet",
-  surname: "Yılmaz",
-  email: "ahmet.yilmaz@example.com",
-  profile: {
-    phoneNumber: "+90 555 123 4567",
-    picture: null as string | null,
-  },
-  address: "Örnek Mahallesi, Örnek Sokak No:1"
-};
+import { loadUser, editProfile } from "@/redux/actions/userActions";
+import Toast from "@/components/ui/Toast";
 
 const ProfileDetails: React.FC = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const [user, setUser] = useState(exampleUser);
+  const dispatch = useDispatch();
+  const { user } = useSelector((state: any) => state.user);
   const [loading, setLoading] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const toastRef = React.useRef<any>(null);
 
   // Request gallery permissions
   useEffect(() => {
@@ -45,6 +40,12 @@ const ProfileDetails: React.FC = () => {
     })();
   }, []);
 
+  // Load user data on component mount
+  useEffect(() => {
+    dispatch<any>(loadUser());
+  }, [dispatch]);
+
+  // Update form when user data changes
   useEffect(() => {
     if (user) {
       formik.setValues({
@@ -53,29 +54,42 @@ const ProfileDetails: React.FC = () => {
         email: user.email || "",
         password: "",
         confirmPassword: "",
-        phoneNumber: user.profile?.phoneNumber || "",
         picture: user.profile?.picture || "",
-        address: user.address || "",
-        street: "",
-        city: "",
-        postalCode: "",
       });
     }
   }, [user]);
 
-  const uploadImage = async (uri: string, user: any) => {
+  // Show toast messages
+  useEffect(() => {
+    if (status && message) {
+      toastRef.current?.show({
+        type: status,
+        text: message,
+        duration: 3000,
+      });
+    }
+  }, [status, message]);
+
+  const uploadImage = async (uri: string) => {
     try {
-      // Simulate image upload - just use the local URI for demo
-      setUser(prev => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          picture: uri
-        }
-      }));
-      formik.setFieldValue("picture", uri);
+      setLoading(true);
+      const actionResult = await dispatch<any>(editProfile({ picture: uri }));
+      
+      if (editProfile.fulfilled.match(actionResult)) {
+        formik.setFieldValue("picture", uri);
+        setStatus("success");
+        setMessage(t("profile.profilePictureSuccess"));
+        // Reload user data to get updated profile
+        dispatch<any>(loadUser());
+      } else {
+        setStatus("error");
+        setMessage(actionResult.payload as string);
+      }
     } catch (error) {
-      // Handle error silently
+      setStatus("error");
+      setMessage(t("profile.profilePictureError"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,42 +107,70 @@ const ProfileDetails: React.FC = () => {
       .test('passwords-match', t('validation.passwordsNotMatch'), function (value) {
         return !this.parent.password || value === this.parent.password;
       }),
-    phoneNumber: Yup.string().matches(/^\d+$/, t('validation.phoneNumberOnlyDigits'))
   });
 
   const submitHandler = async (): Promise<void> => {
     setLoading(true);
     const values = formik.values;
     
-    // Simulate successful update
     try {
-      // Update local user state with form values
-      setUser(prev => ({
-        ...prev,
-        name: values.name || prev.name,
-        surname: values.surname || prev.surname,
-        email: values.email || prev.email,
-        profile: {
-          ...prev.profile,
-          phoneNumber: values.phoneNumber || prev.profile?.phoneNumber,
-        },
-        address: values.address || prev.address
-      }));
+      // Prepare data for backend
+      const updateData: any = {};
+      
+      // Only include fields that have values
+      if (values.name && values.name !== user?.name) {
+        updateData.name = values.name;
+      }
+      if (values.surname && values.surname !== user?.surname) {
+        updateData.surname = values.surname;
+      }
+      if (values.email && values.email !== user?.email) {
+        updateData.email = values.email;
+      }
+      if (values.password) {
+        updateData.password = values.password;
+        updateData.currentPassword = values.password; // For verification
+      }
 
-      // If email was updated, simulate navigation to verification
-      if (values.email && values.email !== exampleUser.email) {
-        setTimeout(() => {
-          router.push({
-            pathname: "/(auth)/verify",
-            params: { email: values.email },
-          });
-        }, 2000);
+      // Only send request if there are changes
+      if (Object.keys(updateData).length > 0) {
+        const actionResult = await dispatch<any>(editProfile(updateData));
+        
+        if (editProfile.fulfilled.match(actionResult)) {
+          setStatus("success");
+          setMessage(t("profile.profileUpdateSuccess"));
+          
+          // Reload user data
+          dispatch<any>(loadUser());
+          
+          // If email was updated, navigate to verification
+          if (values.email && values.email !== user?.email) {
+            setTimeout(() => {
+              router.push({
+                pathname: "/(auth)/verify",
+                params: { email: values.email },
+              });
+            }, 2000);
+          } else {
+            // Navigate back after successful update
+            setTimeout(() => {
+              router.back();
+            }, 1500);
+          }
+        } else {
+          setStatus("error");
+          setMessage(actionResult.payload as string);
+        }
+      } else {
+        setStatus("info");
+        setMessage(t("profile.noChangesMade"));
       }
     } catch (error) {
-      // Handle error silently
+      setStatus("error");
+      setMessage(t("profile.profileUpdateError"));
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const formik: any = useFormik<{
@@ -137,12 +179,7 @@ const ProfileDetails: React.FC = () => {
     email: string;
     password: string;
     confirmPassword: string;
-    phoneNumber: string;
     picture: string;
-    address: string;
-    street: string;
-    city: string;
-    postalCode: string;
   }>({
     initialValues: {
       name: "",
@@ -150,25 +187,23 @@ const ProfileDetails: React.FC = () => {
       email: "",
       password: "",
       confirmPassword: "",
-      phoneNumber: "",
       picture: "",
-      address: "",
-      street: "",
-      city: "",
-      postalCode: "",
     },
     validationSchema,
     onSubmit: submitHandler,
   });
 
   const handleImageSelected = (url: string) => {
-    formik.setFieldValue("picture", url);
+    uploadImage(url);
     setModalVisible(false);
   };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={global.flex}>
+        <View style={{ paddingHorizontal: 15 }}>
+          <Toast ref={toastRef} />
+        </View>
         <AppBar
           top={0}
           left={20}
@@ -188,6 +223,29 @@ const ProfileDetails: React.FC = () => {
               size={FontSizes.large}
               color={Colors.black}
             />
+          </View>
+
+          {/* Profile Picture Section */}
+          <View style={styles.profilePictureSection}>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={
+                  formik.values.picture
+                    ? { uri: formik.values.picture }
+                    : require("../../assets/images/main/user.png")
+                }
+                style={styles.profileImage}
+              />
+              <TouchableOpacity 
+                style={styles.cameraOverlay} 
+                onPress={() => setModalVisible(true)}
+                disabled={loading}
+              >
+                <Text style={styles.cameraText}>
+                  {loading ? "Yükleniyor..." : "Değiştir"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* İsim Soyisim */}
@@ -238,40 +296,6 @@ const ProfileDetails: React.FC = () => {
             keyboardType="email-address"
           />
 
-          {/* Phone Number */}
-          <ReusableText
-            text={t("profile.edit.phoneNumber")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
-          <ReusableInput
-            label={t("profile.edit.phoneNumber")}
-            value={formik.values.phoneNumber}
-            onChangeText={formik.handleChange("phoneNumber")}
-            touched={formik.touched.phoneNumber}
-            error={formik.errors.phoneNumber}
-            labelColor={Colors.black}
-            keyboardType="phone-pad"
-          />
-
-          {/* Address */}
-          <ReusableText
-            text={t("profile.edit.address")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
-          <ReusableInput
-            label={t("profile.edit.address")}
-            value={formik.values.address}
-            onChangeText={formik.handleChange("address")}
-            touched={formik.touched.address}
-            error={formik.errors.address}
-            labelColor={Colors.black}
-            multiline
-            numberOfLines={3}
-          />
 
           {/* Password Section */}
           <ReusableText

@@ -4,6 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Colors, useTheme } from "@/hooks/useThemeColor";
 import { StyleSheet, Image, View, Text } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSelector } from "react-redux";
 import Home from "@/app/(tabs)/home";
 import List from "@/app/(tabs)/list";
 import Profile from "./profile";
@@ -12,6 +13,7 @@ const Tab = createBottomTabNavigator();
 
 const TabNavigation = () => {
   const { isDark } = useTheme();
+  const { user } = useSelector((state: any) => state.user);
   
   const styles = StyleSheet.create({
     tabBarStyle: {
@@ -143,14 +145,22 @@ const TabNavigation = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   <Image
-                    source={{ uri: 'https://plus.unsplash.com/premium_photo-1690407617542-2f210cf20d7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVyc29ufGVufDB8fDB8fHww' }}
+                    source={
+                      user?.profile?.picture
+                        ? { uri: user.profile.picture }
+                        : require("@/assets/images/person.png")
+                    }
                     style={styles.profileImage}
                     resizeMode="cover"
                   />
                 </LinearGradient>
               ) : (
                 <Image
-                  source={{ uri: 'https://plus.unsplash.com/premium_photo-1690407617542-2f210cf20d7e?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGVyc29ufGVufDB8fDB8fHww' }}
+                  source={
+                    user?.profile?.picture
+                      ? { uri: user.profile.picture }
+                      : require("@/assets/images/person.png")
+                  }
                   style={styles.profileImageInactive}
                   resizeMode="cover"
                 />

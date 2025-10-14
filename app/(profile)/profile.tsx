@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
+import { useSelector, useDispatch } from "react-redux";
 import { Colors } from "@/hooks/useThemeColor";
 import { FontSizes } from "@/constants/Fonts";
 import AppBar from "@/components/ui/AppBar";
@@ -20,38 +21,34 @@ import * as ImagePicker from "expo-image-picker";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import OpenGalleryCameraModal from "@/components/other/OpenGalleryCameraModal";
 import { useTranslation } from "react-i18next";
-
-// Example user data for testing
-const exampleUser = {
-  name: "Ahmet",
-  surname: "Yılmaz",
-  email: "ahmet.yilmaz@example.com",
-  dateOfBirth: "15/03/1990",
-  profile: {
-    phoneNumber: "+90 555 123 4567",
-    picture: null as string | null, // Will use default image
-  }
-};
+import { loadUser, editProfile } from "@/redux/actions/userActions";
 
 const Profile = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const [user, setUser] = useState(exampleUser);
+  const dispatch = useDispatch();
+  const { user } = useSelector((state: any) => state.user);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    dispatch<any>(loadUser());
+  }, [dispatch]);
+
   const handleUploadComplete = async (url: string) => {
     try {
-      // Simulate successful upload
-      setUser(prev => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          picture: url
-        }
-      }));
-      setModalVisible(false);
+      const actionResult = await dispatch<any>(editProfile({ picture: url }));
+      
+      if (editProfile.fulfilled.match(actionResult)) {
+        // Reload user data to get updated profile
+        dispatch<any>(loadUser());
+        setModalVisible(false);
+      } else {
+        console.error('Failed to update profile picture:', actionResult.payload);
+        setModalVisible(false);
+      }
     } catch (error) {
+      console.error('Error updating profile picture:', error);
       setModalVisible(false);
     }
   };
@@ -65,18 +62,19 @@ const Profile = () => {
     })();
   }, []);
 
-  const uploadImage = async (uri: string, user: any) => {
+  const uploadImage = async (uri: string) => {
     try {
-      // Simulate image upload - just use the local URI for demo
-      setUser(prev => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          picture: uri
-        }
-      }));
+      setLoading(true);
+      const actionResult = await dispatch<any>(editProfile({ picture: uri }));
+      
+      if (editProfile.fulfilled.match(actionResult)) {
+        // Reload user data to get updated profile
+        dispatch<any>(loadUser());
+      } else {
+        console.error('Failed to update profile picture:', actionResult.payload);
+      }
     } catch (error) {
-      // Handle error silently
+      console.error('Error updating profile picture:', error);
     } finally {
       setLoading(false);
     }
@@ -92,22 +90,12 @@ const Profile = () => {
 
     if (result && !result.canceled) {
       const uri = result.assets[0].uri;
-      await uploadImage(uri, user); 
+      await uploadImage(uri); 
     }
   };
 
   const profileItems = [
     { label: t("profile.email"), value: user?.email || "-", icon: "mail" as const },
-    {
-      label: t("profile.dateOfBirth"),
-      value: user?.dateOfBirth || "-",
-      icon: "calendar" as const,
-    },
-    {
-      label: t("profile.phoneNumber"),
-      value: user.profile?.phoneNumber || "-",
-      icon: "call" as const,
-    },
   ];
 
   return (
@@ -158,7 +146,7 @@ const Profile = () => {
             </View>
 
             <ReusableText
-              text={`${user?.name} ${user?.surname}`}
+              text={`${user?.name || ''} ${user?.surname || ''}`.trim() || 'User'}
               family={"bold"}
               size={FontSizes.large}
               color={Colors.lightBlack}

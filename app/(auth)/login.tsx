@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { login } from "@/redux/actions/userActions";
+import { login, loadUser } from "@/redux/actions/userActions";
 import { useFormik } from "formik";
 import { FontSizes } from "@/constants/Fonts";
 import { Sizes } from "@/constants/Sizes";
@@ -22,7 +22,6 @@ import styles from "@/constants/Styles";
 import { useRouter } from "expo-router";
 import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import AppBar from "@/components/ui/AppBar";
 import { Colors } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
 import { Video, ResizeMode } from "expo-av";
@@ -102,6 +101,8 @@ const Login: React.FC<LoginProps> = () => {
       if (login.fulfilled.match(actionResult)) {
         setStatus("success");
         setMessage(t("auth.login.success"));
+        // Load user data after successful login
+        await dispatch(loadUser() as any);
         router.replace("/");
       } else if (login.rejected.match(actionResult)) {
         setStatus("error");
@@ -202,13 +203,14 @@ const Login: React.FC<LoginProps> = () => {
               <HeightSpacer height={20} />
               {/* Login Button */}
               <ReusableButton
-                btnText={t("auth.login.loginButton")}
+                btnText={formik.isSubmitting ? "Giriş yapılıyor..." : t("auth.login.loginButton")}
                 width={Sizes.screenWidth - 40}
                 height={55}
                 borderRadius={Sizes.xxlarge}
                 backgroundColor={Colors.purple}
                 textColor={Colors.lightWhite}
                 onPress={formik.handleSubmit}
+                disable={formik.isSubmitting}
               />
             </View>
             <HeightSpacer height={30} />

@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { register, login, loadUser, logout, verifyEmail, againEmail, forgotPassword, resetPassword, editProfile, verifyPassword } from "../actions/userActions";
+import { register, login, loadUser, logout, verifyEmail, againEmail, forgotPassword, resetPassword, editProfile, verifyPassword, checkInitialAuth, updateOnboardingData } from "../actions/userActions";
 
 interface UserState {
     items: any[];
@@ -9,6 +9,7 @@ interface UserState {
     isAuthenticated?: boolean;
     user?: any;
     message?: string | null;
+    isOnboardingCompleted?: boolean;
 }
 
 const initialState: UserState = {
@@ -16,6 +17,10 @@ const initialState: UserState = {
     item: {},
     loading: false,
     error: null,
+    isAuthenticated: false,
+    user: null,
+    message: null,
+    isOnboardingCompleted: false,
 };
 
 export const userReducer = createReducer(initialState, (builder) => {
@@ -46,6 +51,18 @@ export const userReducer = createReducer(initialState, (builder) => {
             state.loading = false;
             state.error = action.payload as string | null;
         })
+        // Check Initial Auth
+        .addCase(checkInitialAuth.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(checkInitialAuth.fulfilled, (state, action) => {
+            state.loading = false;
+            state.isAuthenticated = action.payload.isAuthenticated;
+        })
+        .addCase(checkInitialAuth.rejected, (state) => {
+            state.loading = false;
+            state.isAuthenticated = false;
+        })
         // Load User
         .addCase(loadUser.pending, (state) => {
             state.loading = true;
@@ -54,9 +71,11 @@ export const userReducer = createReducer(initialState, (builder) => {
             state.loading = false;
             state.isAuthenticated = true;
             state.user = action.payload;
+            state.isOnboardingCompleted = action.payload.isOnboardingCompleted || false;
         })
         .addCase(loadUser.rejected, (state, action) => {
             state.loading = false;
+            state.isAuthenticated = false;
             state.error = action.payload as string | null;
         })
         // Logout
@@ -79,7 +98,12 @@ export const userReducer = createReducer(initialState, (builder) => {
         })
         .addCase(verifyEmail.fulfilled, (state, action) => {
             state.loading = false;
-            state.message = action.payload;
+            state.message = action.payload.message;
+            if (action.payload.isAuthenticated && action.payload.user) {
+                state.isAuthenticated = true;
+                state.user = action.payload.user;
+                state.isOnboardingCompleted = action.payload.user.isOnboardingCompleted || false;
+            }
         })
         .addCase(verifyEmail.rejected, (state, action) => {
             state.loading = false;
@@ -142,6 +166,24 @@ export const userReducer = createReducer(initialState, (builder) => {
             state.message = 'Şifre Doğrulaması Başarılı.';
         })
         .addCase(verifyPassword.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload as string | null;
+        })
+        // Update Onboarding Data
+        .addCase(updateOnboardingData.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(updateOnboardingData.fulfilled, (state, action) => {
+            state.loading = false;
+            state.message = 'Onboarding verileri başarıyla kaydedildi.';
+            state.isOnboardingCompleted = true;
+            // Update user onboarding data if user exists
+            if (state.user) {
+                state.user.onboardingData = action.payload.onboardingData;
+                state.user.isOnboardingCompleted = true;
+            }
+        })
+        .addCase(updateOnboardingData.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string | null;
         })

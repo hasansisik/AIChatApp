@@ -51,6 +51,13 @@ interface EditProfilePayload {
   phoneNumber?: string;
 }
 
+interface OnboardingDataPayload {
+  interest: string;
+  mainGoal: string;
+  reason: string;
+  favorites: string[];
+}
+
 export const register = createAsyncThunk(
   "user/register",
   async ({ name, surname, email, password, picture }: RegisterPayload, thunkAPI) => {
@@ -163,7 +170,21 @@ export const verifyEmail = createAsyncThunk(
         verificationCode,
       });
 
-      return data.message;
+      // Save token if user data is returned
+      if (data.user && data.user.token) {
+        await AsyncStorage.setItem("accessToken", data.user.token);
+        return { 
+          message: data.message, 
+          user: data.user,
+          isAuthenticated: true 
+        };
+      }
+
+      return { 
+        message: data.message, 
+        user: null,
+        isAuthenticated: false 
+      };
     } catch (error: any) {
       return thunkAPI.rejectWithValue(
         error.response && error.response.data.message
@@ -278,6 +299,39 @@ export const verifyPassword = createAsyncThunk(
       const { data } = await axios.post(
         `${server}/auth/verify-password`, 
         { password },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        }
+      );
+
+      return data;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(
+        error.response && error.response.data.message
+          ? error.response.data.message
+          : error.message
+      );
+    }
+  }
+);
+
+export const updateOnboardingData = createAsyncThunk(
+  "user/updateOnboardingData",
+  async (onboardingData: OnboardingDataPayload, thunkAPI) => {
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      
+      if (!token) {
+        return thunkAPI.rejectWithValue("Oturum açmanız gerekiyor");
+      }
+      
+      const { data } = await axios.post(
+        `${server}/auth/update-onboarding`, 
+        onboardingData,
         {
           headers: {
             "Content-Type": "application/json",

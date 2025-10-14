@@ -14,7 +14,7 @@ import ReusableText from "@/components/ui/ReusableText";
 import ReusableButton from "@/components/ui/ReusableButton";
 import { useDispatch } from "react-redux";
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { againEmail, verifyEmail } from "@/redux/actions/userActions";
+import { againEmail, verifyEmail, loadUser } from "@/redux/actions/userActions";
 
 const Verify: React.FC = () => {
   const dispatch = useDispatch();
@@ -26,6 +26,7 @@ const Verify: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const toastRef = useRef<any>(null);
 
   useEffect(() => {
@@ -39,24 +40,30 @@ const Verify: React.FC = () => {
   }, [status, message]);
 
   const submitHandler = async () => {
-    const actionResult = await dispatch(
-      verifyEmail({ email: emailString, verificationCode }) as any
-    );
-    if (verifyEmail.fulfilled.match(actionResult)) {
-      setStatus("success");
-      setMessage(t("auth.verify.success"));
-      // Onboarding'e yönlendir
-      setTimeout(() => {
-        router.push({
-          pathname: "/onboarding-demo",
-        });
-      }, 2000);
-    } else if (verifyEmail.rejected.match(actionResult)) {
-      const NoticeMessage = actionResult.payload as string;
-      setStatus("error");
-      setMessage(NoticeMessage);
+    setIsLoading(true);
+    try {
+      const actionResult = await dispatch(
+        verifyEmail({ email: emailString, verificationCode }) as any
+      );
+      if (verifyEmail.fulfilled.match(actionResult)) {
+        setStatus("success");
+        setMessage(t("auth.verify.success"));
+        // Verify email already returns user data, no need to call loadUser
+        // Onboarding'e yönlendir
+        setTimeout(() => {
+          router.push({
+            pathname: "/onboarding-demo",
+          });
+        }, 2000);
+      } else if (verifyEmail.rejected.match(actionResult)) {
+        const NoticeMessage = actionResult.payload as string;
+        setStatus("error");
+        setMessage(NoticeMessage);
+      }
+      setTimeout(() => setStatus(null), 5000);
+    } finally {
+      setIsLoading(false);
     }
-    setTimeout(() => setStatus(null), 5000);
   };
 
   const resendHandler = () => {
@@ -108,7 +115,7 @@ const Verify: React.FC = () => {
           <HeightSpacer height={50} />
           {/* Login Button */}
           <ReusableButton
-            btnText={t("auth.verify.verifyButton")}
+            btnText={isLoading ? "Doğrulanıyor..." : t("auth.verify.verifyButton")}
             width={Sizes.screenWidth - 40}
             height={55}
             borderRadius={Sizes.xxlarge}
@@ -116,6 +123,7 @@ const Verify: React.FC = () => {
             textColor={Colors.lightWhite}
             textFontFamily={"regular"}
             onPress={submitHandler}
+            disable={isLoading}
           />
         </View>
         <View style={styles.footer}>
