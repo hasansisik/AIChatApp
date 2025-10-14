@@ -72,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
       {/* Welcome Text */}
       <View style={styles.textContainer}>
         <ReusableText 
-          text="How may I help you"
+          text="Size nasıl yardımcı"
           family="medium"
           size={24}
           color={Colors.text}
@@ -80,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
           style={styles.welcomeText}
         />
         <ReusableText 
-          text={`today, ${user?.name || 'User'}`}
+          text={`olabilirim, ${user?.name || 'Kullanıcı'}`}
           family="bold"
           size={24}
           color={Colors.text}

@@ -55,7 +55,7 @@ const Search = () => {
         </TouchableOpacity>
         
         <ReusableText 
-          text="Search"
+          text="Arama"
           family="bold"
           size={20}
           color={Colors.text}
@@ -70,7 +70,7 @@ const Search = () => {
           <Ionicons name="search" size={20} color={Colors.gray} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search AI assistants..."
+            placeholder="AI asistanları ara..."
             placeholderTextColor={Colors.gray}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -90,14 +90,14 @@ const Search = () => {
           <View style={styles.emptyState}>
             <Ionicons name="search" size={64} color={Colors.gray} />
             <ReusableText 
-              text="Search for AI assistants"
+              text="AI asistanları ara"
               family="medium"
               size={FontSizes.medium}
               color={Colors.gray}
               style={styles.emptyText}
             />
             <ReusableText 
-              text="Find the perfect AI assistant for your needs"
+              text="İhtiyaçlarınız için mükemmel AI asistanını bulun"
               family="regular"
               size={FontSizes.small}
               color={Colors.gray}
@@ -108,14 +108,14 @@ const Search = () => {
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={64} color={Colors.gray} />
             <ReusableText 
-              text="No results found"
+              text="Sonuç bulunamadı"
               family="medium"
               size={FontSizes.medium}
               color={Colors.gray}
               style={styles.emptyText}
             />
             <ReusableText 
-              text={`No AI assistants found for "${searchQuery}"`}
+              text={`"${searchQuery}" için AI asistanı bulunamadı`}
               family="regular"
               size={FontSizes.small}
               color={Colors.gray}
@@ -125,7 +125,7 @@ const Search = () => {
         ) : (
           <View style={styles.resultsContainer}>
             <ReusableText 
-              text={`${filteredItems.length} result${filteredItems.length !== 1 ? 's' : ''} found`}
+              text={`${filteredItems.length} sonuç bulundu`}
               family="medium"
               size={FontSizes.small}
               color={Colors.gray}

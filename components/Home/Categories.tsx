@@ -15,31 +15,31 @@ const Categories: React.FC<CategoriesProps> = ({ onCategoryPress }) => {
       <View style={styles.cardsContainer}>
         {/* Left side - Large Live Chat Card */}
         <CategoryCard
-          title="Live Conversation"
+          title="Canlı Sohbet"
           icon="mic"
           backgroundColor={Colors.lightYellow}
           iconBackgroundColor={Colors.lightYellow}
-          onPress={() => onCategoryPress?.('Live Conversation')}
+          onPress={() => onCategoryPress?.('Canlı Sohbet')}
           isLarge={true}
         />
 
         {/* Right side - Two smaller cards stacked */}
         <View style={styles.rightColumn}>
           <CategoryCard
-            title="Vocabulary Practice"
+            title="Kelime Çalışması"
             icon="book"
             backgroundColor={Colors.lightPurple}
             iconBackgroundColor={Colors.lightPurple}
-            onPress={() => onCategoryPress?.('Vocabulary Practice')}
+            onPress={() => onCategoryPress?.('Kelime Çalışması')}
             isLarge={false}
           />
           
           <CategoryCard
-            title="Grammar Lessons"
+            title="Dilbilgisi Dersleri"
             icon="school"
             backgroundColor={Colors.lightPink}
             iconBackgroundColor={Colors.lightPink}
-            onPress={() => onCategoryPress?.('Grammar Lessons')}
+            onPress={() => onCategoryPress?.('Dilbilgisi Dersleri')}
             isLarge={false}
           />
         </View>
