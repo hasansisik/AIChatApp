@@ -47,10 +47,32 @@ class AIService {
       });
       console.log('✅ Frontend: Ses modu ayarlandı');
 
-      // Kayıt oluştur
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // Kayıt oluştur - daha hızlı için düşük kalite
+      const { recording } = await Audio.Recording.createAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 16000, // Düşük sample rate
+          numberOfChannels: 1, // Mono
+          bitRate: 128000, // Düşük bitrate
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.LOW, // Düşük kalite
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      });
 
       this.recording = recording;
       console.log('✅ Frontend: Kayıt başlatıldı');
@@ -102,11 +124,17 @@ class AIService {
       console.log('📱 Frontend: API URL:', `${API_BASE_URL}/voice`);
 
       // Backend'e gönder - Content-Type'ı manuel ayarlama, tarayıcı otomatik ayarlar
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 saniye timeout
+      
       const response = await fetch(`${API_BASE_URL}/voice`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
         // Content-Type'ı kaldırdık - tarayıcı otomatik ayarlayacak
       });
+      
+      clearTimeout(timeoutId);
 
       console.log('📱 Frontend: Backend yanıtı alındı, status:', response.status);
       console.log('📱 Frontend: Response headers:', response.headers);
