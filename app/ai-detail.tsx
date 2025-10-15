@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   Animated,
   TextInput,
   Modal,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import SelectionModal from '@/components/ui/SelectionModal';
 import BottomTextContent from '@/components/ui/BottomTextContent';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory, aiCategories } from '@/data/AICategories';
+import aiService from '@/services/aiService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,6 +34,9 @@ const AIDetailPage = () => {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isSelectionModalVisible, setIsSelectionModalVisible] = useState(false);
   const [selectedDetectionMethod, setSelectedDetectionMethod] = useState('keyboard');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [conversationText, setConversationText] = useState('');
   const gradientOpacity = useRef(new Animated.Value(1)).current;
   const bottomAreaOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
@@ -86,14 +91,88 @@ const AIDetailPage = () => {
     // Keyboard will be handled by TextInput focus
   };
 
-  const handleMicrophonePress = () => {
-    setIsSelectionModalVisible(true);
+  const handleMicrophonePress = async () => {
+    if (isRecording) {
+      // Kayıt durdur
+      await stopRecording();
+    } else {
+      // Kayıt başlat
+      await startRecording();
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const success = await aiService.startRecording();
+      if (success) {
+        setIsRecording(true);
+        setConversationText('Kayıt başladı...');
+      } else {
+        Alert.alert('Hata', 'Kayıt başlatılamadı');
+      }
+    } catch (error) {
+      console.error('Kayıt başlatma hatası:', error);
+      Alert.alert('Hata', 'Kayıt başlatılamadı');
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      setIsRecording(false);
+      setIsProcessing(true);
+      setConversationText('İşleniyor...');
+
+      const audioUri = await aiService.stopRecording();
+      if (audioUri) {
+        // Backend'e gönder
+        const response = await aiService.sendVoiceToAI(audioUri);
+        
+        if (response.success && response.data) {
+          setConversationText(`Sen: ${response.data.transcription}\n\nAI: ${response.data.aiResponse}`);
+          
+          // AI yanıtını sese çevir ve oynat
+          await aiService.textToSpeech(response.data.aiResponse);
+        } else {
+          Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
+          setConversationText('');
+        }
+      } else {
+        Alert.alert('Hata', 'Ses kaydedilemedi');
+        setConversationText('');
+      }
+    } catch (error) {
+      console.error('Kayıt durdurma hatası:', error);
+      Alert.alert('Hata', 'Kayıt durdurulamadı');
+      setConversationText('');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
 
-  const handleTextPress = () => {
-    // Modal açılmıyor, sadece text modu aktif oluyor
-    console.log('Text mode activated');
+  const handleTextPress = async () => {
+    if (conversationText.trim()) {
+      // Mevcut metni AI'ye gönder
+      setIsProcessing(true);
+      try {
+        const response = await aiService.sendTextToAI(conversationText);
+        if (response.success && response.data) {
+          setConversationText(prev => prev + `\n\nAI: ${response.data!.aiResponse}`);
+          // AI yanıtını sese çevir ve oynat
+          await aiService.textToSpeech(response.data!.aiResponse);
+        } else {
+          Alert.alert('Hata', response.message || 'Metin işlenirken hata oluştu');
+        }
+      } catch (error) {
+        console.error('Metin gönderme hatası:', error);
+        Alert.alert('Hata', 'Metin gönderilemedi');
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      // Text input'u göster
+      setIsKeyboardVisible(true);
+    }
   };
 
   const handleAutoDetectPress = () => {
@@ -107,6 +186,13 @@ const AIDetailPage = () => {
     setIsSelectionModalVisible(false);
     // Modal açılmıyor, sadece icon değişiyor
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      aiService.cleanup();
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -185,6 +271,19 @@ const AIDetailPage = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* Conversation Text */}
+        {conversationText ? (
+          <View style={styles.conversationContainer}>
+            <ReusableText
+              text={conversationText}
+              family="regular"
+              size={16}
+              color={Colors.lightWhite}
+              style={styles.conversationText}
+            />
+          </View>
+        ) : null}
+        
         {/* Empty space to push text to bottom */}
         <View style={styles.spacer} />
       </ScrollView>
@@ -210,8 +309,20 @@ const AIDetailPage = () => {
             <TouchableOpacity style={styles.circleButton} onPress={handleKeyboardPress}>
               <MaterialIcons name="keyboard" size={28} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.circleButton} onPress={handleMicrophonePress}>
-              {selectedDetectionMethod === 'microphone' ? (
+            <TouchableOpacity 
+              style={[
+                styles.circleButton, 
+                isRecording && styles.recordingButton,
+                isProcessing && styles.processingButton
+              ]} 
+              onPress={handleMicrophonePress}
+              disabled={isProcessing}
+            >
+              {isRecording ? (
+                <Ionicons name="stop" size={28} color="white" />
+              ) : isProcessing ? (
+                <Ionicons name="hourglass-outline" size={28} color="white" />
+              ) : selectedDetectionMethod === 'microphone' ? (
                 <Ionicons name="mic-outline" size={28} color="white" />
               ) : selectedDetectionMethod === 'hand' ? (
                 <Ionicons name="hand-left-outline" size={28} color="white" />
@@ -238,8 +349,17 @@ const AIDetailPage = () => {
             placeholderTextColor="rgba(255, 255, 255, 0.6)"
             multiline
             autoFocus
+            value={conversationText}
+            onChangeText={setConversationText}
             onBlur={() => setIsKeyboardVisible(false)}
+            onSubmitEditing={handleTextPress}
           />
+          <TouchableOpacity 
+            style={styles.sendButton}
+            onPress={handleTextPress}
+          >
+            <Ionicons name="send" size={24} color="white" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -403,6 +523,32 @@ const styles = StyleSheet.create({
   },
   spacer: {
     flex: 1,
+  },
+  conversationContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 15,
+    padding: 15,
+    marginHorizontal: 20,
+    marginVertical: 10,
+  },
+  conversationText: {
+    lineHeight: 24,
+  },
+  recordingButton: {
+    backgroundColor: 'rgba(255, 0, 0, 0.6)',
+    borderColor: 'rgba(255, 0, 0, 0.8)',
+  },
+  processingButton: {
+    backgroundColor: 'rgba(255, 165, 0, 0.6)',
+    borderColor: 'rgba(255, 165, 0, 0.8)',
+  },
+  sendButton: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(75, 0, 130, 0.8)',
   },
 });
 
