@@ -138,30 +138,6 @@ const Profile: React.FC = () => {
 
           {/* Menu */}
           <View style={styles.list}>
-            {user && (
-              <>
-                {/* Menu2 */}
-                <View style={styles.listHeader}>
-                  <Ionicons
-                    name="reorder-three-outline"
-                    size={30}
-                    color={Colors.lightGray}
-                  />
-                  <ReusableText
-                    text={t("profile.tabs.account")}
-                    family={"medium"}
-                    size={FontSizes.medium}
-                    color={Colors.black}
-                  />
-                </View>
-                <ProfileCard
-                  title={t("profile.tabs.myAddress")}
-                  icon={"map"}
-                  onPress={() => router.push("/(profile)/address")}
-                />
-              </>
-            )}
-
             <View style={styles.listHeader}>
               <Ionicons
                 name="reorder-three-outline"
