@@ -13,8 +13,14 @@ import { updateCourseCode } from "@/redux/actions/eduActions";
 import { loadUser } from "@/redux/actions/userActions";
 import ReusableText from "@/components/ui/ReusableText";
 import { FontSizes } from "@/constants/Fonts";
+import ChatBot from "@/components/ChatBot/ChatBot";
 
 const Tab = createBottomTabNavigator();
+
+// Boş bir component - Chat tab'ı için
+const ChatPlaceholder = () => {
+  return null;
+};
 
 const TabNavigation = () => {
   const { isDark } = useTheme();
@@ -23,6 +29,7 @@ const TabNavigation = () => {
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [courseCode, setCourseCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [chatBotVisible, setChatBotVisible] = useState(false);
   
   useEffect(() => {
     // Check if user has courseCode when Edu tab is accessed
@@ -251,6 +258,42 @@ const TabNavigation = () => {
         }}
       />
       <Tab.Screen
+        name="Chat"
+        component={ChatPlaceholder}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            setChatBotVisible(true);
+          },
+        }}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? styles.activeTabContainer : styles.inactiveTabContainer}>
+              {focused ? (
+                <LinearGradient
+                  colors={[Colors.tabBarGradientStart, Colors.tabBarGradientEnd]}
+                  style={styles.activeTabContainer}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="message-text"
+                    color={Colors.white}
+                    size={24}
+                  />
+                </LinearGradient>
+              ) : (
+                <MaterialCommunityIcons
+                  name="message-text-outline"
+                  color={Colors.black}
+                  size={24}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Profile"
         component={Profile}
         options={{
@@ -349,6 +392,11 @@ const TabNavigation = () => {
         </View>
       </Modal>
     )}
+    {/* Chat Bot Modal */}
+    <ChatBot
+      visible={chatBotVisible}
+      onClose={() => setChatBotVisible(false)}
+    />
     </>
   );
 };
