@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -62,10 +63,71 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const router = useRouter();
   const dispatch = useDispatch();
   const aiState = useSelector((state: RootState) => state.ai);
+  const textInputRef = useRef<TextInput>(null);
+  const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
+  const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
 
   const handleKeyboardPress = () => {
     setIsKeyboardVisible(true);
+    // Kısa bir gecikme ile focus yap ki klavye açılsın
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 100);
   };
+
+  // Klavye açılıp kapanma durumlarını dinle
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => {
+        setIsKeyboardVisible(true);
+        const height = event.endCoordinates.height;
+        // Input alanı yüksekliği yaklaşık 80px (padding + input + button)
+        const inputAreaHeight = 80;
+        const totalOffset = height + inputAreaHeight;
+        
+        // Butonları yukarı taşı
+        Animated.timing(bottomAreaTranslateY, {
+          toValue: -totalOffset,
+          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
+          useNativeDriver: true,
+        }).start();
+        
+        // Input alanını klavye yüksekliği kadar yukarı taşı
+        Animated.timing(inputAreaTranslateY, {
+          toValue: -height,
+          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (event) => {
+        // Klavye kapanınca input alanını gizle
+        setIsKeyboardVisible(false);
+        
+        // Butonları eski pozisyonuna getir
+        Animated.timing(bottomAreaTranslateY, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
+          useNativeDriver: true,
+        }).start();
+        
+        // Input alanını eski pozisyonuna getir
+        Animated.timing(inputAreaTranslateY, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, [setIsKeyboardVisible, bottomAreaTranslateY, inputAreaTranslateY]);
 
   const handleMicrophonePress = async () => {
     if (isRecording) {
@@ -80,7 +142,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       const success = await aiService.startRecording();
       if (success) {
         setIsRecording(true);
-        setConversationText('Kayıt başladı...');
       } else {
         Alert.alert('Hata', 'Kayıt başlatılamadı');
       }
@@ -94,14 +155,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     try {
       setIsRecording(false);
       setIsProcessing(true);
-      setConversationText('İşleniyor...');
 
       const audioUri = await aiService.stopRecording();
       if (audioUri) {
         const response = await aiService.sendVoiceToAI(audioUri);
         
         if (response.success && response.data) {
-          setConversationText(`Sen: ${response.data.transcription}\n\nAI: ${response.data.aiResponse}`);
+          // Ses mesajları transcript olarak gösterilmez, sadece işlenir
           
           // Backend zaten TTS yapıp audioUrl döndürüyor, direkt kullan
           if (response.data.audioUrl) {
@@ -122,28 +182,28 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           }
         } else {
           Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
-          setConversationText('');
         }
       } else {
         Alert.alert('Hata', 'Ses kaydedilemedi');
-        setConversationText('');
       }
     } catch (error) {
       console.error('Kayıt durdurma hatası:', error);
       Alert.alert('Hata', 'Kayıt durdurulamadı');
-      setConversationText('');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleTextPress = async () => {
-    if (conversationText.trim()) {
+    const textToSend = conversationText.trim();
+    if (textToSend) {
       setIsProcessing(true);
       try {
-        const response = await aiService.sendTextToAI(conversationText);
+        const response = await aiService.sendTextToAI(textToSend);
         if (response.success && response.data) {
-          setConversationText((prev: string) => prev + `\n\nAI: ${response.data!.aiResponse}`);
+          // Mesaj gönderildikten sonra input'u temizle
+          setConversationText('');
+          setIsKeyboardVisible(false);
           
           // TTS çağrısı yap (async olarak, beklemeden devam et)
           aiService.textToSpeech(response.data!.aiResponse).then(audioUrl => {
@@ -396,8 +456,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       {/* Bottom Area - Control Buttons */}
       <Animated.View style={[
         styles.bottomArea, 
-        { opacity: bottomAreaOpacity },
-        isKeyboardVisible && styles.bottomAreaKeyboard
+        { 
+          opacity: bottomAreaOpacity,
+          transform: [{ translateY: bottomAreaTranslateY }],
+        },
       ]}>
         <View style={styles.bottomAreaContent}>
           <View style={styles.iconCirclesContainer}>
@@ -437,25 +499,37 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
       {/* Keyboard Input */}
       {isKeyboardVisible && (
-        <View style={styles.keyboardInputContainer}>
-          <TextInput
-            style={styles.keyboardInput}
-            placeholder="Mesajınızı yazın..."
-            placeholderTextColor="rgba(255, 255, 255, 0.6)"
-            multiline
-            autoFocus
-            value={conversationText}
-            onChangeText={setConversationText}
-            onBlur={() => setIsKeyboardVisible(false)}
-            onSubmitEditing={handleTextPress}
-          />
-          <TouchableOpacity 
-            style={styles.sendButton}
-            onPress={handleTextPress}
-          >
-            <Ionicons name="send" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+        <Animated.View 
+          style={[
+            styles.keyboardInputContainer,
+            { transform: [{ translateY: inputAreaTranslateY }] }
+          ]}
+        >
+          <View style={styles.keyboardInputWrapper}>
+            <TextInput
+              ref={textInputRef}
+              style={styles.keyboardInput}
+              placeholder="Mesajınızı yazın..."
+              placeholderTextColor="rgba(11, 11, 11, 0.5)"
+              multiline
+              value={conversationText}
+              onChangeText={setConversationText}
+              onSubmitEditing={handleTextPress}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity 
+              style={[
+                styles.sendButton,
+                !conversationText.trim() && styles.sendButtonDisabled
+              ]}
+              onPress={handleTextPress}
+              disabled={!conversationText.trim() || isProcessing}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="send" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -571,9 +645,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 9999,
   },
-  bottomAreaKeyboard: {
-    bottom: 350,
-  },
   bottomAreaContent: {
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -611,27 +682,52 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    padding: 20,
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.2)',
     zIndex: 10000,
   },
+  keyboardInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
   keyboardInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 25,
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderRadius: 24,
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 12,
+    paddingTop: 12,
     color: 'white',
     fontSize: 16,
+    maxHeight: 100,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   sendButton: {
-    position: 'absolute',
-    right: 15,
-    top: 15,
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(75, 0, 130, 0.8)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.white,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sendButtonDisabled: {
+    backgroundColor: Colors.white,
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });
 
