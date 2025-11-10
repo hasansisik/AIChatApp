@@ -102,15 +102,23 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         
         if (response.success && response.data) {
           setConversationText(`Sen: ${response.data.transcription}\n\nAI: ${response.data.aiResponse}`);
-          const audioUrl = await aiService.textToSpeech(response.data.aiResponse);
           
-          // AudioUrl'i sendAudio'ya gönder
-          if (audioUrl && aiState.conversation.conversation_id) {
-            console.log('📤 [AIDetailVideoView] TTS audioUrl sendAudio\'ya gönderiliyor:', audioUrl);
-            dispatch(sendAudio({
-              conversation_id: aiState.conversation.conversation_id,
-              audio: audioUrl,
-            }) as any);
+          // Backend zaten TTS yapıp audioUrl döndürüyor, direkt kullan
+          if (response.data.audioUrl) {
+            console.log('🎵 [AIDetailVideoView] Backend\'den gelen audioUrl oynatılıyor');
+            // Ses dosyasını oynat (async olarak, beklemeden devam et)
+            aiService.playAudioFromUrl(response.data.audioUrl).catch(err => {
+              console.error('❌ [AIDetailVideoView] Ses oynatma hatası:', err);
+            });
+            
+            // AudioUrl'i sendAudio'ya gönder
+            if (aiState.conversation.conversation_id) {
+              console.log('📤 [AIDetailVideoView] Backend audioUrl sendAudio\'ya gönderiliyor');
+              dispatch(sendAudio({
+                conversation_id: aiState.conversation.conversation_id,
+                audio: response.data.audioUrl,
+              }) as any);
+            }
           }
         } else {
           Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
@@ -136,16 +144,19 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         const response = await aiService.sendTextToAI(conversationText);
         if (response.success && response.data) {
           setConversationText((prev: string) => prev + `\n\nAI: ${response.data!.aiResponse}`);
-          const audioUrl = await aiService.textToSpeech(response.data!.aiResponse);
           
-          // AudioUrl'i sendAudio'ya gönder
-          if (audioUrl && aiState.conversation.conversation_id) {
-            console.log('📤 [AIDetailVideoView] TTS audioUrl sendAudio\'ya gönderiliyor:', audioUrl);
-            dispatch(sendAudio({
-              conversation_id: aiState.conversation.conversation_id,
-              audio: audioUrl,
-            }) as any);
-          }
+          // TTS çağrısı yap (async olarak, beklemeden devam et)
+          aiService.textToSpeech(response.data!.aiResponse).then(audioUrl => {
+            if (audioUrl && aiState.conversation.conversation_id) {
+              console.log('📤 [AIDetailVideoView] TTS audioUrl sendAudio\'ya gönderiliyor');
+              dispatch(sendAudio({
+                conversation_id: aiState.conversation.conversation_id,
+                audio: audioUrl,
+              }) as any);
+            }
+          }).catch(err => {
+            console.error('❌ [AIDetailVideoView] TTS hatası:', err);
+          });
         } else {
           Alert.alert('Hata', response.message || 'Metin işlenirken hata oluştu');
         }

@@ -103,7 +103,7 @@ class AIService {
 
       // Backend'e gönder - Content-Type'ı manuel ayarlama, tarayıcı otomatik ayarlar
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 saniye timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 saniye timeout (STT + AI + TTS için yeterli)
       
       const response = await fetch(`${API_BASE_URL}/voice`, {
         method: 'POST',
@@ -196,7 +196,7 @@ class AIService {
   }
 
   // URL'den ses oynat
-  private async playAudioFromUrl(audioUrl: string): Promise<void> {
+  async playAudioFromUrl(audioUrl: string): Promise<void> {
     try {
       console.log('🎵 Frontend: Ses oynatma başlatılıyor:', audioUrl.substring(0, 50) + '...');
       
