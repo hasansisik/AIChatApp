@@ -9,6 +9,7 @@ import {
   Animated,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +22,8 @@ import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
 import { Sizes } from '@/constants/Sizes';
 
-const { width, height } = Dimensions.get('window');
+const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
 interface AIDetailVideoViewProps {
   webStreamUrl: string;
@@ -141,104 +143,179 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       <WebView
         source={{ uri: webStreamUrl }}
         style={styles.webView}
-          allowsInlineMediaPlayback={true}
-          mediaPlaybackRequiresUserAction={false}
-          allowsFullscreenVideo={true}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          scalesPageToFit={true}
-          injectedJavaScript={`
-            (function() {
-              // Viewport meta tag ekle
-              var viewport = document.querySelector('meta[name="viewport"]');
-              if (!viewport) {
-                viewport = document.createElement('meta');
-                viewport.name = 'viewport';
-                viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-                document.head.appendChild(viewport);
-              } else {
-                viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+        allowsInlineMediaPlayback={true}
+        mediaPlaybackRequiresUserAction={false}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={false}
+        mixedContentMode="always"
+        allowsFullscreenVideo={true}
+        scalesPageToFit={true}
+        androidLayerType="hardware"
+        androidHardwareAccelerationDisabled={false}
+        originWhitelist={['*']}
+        injectedJavaScriptBeforeContentLoaded={`
+          (function() {
+            // Viewport meta tag ekle - sayfa yüklenmeden önce
+            var meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+            document.head.appendChild(meta);
+          })();
+          true;
+        `}
+        injectedJavaScript={`
+          (function() {
+            // Viewport meta tag güncelle
+            var viewport = document.querySelector('meta[name="viewport"]');
+            if (!viewport) {
+              viewport = document.createElement('meta');
+              viewport.name = 'viewport';
+              viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+              document.head.appendChild(viewport);
+            } else {
+              viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+            }
+            
+            // CSS stillerini ekle
+            var style = document.createElement('style');
+            style.id = 'fullscreen-styles';
+            style.innerHTML = \`
+              * {
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
               }
-              
-              var style = document.createElement('style');
-              style.innerHTML = \`
-                * {
-                  margin: 0;
-                  padding: 0;
-                  box-sizing: border-box;
+              html {
+                width: 100vw !important;
+                height: 100vh !important;
+                min-width: 100vw !important;
+                min-height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                background: black !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                -webkit-overflow-scrolling: touch !important;
+              }
+              body {
+                width: 100vw !important;
+                height: 100vh !important;
+                min-width: 100vw !important;
+                min-height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                background: black !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                -webkit-overflow-scrolling: touch !important;
+              }
+              video, iframe, canvas, img {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                min-width: 100vw !important;
+                min-height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                object-fit: cover !important;
+                object-position: center !important;
+                background: black !important;
+                border: none !important;
+              }
+            \`;
+            
+            // Eski stil varsa kaldır
+            var oldStyle = document.getElementById('fullscreen-styles');
+            if (oldStyle) {
+              oldStyle.remove();
+            }
+            document.head.appendChild(style);
+            
+            // HTML ve body stillerini doğrudan uygula
+            document.documentElement.style.width = '100vw';
+            document.documentElement.style.height = '100vh';
+            document.documentElement.style.margin = '0';
+            document.documentElement.style.padding = '0';
+            document.documentElement.style.overflow = 'hidden';
+            document.documentElement.style.position = 'fixed';
+            document.documentElement.style.top = '0';
+            document.documentElement.style.left = '0';
+            document.documentElement.style.right = '0';
+            document.documentElement.style.bottom = '0';
+            
+            if (document.body) {
+              document.body.style.width = '100vw';
+              document.body.style.height = '100vh';
+              document.body.style.margin = '0';
+              document.body.style.padding = '0';
+              document.body.style.overflow = 'hidden';
+              document.body.style.position = 'fixed';
+              document.body.style.top = '0';
+              document.body.style.left = '0';
+              document.body.style.right = '0';
+              document.body.style.bottom = '0';
+            }
+            
+            // Tüm medya elementlerini güncelle
+            function updateMediaElements() {
+              var elements = document.querySelectorAll('video, iframe, canvas, img');
+              elements.forEach(function(el) {
+                el.style.position = 'absolute';
+                el.style.top = '0';
+                el.style.left = '0';
+                el.style.width = '100vw';
+                el.style.height = '100vh';
+                el.style.objectFit = 'cover';
+                el.style.objectPosition = 'center';
+                el.style.background = 'black';
+                if (el.tagName === 'IFRAME') {
+                  el.style.border = 'none';
                 }
-                html, body {
-                  width: 100% !important;
-                  height: 100% !important;
-                  overflow: hidden !important;
-                  background: black !important;
-                  position: fixed !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  -webkit-overflow-scrolling: touch !important;
-                }
-                video {
-                  position: absolute !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  width: 100% !important;
-                  height: 100% !important;
-                  object-fit: contain !important;
-                  background: black !important;
-                }
-                iframe {
-                  position: absolute !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  width: 100% !important;
-                  height: 100% !important;
-                  border: none !important;
-                  object-fit: contain !important;
-                }
-                canvas {
-                  position: absolute !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  width: 100% !important;
-                  height: 100% !important;
-                  object-fit: contain !important;
-                }
-                img {
-                  position: absolute !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  width: 100% !important;
-                  height: 100% !important;
-                  object-fit: contain !important;
-                }
-              \`;
-              document.head.appendChild(style);
-              
-              // Video elementlerini de güncelle
-              setTimeout(function() {
-                var videos = document.querySelectorAll('video');
-                videos.forEach(function(video) {
-                  video.style.position = 'absolute';
-                  video.style.top = '0';
-                  video.style.left = '0';
-                  video.style.width = '100%';
-                  video.style.height = '100%';
-                  video.style.objectFit = 'contain';
-                });
-                
-                var iframes = document.querySelectorAll('iframe');
-                iframes.forEach(function(iframe) {
-                  iframe.style.position = 'absolute';
-                  iframe.style.top = '0';
-                  iframe.style.left = '0';
-                  iframe.style.width = '100%';
-                  iframe.style.height = '100%';
-                });
-              }, 100);
-            })();
-            true;
-          `}
-          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+              });
+            }
+            
+            // İlk güncelleme
+            updateMediaElements();
+            
+            // DOM değişikliklerini izle
+            var observer = new MutationObserver(function(mutations) {
+              updateMediaElements();
+            });
+            
+            observer.observe(document.body || document.documentElement, {
+              childList: true,
+              subtree: true
+            });
+            
+            // Sayfa yüklendiğinde tekrar güncelle
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', updateMediaElements);
+            } else {
+              updateMediaElements();
+            }
+            
+            // Window resize'da güncelle
+            window.addEventListener('resize', updateMediaElements);
+          })();
+          true;
+        `}
+        onMessage={() => {}}
+        userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
       />
 
       {/* Header */}
@@ -372,13 +449,25 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width: width,
-    height: height,
-    backgroundColor: 'black',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: screenWidth,
+    height: screenHeight,
+    backgroundColor: Colors.black,
   },
   webView: {
     flex: 1,
-    backgroundColor: 'black',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: screenWidth,
+    height: screenHeight,
+    backgroundColor: Colors.black,
   },
   header: {
     position: 'absolute',
@@ -431,9 +520,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.lightWhite,
   },
   content: {
-    flex: 1,
-    marginTop: 120,
-    zIndex: 100,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: screenWidth,
+    height: screenHeight,
+
   },
   contentContainer: {
     flex: 1,
