@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { View, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from "@/hooks/useThemeColor";
@@ -44,7 +44,11 @@ const Search = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -149,7 +153,7 @@ const Search = () => {
           </View>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -167,6 +171,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightGray,
+    zIndex: 10,
   },
   backButton: {
     padding: 8,
@@ -177,6 +182,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+    zIndex: 10,
   },
   searchInputContainer: {
     flexDirection: 'row',

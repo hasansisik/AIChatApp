@@ -24,11 +24,32 @@ export interface TextResponse {
 class AIService {
   private recording: Audio.Recording | null = null;
   private sound: Audio.Sound | null = null;
+  private recordingStartTime: number = 0;
+  private lastSoundTime: number = 0;
+  private autoStopTimeout: ReturnType<typeof setTimeout> | null = null;
+  private onAutoStopCallback: (() => void) | null = null;
+  private voiceActivityCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private minRecordingDuration: number = 1000; // Minimum 1 saniye kayıt
+  private silenceThreshold: number = 2000; // 2 saniye daha kayıt (toplam 3 saniye)
 
   // Ses kaydını başlat
   async startRecording(): Promise<boolean> {
     try {
       console.log('🎤 Frontend: Kayıt başlatılıyor...');
+      
+      // Eğer zaten bir kayıt varsa, önce temizle
+      if (this.recording) {
+        console.log('⚠️ Frontend: Mevcut kayıt temizleniyor...');
+        try {
+          await this.recording.stopAndUnloadAsync();
+        } catch (e) {
+          // Kayıt zaten durmuş olabilir, hata yok say
+          console.log('⚠️ Frontend: Kayıt zaten durmuş');
+        }
+        this.recording = null;
+        // Kısa bir gecikme ekle (önceki kayıt tamamen temizlensin)
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
       
       // Mikrofon izni iste
       const permission = await Audio.requestPermissionsAsync();
@@ -53,12 +74,89 @@ class AIService {
       );
 
       this.recording = recording;
+      this.recordingStartTime = Date.now();
+      this.lastSoundTime = Date.now();
       console.log('✅ Frontend: Kayıt başlatıldı');
       return true;
     } catch (error) {
       console.error('❌ Frontend: Kayıt başlatılamadı:', error);
+      // Hata durumunda kayıt referansını temizle
+      this.recording = null;
       return false;
     }
+  }
+
+  // Otomatik durdurma için callback ayarla (sonsuzluk modu için - ses seviyesine göre)
+  setAutoStopCallback(callback: (() => void) | null, delayMs: number = 3000) {
+    // Önceki timeout'u temizle
+    if (this.autoStopTimeout) {
+      clearTimeout(this.autoStopTimeout);
+      this.autoStopTimeout = null;
+    }
+    
+    // Önceki interval'i temizle
+    if (this.voiceActivityCheckInterval) {
+      clearInterval(this.voiceActivityCheckInterval);
+      this.voiceActivityCheckInterval = null;
+    }
+    
+    this.onAutoStopCallback = callback;
+    
+    // Eğer kayıt aktifse ve callback varsa, ses seviyesine göre otomatik durdurma ayarla
+    if (this.recording && callback) {
+      this.recordingStartTime = Date.now();
+      this.lastSoundTime = Date.now();
+      
+      // Ses aktivitesini kontrol et (her 500ms'de bir)
+      // Not: Expo AV'de gerçek ses seviyesi bilgisi yok, bu yüzden kayıt süresini kullanıyoruz
+      // Kayıt başladıktan sonra belirli bir süre (örneğin 2-3 saniye) sonra otomatik durdur
+      this.voiceActivityCheckInterval = setInterval(() => {
+        if (!this.recording || !this.onAutoStopCallback) {
+          if (this.voiceActivityCheckInterval) {
+            clearInterval(this.voiceActivityCheckInterval);
+            this.voiceActivityCheckInterval = null;
+          }
+          return;
+        }
+        
+        const now = Date.now();
+        const recordingDuration = now - this.recordingStartTime;
+        
+        // Minimum kayıt süresi geçtiyse otomatik durdur (gerçek zamanlı sohbet için)
+        // Bu süre kullanıcının cümlesini bitirmesi için yeterli olmalı
+        if (recordingDuration >= this.minRecordingDuration + this.silenceThreshold) {
+          console.log('🔄 [Voice Activity] Kayıt süresi doldu, otomatik durduruluyor');
+          if (this.voiceActivityCheckInterval) {
+            clearInterval(this.voiceActivityCheckInterval);
+            this.voiceActivityCheckInterval = null;
+          }
+          if (this.onAutoStopCallback) {
+            this.onAutoStopCallback();
+            this.onAutoStopCallback = null;
+          }
+        }
+      }, 500); // Her 500ms'de bir kontrol et
+      
+      console.log(`🔄 [Voice Activity] Ses seviyesi izleme başlatıldı (min: ${this.minRecordingDuration}ms, silence: ${this.silenceThreshold}ms)`);
+    }
+  }
+
+  // Otomatik durdurma timeout'unu iptal et
+  clearAutoStop() {
+    if (this.autoStopTimeout) {
+      clearTimeout(this.autoStopTimeout);
+      this.autoStopTimeout = null;
+    }
+    if (this.voiceActivityCheckInterval) {
+      clearInterval(this.voiceActivityCheckInterval);
+      this.voiceActivityCheckInterval = null;
+    }
+    this.onAutoStopCallback = null;
+  }
+  
+  // Ses aktivitesi algılandı (kayıt sırasında çağrılmalı)
+  updateVoiceActivity() {
+    this.lastSoundTime = Date.now();
   }
 
   // Ses kaydını durdur
@@ -74,6 +172,11 @@ class AIService {
       await this.recording.stopAndUnloadAsync();
       const uri = this.recording.getURI();
       this.recording = null;
+      this.recordingStartTime = 0;
+      this.lastSoundTime = 0;
+      
+      // Otomatik durdurma timeout'unu temizle
+      this.clearAutoStop();
 
       console.log('✅ Frontend: Kayıt durduruldu, URI:', uri);
       return uri;

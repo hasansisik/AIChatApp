@@ -26,20 +26,20 @@ const Categories: React.FC<CategoriesProps> = ({ onCategoryPress }) => {
         {/* Right side - Two smaller cards stacked */}
         <View style={styles.rightColumn}>
           <CategoryCard
-            title="Kelime Çalışması"
-            icon="book"
+            title="İletişim"
+            icon="chatbubble"
             backgroundColor={Colors.lightPurple}
             iconBackgroundColor={Colors.lightPurple}
-            onPress={() => onCategoryPress?.('Kelime Çalışması')}
+            onPress={() => onCategoryPress?.('İletişim')}
             isLarge={false}
           />
           
           <CategoryCard
-            title="Dilbilgisi Dersleri"
+            title="Kurs Seansları"
             icon="school"
             backgroundColor={Colors.lightPink}
             iconBackgroundColor={Colors.lightPink}
-            onPress={() => onCategoryPress?.('Dilbilgisi Dersleri')}
+            onPress={() => onCategoryPress?.('Kurs Seansları')}
             isLarge={false}
           />
         </View>

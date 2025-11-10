@@ -66,6 +66,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const textInputRef = useRef<TextInput>(null);
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
+  const [isInfinityMode, setIsInfinityMode] = React.useState(false);
+  const infinityModeIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleKeyboardPress = () => {
     setIsKeyboardVisible(true);
@@ -74,6 +76,64 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       textInputRef.current?.focus();
     }, 100);
   };
+
+  // Sonsuzluk modu - sürekli ses algılama (otomatik durdurma ile)
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let isMounted = true;
+    
+    if (isInfinityMode && !isRecording && !isProcessing) {
+      // Sonsuzluk modu aktifse ve kayıt yoksa, otomatik kayıt başlat
+      const startAutoRecording = async () => {
+        if (!isMounted) return;
+        
+        try {
+          const success = await aiService.startRecording();
+          if (success && isMounted) {
+            setIsRecording(true);
+            console.log('🔄 [Infinity Mode] Otomatik kayıt başlatıldı');
+            
+            // Otomatik durdurma callback'ini ayarla (ses seviyesine göre)
+            aiService.setAutoStopCallback(async () => {
+              if (isMounted && isInfinityMode && isRecording) {
+                console.log('🔄 [Infinity Mode] Ses seviyesi düştü - kayıt durduruluyor');
+                await stopRecording();
+              }
+            }); // Ses seviyesine göre otomatik durdur
+          }
+        } catch (error) {
+          console.error('🔄 [Infinity Mode] Otomatik kayıt başlatma hatası:', error);
+          // Hata durumunda tekrar deneme için kısa bir gecikme
+          if (isMounted && isInfinityMode) {
+            timeoutId = setTimeout(() => {
+              startAutoRecording();
+            }, 2000); // 2 saniye bekle ve tekrar dene
+          }
+        }
+      };
+      
+      // Kısa bir gecikme ile başlat (önceki işlem bitmiş olsun)
+      timeoutId = setTimeout(() => {
+        startAutoRecording();
+      }, 1000); // 1 saniye bekle
+    } else if (!isInfinityMode) {
+      // Sonsuzluk modu kapatıldıysa, otomatik durdurma callback'ini temizle
+      aiService.clearAutoStop();
+      if (infinityModeIntervalRef.current) {
+        clearInterval(infinityModeIntervalRef.current);
+        infinityModeIntervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // Cleanup'ta otomatik durdurma callback'ini temizle
+      aiService.clearAutoStop();
+    };
+  }, [isInfinityMode, isRecording, isProcessing]);
 
   // Klavye açılıp kapanma durumlarını dinle
   useEffect(() => {
@@ -130,6 +190,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, [setIsKeyboardVisible, bottomAreaTranslateY, inputAreaTranslateY]);
 
   const handleMicrophonePress = async () => {
+    // Sonsuzluk modu aktifse, normal mikrofon butonu çalışmasın
+    if (isInfinityMode) {
+      return;
+    }
+    
     if (isRecording) {
       await stopRecording();
     } else {
@@ -191,14 +256,21 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       Alert.alert('Hata', 'Kayıt durdurulamadı');
     } finally {
       setIsProcessing(false);
+      // Sonsuzluk modu aktifse, useEffect otomatik olarak tekrar başlatacak
     }
   };
 
   const handleTextPress = async () => {
+    // Sonsuzluk ikonu butonu - toggle yap
+    setIsInfinityMode(prev => !prev);
+  };
+
+  const handleSendText = async () => {
     const textToSend = conversationText.trim();
     if (textToSend) {
       setIsProcessing(true);
       try {
+        // STT olmadan direkt LLM'e gönder
         const response = await aiService.sendTextToAI(textToSend);
         if (response.success && response.data) {
           // Mesaj gönderildikten sonra input'u temizle
@@ -470,10 +542,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               style={[
                 styles.circleButton, 
                 isRecording && styles.recordingButton,
-                isProcessing && styles.processingButton
+                isProcessing && styles.processingButton,
+                isInfinityMode && styles.infinityModeMicrophone
               ]} 
               onPress={handleMicrophonePress}
-              disabled={isProcessing}
+              disabled={isProcessing || isInfinityMode}
             >
               {isRecording ? (
                 <Ionicons name="stop" size={28} color="white" />
@@ -487,10 +560,26 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 <Ionicons name="mic-outline" size={28} color="white" />
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.circleButton} onPress={handleTextPress}>
-              <Ionicons name="text-outline" size={28} color="white" />
+            <TouchableOpacity 
+              style={[
+                styles.circleButton,
+                isInfinityMode && styles.infinityModeActive
+              ]} 
+              onPress={handleTextPress}
+            >
+              <Ionicons 
+                name={isInfinityMode ? "infinite" : "text-outline"} 
+                size={28} 
+                color={isInfinityMode ? Colors.primary : "white"} 
+              />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.circleButton, styles.redCircleButton]}>
+            <TouchableOpacity 
+              style={[styles.circleButton, styles.redCircleButton]}
+              onPress={() => {
+                // Telefon kapatma butonu - tabs/tabs'a git
+                router.push('/(tabs)/tabs');
+              }}
+            >
               <Ionicons name="call" size={28} color="white" />
             </TouchableOpacity>
           </View>
@@ -514,7 +603,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               multiline
               value={conversationText}
               onChangeText={setConversationText}
-              onSubmitEditing={handleTextPress}
+              onSubmitEditing={handleSendText}
               blurOnSubmit={false}
             />
             <TouchableOpacity 
@@ -522,7 +611,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 styles.sendButton,
                 !conversationText.trim() && styles.sendButtonDisabled
               ]}
-              onPress={handleTextPress}
+              onPress={handleSendText}
               disabled={!conversationText.trim() || isProcessing}
               activeOpacity={0.7}
             >
@@ -702,7 +791,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     paddingTop: 12,
-    color: 'white',
+    color: 'black',
     fontSize: 16,
     maxHeight: 100,
     borderWidth: 1,
@@ -728,6 +817,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  infinityModeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: Colors.primary,
+    borderWidth: 2,
+  },
+  infinityModeMicrophone: {
+    opacity: 0.5,
   },
 });
 

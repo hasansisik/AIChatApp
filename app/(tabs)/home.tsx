@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
 import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { Colors } from "@/hooks/useThemeColor";
 import Header from '@/components/Home/Header';
@@ -8,14 +9,22 @@ import Categories from '@/components/Home/Categories';
 import AIListing from '@/components/Home/AIListing';
 import { AICategory } from '@/data/AICategories';
 import { startConversation } from '@/redux/actions/aiActions';
+import ChatBot from '@/components/ChatBot/ChatBot';
 
 const Home = () => {
   const router = useRouter();
+  const navigation = useNavigation();
   const dispatch = useDispatch();
+  const [chatBotVisible, setChatBotVisible] = useState(false);
 
   const handleCategoryPress = (category: string) => {
-    // Handle category navigation
-    console.log(`${category} pressed`);
+    if (category === 'Canlı Sohbet') {
+      navigation.navigate('List' as never);
+    } else if (category === 'Kurs Seansları') {
+      navigation.navigate('Edu' as never);
+    } else if (category === 'İletişim') {
+      setChatBotVisible(true);
+    }
   };
 
   const handleAICategoryPress = async (item: AICategory) => {
@@ -45,6 +54,10 @@ const Home = () => {
         <Categories onCategoryPress={handleCategoryPress} />
         <AIListing onItemPress={handleAICategoryPress} />
       </ScrollView>
+      <ChatBot
+        visible={chatBotVisible}
+        onClose={() => setChatBotVisible(false)}
+      />
     </View>
   )
 }

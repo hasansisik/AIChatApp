@@ -64,12 +64,12 @@ const TabNavigation = () => {
   
   const styles = StyleSheet.create({
     tabBarStyle: {
-      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.6)', 
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.7)', 
       height: 70,
       paddingTop: 15,
       position: "absolute",
       borderRadius: 60,
-      marginHorizontal: 60,
+      marginHorizontal: 40,
       marginBottom: 30,
       borderTopWidth: 0,
       elevation: 0,
