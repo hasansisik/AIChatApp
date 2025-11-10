@@ -16,6 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/redux/store';
+import { sendAudio } from '@/redux/actions/aiActions';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
@@ -57,6 +60,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   onGoBack,
 }) => {
   const router = useRouter();
+  const dispatch = useDispatch();
+  const aiState = useSelector((state: RootState) => state.ai);
 
   const handleKeyboardPress = () => {
     setIsKeyboardVisible(true);
@@ -97,7 +102,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         
         if (response.success && response.data) {
           setConversationText(`Sen: ${response.data.transcription}\n\nAI: ${response.data.aiResponse}`);
-          await aiService.textToSpeech(response.data.aiResponse);
+          const audioUrl = await aiService.textToSpeech(response.data.aiResponse);
+          
+          // AudioUrl'i sendAudio'ya gönder
+          if (audioUrl && aiState.conversation.conversation_id) {
+            console.log('📤 [AIDetailVideoView] TTS audioUrl sendAudio\'ya gönderiliyor:', audioUrl);
+            dispatch(sendAudio({
+              conversation_id: aiState.conversation.conversation_id,
+              audio: audioUrl,
+            }) as any);
+          }
         } else {
           Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
           setConversationText('');
@@ -122,7 +136,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         const response = await aiService.sendTextToAI(conversationText);
         if (response.success && response.data) {
           setConversationText((prev: string) => prev + `\n\nAI: ${response.data!.aiResponse}`);
-          await aiService.textToSpeech(response.data!.aiResponse);
+          const audioUrl = await aiService.textToSpeech(response.data!.aiResponse);
+          
+          // AudioUrl'i sendAudio'ya gönder
+          if (audioUrl && aiState.conversation.conversation_id) {
+            console.log('📤 [AIDetailVideoView] TTS audioUrl sendAudio\'ya gönderiliyor:', audioUrl);
+            dispatch(sendAudio({
+              conversation_id: aiState.conversation.conversation_id,
+              audio: audioUrl,
+            }) as any);
+          }
         } else {
           Alert.alert('Hata', response.message || 'Metin işlenirken hata oluştu');
         }
@@ -357,26 +380,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         </View>
       </SafeAreaView>
       
-      {/* Content Area */}
-      <ScrollView 
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {conversationText ? (
-          <View style={styles.conversationContainer}>
-            <ReusableText
-              text={conversationText}
-              family="regular"
-              size={16}
-              color={Colors.lightWhite}
-              style={styles.conversationText}
-            />
-          </View>
-        ) : null}
-        
-        <View style={styles.spacer} />
-      </ScrollView>
+
       
       {/* Bottom Area - Control Buttons */}
       <Animated.View style={[

@@ -37,6 +37,7 @@ export const getToken = createAsyncThunk(
   "ai/getToken",
   async (_, thunkAPI) => {
     try {
+      console.log("🔑 [aiActions] getToken: Token alınıyor...");
       const formData = new FormData();
       formData.append("password", aiPassword);
 
@@ -50,11 +51,14 @@ export const getToken = createAsyncThunk(
         }
       );
 
+      console.log("✅ [aiActions] getToken: Token alındı:", data.access_token.substring(0, 20) + "...");
+
       // Store token in AsyncStorage as aiToken
       await AsyncStorage.setItem("aiToken", data.access_token);
 
       return data;
     } catch (error: any) {
+      console.error("❌ [aiActions] getToken: Hata:", error.response?.data?.message || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Failed to get token"
       );
@@ -67,15 +71,18 @@ export const startConversation = createAsyncThunk(
   "ai/startConversation",
   async ({ avatar_id }: StartConversationPayload, thunkAPI) => {
     try {
+      console.log("💬 [aiActions] startConversation: Konuşma başlatılıyor, avatar_id:", avatar_id);
       // Get token from AsyncStorage or fetch new one
       let token = await AsyncStorage.getItem("aiToken");
       
       if (!token) {
+        console.log("⚠️ [aiActions] startConversation: Token bulunamadı, yeni token alınıyor...");
         // If no token, get a new one first
         const tokenResult = await thunkAPI.dispatch(getToken());
         if (getToken.fulfilled.match(tokenResult)) {
           token = tokenResult.payload.access_token;
         } else {
+          console.error("❌ [aiActions] startConversation: Token alınamadı");
           return thunkAPI.rejectWithValue("Failed to get authentication token");
         }
       }
@@ -91,10 +98,19 @@ export const startConversation = createAsyncThunk(
         }
       );
 
+      console.log("✅ [aiActions] startConversation: Konuşma başlatıldı:", {
+        conversation_id: data.conversation_id,
+        web_stream_url: data.web_stream_url,
+        avatar_id: data.avatar_id,
+        status: data.status,
+      });
+
       return data;
     } catch (error: any) {
+      console.error("❌ [aiActions] startConversation: Hata:", error.response?.data?.message || error.message);
       // If token is invalid, try to get a new one and retry
       if (error.response?.status === 401) {
+        console.log("🔄 [aiActions] startConversation: Token geçersiz, yeniden deneniyor...");
         await AsyncStorage.removeItem("aiToken");
         const tokenResult = await thunkAPI.dispatch(getToken());
         if (getToken.fulfilled.match(tokenResult)) {
@@ -110,8 +126,13 @@ export const startConversation = createAsyncThunk(
                 },
               }
             );
+            console.log("✅ [aiActions] startConversation: Retry başarılı:", {
+              conversation_id: data.conversation_id,
+              web_stream_url: data.web_stream_url,
+            });
             return data;
           } catch (retryError: any) {
+            console.error("❌ [aiActions] startConversation: Retry hatası:", retryError.response?.data?.message || retryError.message);
             return thunkAPI.rejectWithValue(
               retryError.response?.data?.message || retryError.message || "Failed to start conversation"
             );
@@ -130,15 +151,21 @@ export const sendAudio = createAsyncThunk(
   "ai/sendAudio",
   async ({ conversation_id, audio }: SendAudioPayload, thunkAPI) => {
     try {
+      console.log("🎵 [aiActions] sendAudio: Ses gönderiliyor...", {
+        conversation_id,
+        audio: typeof audio === "string" ? audio.substring(0, 50) + "..." : "File object",
+      });
       // Get token from AsyncStorage or fetch new one
       let token = await AsyncStorage.getItem("aiToken");
       
       if (!token) {
+        console.log("⚠️ [aiActions] sendAudio: Token bulunamadı, yeni token alınıyor...");
         // If no token, get a new one first
         const tokenResult = await thunkAPI.dispatch(getToken());
         if (getToken.fulfilled.match(tokenResult)) {
           token = tokenResult.payload.access_token;
         } else {
+          console.error("❌ [aiActions] sendAudio: Token alınamadı");
           return thunkAPI.rejectWithValue("Failed to get authentication token");
         }
       }
@@ -155,8 +182,10 @@ export const sendAudio = createAsyncThunk(
           type: "audio/mpeg", // Adjust type as needed
           name: "audio.mp3",
         } as any);
+        console.log("📎 [aiActions] sendAudio: Audio URI eklendi:", audio);
       } else {
         formData.append("audio", audio);
+        console.log("📎 [aiActions] sendAudio: Audio file object eklendi");
       }
 
       const { data } = await axios.post<SendAudioResponse>(
@@ -170,10 +199,19 @@ export const sendAudio = createAsyncThunk(
         }
       );
 
+      console.log("✅ [aiActions] sendAudio: Ses gönderildi, yanıt:", {
+        conversation_id: data.conversation_id,
+        status: data.status,
+        message: data.message,
+        has_speech: data.has_speech,
+      });
+
       return data;
     } catch (error: any) {
+      console.error("❌ [aiActions] sendAudio: Hata:", error.response?.data?.message || error.message);
       // If token is invalid, try to get a new one and retry
       if (error.response?.status === 401) {
+        console.log("🔄 [aiActions] sendAudio: Token geçersiz, yeniden deneniyor...");
         await AsyncStorage.removeItem("aiToken");
         const tokenResult = await thunkAPI.dispatch(getToken());
         if (getToken.fulfilled.match(tokenResult)) {
@@ -202,8 +240,13 @@ export const sendAudio = createAsyncThunk(
                 },
               }
             );
+            console.log("✅ [aiActions] sendAudio: Retry başarılı:", {
+              conversation_id: data.conversation_id,
+              status: data.status,
+            });
             return data;
           } catch (retryError: any) {
+            console.error("❌ [aiActions] sendAudio: Retry hatası:", retryError.response?.data?.message || retryError.message);
             return thunkAPI.rejectWithValue(
               retryError.response?.data?.message || retryError.message || "Failed to send audio"
             );

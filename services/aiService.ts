@@ -162,7 +162,7 @@ class AIService {
   }
 
   // AI yanıtını sese çevir
-  async textToSpeech(text: string): Promise<boolean> {
+  async textToSpeech(text: string): Promise<string | null> {
     try {
       console.log('🔊 Frontend: TTS isteği gönderiliyor:', text);
       
@@ -183,14 +183,15 @@ class AIService {
         // Ses dosyasını oynat
         await this.playAudioFromUrl(data.data.audioUrl);
         console.log('✅ Frontend: Ses oynatma tamamlandı');
-        return true;
+        // AudioUrl'i döndür
+        return data.data.audioUrl;
       }
       
       console.log('❌ Frontend: TTS başarısız');
-      return false;
+      return null;
     } catch (error) {
       console.error('❌ Frontend: TTS hatası:', error instanceof Error ? error.message : String(error));
-      return false;
+      return null;
     }
   }
 

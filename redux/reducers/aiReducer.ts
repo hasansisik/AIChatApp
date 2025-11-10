@@ -49,10 +49,16 @@ export const aiReducer = createReducer(initialState, (builder) => {
   builder
     // Get Token
     .addCase(getToken.pending, (state) => {
+      console.log("⏳ [aiReducer] getToken.pending");
       state.loading = true;
       state.error = null;
     })
     .addCase(getToken.fulfilled, (state, action) => {
+      console.log("✅ [aiReducer] getToken.fulfilled:", {
+        access_token: action.payload.access_token.substring(0, 20) + "...",
+        token_type: action.payload.token_type,
+        expires_in: action.payload.expires_in,
+      });
       state.loading = false;
       state.token = {
         access_token: action.payload.access_token,
@@ -62,15 +68,23 @@ export const aiReducer = createReducer(initialState, (builder) => {
       state.error = null;
     })
     .addCase(getToken.rejected, (state, action) => {
+      console.error("❌ [aiReducer] getToken.rejected:", action.payload);
       state.loading = false;
       state.error = action.payload as string | null;
     })
     // Start Conversation
     .addCase(startConversation.pending, (state) => {
+      console.log("⏳ [aiReducer] startConversation.pending");
       state.loading = true;
       state.error = null;
     })
     .addCase(startConversation.fulfilled, (state, action) => {
+      console.log("✅ [aiReducer] startConversation.fulfilled:", {
+        conversation_id: action.payload.conversation_id,
+        web_stream_url: action.payload.web_stream_url,
+        avatar_id: action.payload.avatar_id,
+        status: action.payload.status,
+      });
       state.loading = false;
       state.conversation = {
         conversation_id: action.payload.conversation_id,
@@ -81,15 +95,23 @@ export const aiReducer = createReducer(initialState, (builder) => {
       state.error = null;
     })
     .addCase(startConversation.rejected, (state, action) => {
+      console.error("❌ [aiReducer] startConversation.rejected:", action.payload);
       state.loading = false;
       state.error = action.payload as string | null;
     })
     // Send Audio
     .addCase(sendAudio.pending, (state) => {
+      console.log("⏳ [aiReducer] sendAudio.pending");
       state.loading = true;
       state.error = null;
     })
     .addCase(sendAudio.fulfilled, (state, action) => {
+      console.log("✅ [aiReducer] sendAudio.fulfilled:", {
+        conversation_id: action.payload.conversation_id,
+        status: action.payload.status,
+        message: action.payload.message,
+        has_speech: action.payload.has_speech,
+      });
       state.loading = false;
       state.audioResponse = {
         conversation_id: action.payload.conversation_id,
@@ -100,11 +122,13 @@ export const aiReducer = createReducer(initialState, (builder) => {
       state.error = null;
     })
     .addCase(sendAudio.rejected, (state, action) => {
+      console.error("❌ [aiReducer] sendAudio.rejected:", action.payload);
       state.loading = false;
       state.error = action.payload as string | null;
     })
     // Clear Error
     .addCase("ai/clearError", (state) => {
+      console.log("🧹 [aiReducer] clearError");
       state.error = null;
     });
 });
