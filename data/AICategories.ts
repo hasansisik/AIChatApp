@@ -6,6 +6,7 @@ export interface AICategory {
   image: string;
   isFavorite: boolean;
   description: string;
+  avatar_id: number;
 }
 
 export interface CategoryFilter {
@@ -32,6 +33,7 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-women1.png'),
     isFavorite: false,
     description: 'Ben Emma, eğitim konularında sana yardımcı olmak için buradayım. Öğrenme sürecinde yanında olacağım.',
+    avatar_id: 1,
   },
   {
     id: '2',
@@ -41,6 +43,7 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-men1.png'),
     isFavorite: true,
     description: 'Ben Alexander, iş konularında sana yardımcı olmak için buradayım. Kariyerinde yanında olacağım.',
+    avatar_id: 2,
   },
   {
     id: '3',
@@ -50,6 +53,7 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-women2.png'),
     isFavorite: false,
     description: 'Ben Sophia, yaşam tarzı konularında sana yardımcı olmak için buradayım. Hayatında yanında olacağım.',
+    avatar_id: 3,
   },
   {
     id: '4',
@@ -59,6 +63,7 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-men2.png'),
     isFavorite: true,
     description: 'Ben James, eğitim konularında sana yardımcı olmak için buradayım. Öğrenme yolculuğunda yanında olacağım.',
+    avatar_id: 4,
   },
   {
     id: '5',
@@ -68,6 +73,7 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-women3.png'),
     isFavorite: false,
     description: 'Ben Isabella, iş konularında sana yardımcı olmak için buradayım. Profesyonel hayatında yanında olacağım.',
+    avatar_id: 5,
   },
   {
     id: '6',
@@ -77,5 +83,6 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-men3.png'),
     isFavorite: false,
     description: 'Ben Michael, yaşam tarzı konularında sana yardımcı olmak için buradayım. Günlük hayatında yanında olacağım.',
+    avatar_id: 6,
   },
 ];

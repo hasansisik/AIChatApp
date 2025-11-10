@@ -5,6 +5,7 @@ import { Colors, useTheme } from "@/hooks/useThemeColor";
 import { StyleSheet, Image, View, Text, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from "react-redux";
+import { useRouter } from "expo-router";
 import Home from "@/app/(tabs)/home";
 import List from "@/app/(tabs)/list";
 import Profile from "./profile";
@@ -26,6 +27,7 @@ const TabNavigation = () => {
   const { isDark } = useTheme();
   const { user } = useSelector((state: any) => state.user);
   const dispatch = useDispatch();
+  const router = useRouter();
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [courseCode, setCourseCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -263,7 +265,7 @@ const TabNavigation = () => {
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            setChatBotVisible(true);
+            router.push('/example');
           },
         }}
         options={{
