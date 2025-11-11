@@ -521,3 +521,84 @@ export const getConversations = createAsyncThunk(
   }
 );
 
+// 6. Set Typing (set-typing - kullanıcının yazıyor durumunu ayarlar)
+interface SetTypingPayload {
+  conversation_id: string;
+  user_id: string;
+  is_typing: boolean; // true = yazıyor, false = yazmıyor
+}
+
+export const setTyping = createAsyncThunk(
+  "dialogfusion/setTyping",
+  async ({ conversation_id, user_id, is_typing }: SetTypingPayload, thunkAPI) => {
+    try {
+      console.log("⌨️ [dialogfusionActions] setTyping: Typing durumu ayarlanıyor...", {
+        conversation_id,
+        user_id,
+        is_typing,
+      });
+
+      const { data } = await axios.post(
+        DIALOGFUSION_API_URL,
+        {
+          token: DIALOGFUSION_TOKEN,
+          function: "set-typing",
+          conversation_id,
+          user_id,
+          is_typing: is_typing ? 1 : 0, // API boolean yerine 1/0 bekliyor olabilir
+        }
+      );
+
+      if (!data.success) {
+        console.warn("⚠️ [dialogfusionActions] setTyping: Başarısız, devam ediliyor...");
+        // Typing durumu kritik değil, hata olsa bile devam et
+      }
+
+      return { conversation_id, user_id, is_typing };
+    } catch (error: any) {
+      console.warn("⚠️ [dialogfusionActions] setTyping: Hata (devam ediliyor):", error.response?.data || error.message);
+      // Typing durumu kritik değil, hata olsa bile devam et
+      return { conversation_id, user_id, is_typing };
+    }
+  }
+);
+
+// 7. Check Agent Typing (is-agent-typing - agent'ın yazıyor olup olmadığını kontrol eder)
+interface CheckAgentTypingPayload {
+  conversation_id: string;
+}
+
+interface CheckAgentTypingResponse {
+  success: boolean;
+  response: boolean | number; // true/false veya 1/0
+}
+
+export const checkAgentTyping = createAsyncThunk(
+  "dialogfusion/checkAgentTyping",
+  async ({ conversation_id }: CheckAgentTypingPayload, thunkAPI) => {
+    try {
+      const { data } = await axios.post<CheckAgentTypingResponse>(
+        DIALOGFUSION_API_URL,
+        {
+          token: DIALOGFUSION_TOKEN,
+          function: "is-agent-typing",
+          conversation_id,
+        }
+      );
+
+      if (!data.success) {
+        return thunkAPI.rejectWithValue("Agent typing durumu kontrol edilemedi");
+      }
+
+      // Response boolean veya number (1/0) olabilir
+      const isTyping = data.response === true || data.response === 1;
+
+      return { conversation_id, is_typing: isTyping };
+    } catch (error: any) {
+      console.warn("⚠️ [dialogfusionActions] checkAgentTyping: Hata (devam ediliyor):", error.response?.data || error.message);
+      // Typing durumu kritik değil, hata olsa bile devam et
+      return { conversation_id, is_typing: false };
+    }
+  }
+);
+

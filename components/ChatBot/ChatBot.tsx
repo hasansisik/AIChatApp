@@ -26,6 +26,8 @@ import {
   getMessages,
   getNewMessages,
   getConversations,
+  setTyping,
+  checkAgentTyping,
 } from '@/redux/actions/dialogfusionActions';
 
 interface Message {
@@ -59,6 +61,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
   const [showConversationList, setShowConversationList] = useState(true); // Conversation listesi gösterilsin mi?
   const scrollViewRef = useRef<ScrollView>(null);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const agentTypingCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const getCurrentTime = () => {
     const now = new Date();
@@ -89,9 +93,28 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (agentTypingCheckIntervalRef.current) {
+        clearInterval(agentTypingCheckIntervalRef.current);
+        agentTypingCheckIntervalRef.current = null;
+      }
       setShowConversationList(true); // Reset
       setInputText(''); // Input'u temizle
       setIsProcessing(false); // Processing state'ini sıfırla
+      
+      // Typing durumunu false yap
+      if (currentConversation.conversation_id && visitor.user_id) {
+        dispatch<any>(
+          setTyping({
+            conversation_id: currentConversation.conversation_id,
+            user_id: visitor.user_id,
+            is_typing: false,
+          })
+        );
+      }
     }
   }, [visible, user]);
 
@@ -129,6 +152,14 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                   datetime: lastMessageDateTime,
                 })
               );
+              
+              // Agent typing durumunu kontrol et
+              const agentTypingResult = await dispatch<any>(
+                checkAgentTyping({ conversation_id: currentConvId })
+              );
+              if (checkAgentTyping.fulfilled.match(agentTypingResult)) {
+                setBotStatus(agentTypingResult.payload.is_typing ? 'typing' : 'online');
+              }
             }
           } else {
             // Eğer mesaj yoksa tüm mesajları getir
@@ -143,6 +174,18 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
       // İlk kontrolü hemen yap, sonra polling başlat
       startPolling();
+      
+      // Agent typing durumunu kontrol et (her 2 saniyede bir)
+      agentTypingCheckIntervalRef.current = setInterval(async () => {
+        if (currentConversation.conversation_id) {
+          const agentTypingResult = await dispatch<any>(
+            checkAgentTyping({ conversation_id: currentConversation.conversation_id })
+          );
+          if (checkAgentTyping.fulfilled.match(agentTypingResult)) {
+            setBotStatus(agentTypingResult.payload.is_typing ? 'typing' : 'online');
+          }
+        }
+      }, 2000);
     }
 
     // Cleanup
@@ -150,6 +193,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
+      }
+      if (agentTypingCheckIntervalRef.current) {
+        clearInterval(agentTypingCheckIntervalRef.current);
+        agentTypingCheckIntervalRef.current = null;
       }
     };
   }, [visible, currentConversation.conversation_id, isInitializing]);
@@ -173,8 +220,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
   const initializeDialogFusion = async () => {
     if (!user || !user.email) {
       Alert.alert('Hata', 'Kullanıcı bilgileri bulunamadı');
-      return;
-    }
+        return;
+      }
 
     setIsInitializing(true);
 
@@ -231,7 +278,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
             // Mesajları getir ve chat ekranına geç
             await dispatch<any>(getMessages({ conversation_id: conversationId }));
             setShowConversationList(false); // Chat ekranını göster
-          } else {
+    } else {
             throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
           }
         } else {
@@ -252,7 +299,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           const conversationId = conversationResult.payload.conversation_id;
           await dispatch<any>(getMessages({ conversation_id: conversationId }));
           setShowConversationList(false);
-        } else {
+      } else {
           throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
         }
       }
@@ -276,8 +323,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
     const messageText = inputText.trim();
     setInputText('');
-    setIsProcessing(true);
-    setBotStatus('typing');
+      setIsProcessing(true);
+      setBotStatus('typing');
 
     try {
       // Mesajı gönder
@@ -290,6 +337,23 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       );
 
       if (sendMessage.fulfilled.match(sendResult)) {
+        // Typing durumunu false yap (mesaj gönderildi)
+        if (currentConversation.conversation_id && visitor.user_id) {
+          dispatch<any>(
+            setTyping({
+              conversation_id: currentConversation.conversation_id,
+              user_id: visitor.user_id,
+              is_typing: false,
+            })
+          );
+        }
+        
+        // Typing timeout'unu temizle
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
+        }
+        
         // Mesaj gönderildi, hemen yeni mesajları kontrol et
         // Polling zaten çalışıyor ama hemen kontrol edelim
         setTimeout(async () => {
@@ -443,10 +507,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         return 'Dün';
       } else if (diffDays <= 7) {
         return `${diffDays} gün önce`;
-      } else {
+        } else {
         return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
-      }
-    } catch (error) {
+        }
+      } catch (error) {
       console.warn('⚠️ [ChatBot] Tarih formatlama hatası:', dateString, error);
       return '';
     }
@@ -486,7 +550,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                   <MaterialCommunityIcons 
                     name={showConversationList ? "message-text" : "robot"} 
                     size={24} 
-                    color={Colors.lightGray} 
+                    color={Colors.purple} 
                   />
                 </View>
                 {!showConversationList && botStatus === 'online' && (
@@ -502,27 +566,27 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                 />
                 {!showConversationList && (
                   botStatus === 'typing' ? (
-                    <ReusableText
-                      text="Yazıyor..."
-                      family="regular"
-                      size={FontSizes.xSmall}
-                      color={Colors.white}
-                    />
-                  ) : (
-                    <ReusableText
-                      text="İnternet üzerinden"
-                      family="regular"
-                      size={FontSizes.xSmall}
-                      color={Colors.white}
-                    />
+                  <ReusableText
+                    text="Yazıyor..."
+                    family="regular"
+                    size={FontSizes.xSmall}
+                    color={Colors.white}
+                  />
+                ) : (
+                  <ReusableText
+                    text="İnternet üzerinden"
+                    family="regular"
+                    size={FontSizes.xSmall}
+                    color={Colors.white}
+                  />
                   )
                 )}
               </View>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={28} color={Colors.white} />
-              </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color={Colors.white} />
+            </TouchableOpacity>
             </View>
           </LinearGradient>
 
@@ -622,12 +686,12 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
           {/* Chat Area */}
           {!showConversationList && (
-            <ScrollView
-              ref={scrollViewRef}
-              style={styles.chatArea}
-              contentContainerStyle={styles.chatContent}
-              showsVerticalScrollIndicator={false}
-            >
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.chatArea}
+            contentContainerStyle={styles.chatContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Loading State */}
             {isInitializing && (
               <View style={styles.loadingContainer}>
@@ -644,14 +708,14 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
             {/* Date Separator */}
             {!isInitializing && (
-              <View style={styles.dateSeparator}>
-                <ReusableText
-                  text={getTodayLabel()}
-                  family="regular"
-                  size={FontSizes.small}
-                  color={Colors.description}
-                />
-              </View>
+            <View style={styles.dateSeparator}>
+              <ReusableText
+                text={getTodayLabel()}
+                family="regular"
+                size={FontSizes.small}
+                color={Colors.description}
+              />
+            </View>
             )}
 
             {/* Messages */}
@@ -719,13 +783,45 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
           {/* Input Area - Sadece chat ekranında göster */}
           {!showConversationList && (
-            <View style={styles.inputContainer}>
+          <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
               placeholder="Bir mesaj yaz..."
               placeholderTextColor={Colors.description}
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={(text) => {
+                setInputText(text);
+                
+                // Kullanıcı yazıyor durumunu gönder
+                if (currentConversation.conversation_id && visitor.user_id) {
+                  // Önceki timeout'u temizle
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
+                  
+                  // Typing durumunu gönder
+                  dispatch<any>(
+                    setTyping({
+                      conversation_id: currentConversation.conversation_id,
+                      user_id: visitor.user_id,
+                      is_typing: true,
+                    })
+                  );
+                  
+                  // 3 saniye sonra typing durumunu false yap (kullanıcı yazmayı bıraktı)
+                  typingTimeoutRef.current = setTimeout(() => {
+                    if (currentConversation.conversation_id && visitor.user_id) {
+                      dispatch<any>(
+                        setTyping({
+                          conversation_id: currentConversation.conversation_id,
+                          user_id: visitor.user_id,
+                          is_typing: false,
+                        })
+                      );
+                    }
+                  }, 3000);
+                }
+              }}
               multiline
               maxLength={500}
               editable={!isProcessing && !isInitializing}
@@ -746,7 +842,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
           {/* Footer Branding */}
           {!showConversationList && (
-            <View style={styles.footer}>
+          <View style={styles.footer}>
             <ReusableText
               text="dialogfusion"
               family="regular"
