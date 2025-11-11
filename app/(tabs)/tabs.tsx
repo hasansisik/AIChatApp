@@ -265,7 +265,7 @@ const TabNavigation = () => {
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            router.push('/example');
+            setChatBotVisible(true);
           },
         }}
         options={{
