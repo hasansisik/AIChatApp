@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Modal,
   TextInput,
@@ -11,7 +10,6 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -19,17 +17,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/hooks/useThemeColor';
 import { FontSizes } from '@/constants/Fonts';
 import ReusableText from '@/components/ui/ReusableText';
-import aiService from '@/services/aiService';
-import * as ImagePicker from 'expo-image-picker';
-import { Audio } from 'expo-av';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/redux/store';
+import {
+  createVisitor,
+  createConversation,
+  sendMessage,
+  getMessages,
+  getNewMessages,
+  getConversations,
+} from '@/redux/actions/dialogfusionActions';
 
 interface Message {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: string;
-  imageUri?: string;
-  audioUri?: string;
 }
 
 interface ChatBotProps {
@@ -38,43 +41,24 @@ interface ChatBotProps {
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const dispatch = useDispatch();
+  const { user } = useSelector((state: RootState) => state.user);
+  const {
+    visitor,
+    currentConversation,
+    messages: dialogfusionMessages,
+    conversations,
+    loading: dialogfusionLoading,
+    error: dialogfusionError,
+  } = useSelector((state: RootState) => state.dialogfusion);
+
   const [inputText, setInputText] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [botStatus, setBotStatus] = useState<'online' | 'typing'>('online');
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [showConversationList, setShowConversationList] = useState(true); // Conversation listesi gösterilsin mi?
   const scrollViewRef = useRef<ScrollView>(null);
-  const recordingRef = useRef<Audio.Recording | null>(null);
-
-  useEffect(() => {
-    // İzinleri iste
-    (async () => {
-      if (Platform.OS !== 'web') {
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-        await ImagePicker.requestCameraPermissionsAsync();
-        await Audio.requestPermissionsAsync();
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (visible && messages.length === 0) {
-      // İlk açılışta hoş geldin mesajı
-      const welcomeMessage: Message = {
-        id: '1',
-        text: 'Merhaba! Size nasıl yardımcı olabilirim? Projectxwire uygulaması veya hizmetleri hakkında herhangi bir sorunuz varsa, memnuniyetle yanıtlarım.',
-        isUser: false,
-        timestamp: getCurrentTime(),
-      };
-      setMessages([welcomeMessage]);
-    }
-  }, [visible]);
-
-  useEffect(() => {
-    // Mesajlar değiştiğinde scroll'u en alta kaydır
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const getCurrentTime = () => {
     const now = new Date();
@@ -83,223 +67,259 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
     return `${hours}:${minutes}`;
   };
 
-  const handleSendText = async () => {
-    // Görsel seçildiyse text olmadan gönderilmesin
-    if (selectedImage && !inputText.trim()) {
-      Alert.alert('Uyarı', 'Görsel göndermek için lütfen bir mesaj yazın');
+  // DialogFusion mesajlarını local Message formatına dönüştür
+  const messages: Message[] = dialogfusionMessages.map((msg) => {
+    const isUser = msg.user_id === visitor.user_id;
+    return {
+      id: msg.id,
+      text: msg.message,
+      isUser,
+      timestamp: getCurrentTime(), // API'den timestamp gelmiyorsa şimdilik current time kullanıyoruz
+    };
+  });
+
+  // Modal açıldığında initialization
+  useEffect(() => {
+    if (visible && user) {
+      setShowConversationList(true); // Modal açıldığında conversation listesini göster
+      initializeDialogFusion();
+    } else if (!visible) {
+      // Modal kapandığında polling'i durdur ve state'i temizle
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      setShowConversationList(true); // Reset
+      setInputText(''); // Input'u temizle
+      setIsProcessing(false); // Processing state'ini sıfırla
+    }
+  }, [visible, user]);
+
+  // Polling: Yeni mesajları kontrol et (modal açıkken ve conversation varsa)
+  useEffect(() => {
+    // Önce mevcut polling'i temizle
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
+    if (visible && currentConversation.conversation_id && !isInitializing) {
+      // Polling başlat (her 2 saniyede bir kontrol et)
+      const startPolling = () => {
+        pollingIntervalRef.current = setInterval(async () => {
+          const currentConvId = currentConversation.conversation_id;
+          if (!currentConvId) return;
+
+          // Redux state'inden güncel mesajları al
+          const currentMessages = dialogfusionMessages;
+          
+          if (currentMessages.length > 0) {
+            // Son mesaj ID'sini ve datetime'ını al
+            const lastMessage = currentMessages[currentMessages.length - 1];
+            const lastMessageId = lastMessage?.id;
+            const lastMessageDateTime = (lastMessage as any)?.creation_time;
+            
+            // Yeni mesajları kontrol et
+            if (visitor.user_id) {
+              await dispatch<any>(
+                getNewMessages({
+                  conversation_id: currentConvId,
+                  user_id: visitor.user_id,
+                  last_message_id: lastMessageId,
+                  datetime: lastMessageDateTime,
+                })
+              );
+            }
+          } else {
+            // Eğer mesaj yoksa tüm mesajları getir
+            await dispatch<any>(
+              getMessages({
+                conversation_id: currentConvId,
+              })
+            );
+          }
+        }, 2000); // 2 saniyede bir kontrol et
+      };
+
+      // İlk kontrolü hemen yap, sonra polling başlat
+      startPolling();
+    }
+
+    // Cleanup
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [visible, currentConversation.conversation_id, isInitializing]);
+
+  // Mesajlar değiştiğinde scroll
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages.length]);
+
+  // Hata durumunda alert göster
+  useEffect(() => {
+    if (dialogfusionError) {
+      Alert.alert('Hata', dialogfusionError);
+    }
+  }, [dialogfusionError]);
+
+  const initializeDialogFusion = async () => {
+    if (!user || !user.email) {
+      Alert.alert('Hata', 'Kullanıcı bilgileri bulunamadı');
       return;
     }
+
+    setIsInitializing(true);
+
+    try {
+      // 1. Visitor oluştur veya mevcut visitor'ı kullan
+      let userId: string | null = visitor.user_id;
+
+      if (!userId) {
+        const visitorResult = await dispatch<any>(
+          createVisitor({
+            first_name: user.name || 'Kullanıcı',
+            last_name: user.surname || '',
+            email: user.email,
+            source: 'web',
+          })
+        );
+
+        if (createVisitor.fulfilled.match(visitorResult)) {
+          userId = visitorResult.payload.user_id?.toString() || null;
+          if (!userId) {
+            throw new Error('Kullanıcı ID alınamadı');
+          }
+        } else {
+          throw new Error(visitorResult.payload || 'Ziyaretçi oluşturulamadı');
+        }
+      }
+
+      if (!userId) {
+        throw new Error('Kullanıcı ID alınamadı');
+      }
+
+      // 2. Konuşmaları getir
+      const conversationsResult = await dispatch<any>(
+        getConversations({ user_id: userId })
+      );
+
+      // Konuşmaları getirdikten sonra listeyi göster
+      // Kullanıcı seçim yapacak veya yeni oluşturacak
+      if (getConversations.fulfilled.match(conversationsResult)) {
+        const convs = conversationsResult.payload.conversations;
+        
+        // Eğer konuşma yoksa direkt yeni oluştur ve chat ekranına geç
+        if (!convs || convs.length === 0) {
+          const conversationResult = await dispatch<any>(
+            createConversation({
+              user_id: userId,
+              subject: 'Misafir Desteği',
+              source: 'web',
+            })
+          );
+
+          if (createConversation.fulfilled.match(conversationResult)) {
+            const conversationId = conversationResult.payload.conversation_id;
+            // Mesajları getir ve chat ekranına geç
+            await dispatch<any>(getMessages({ conversation_id: conversationId }));
+            setShowConversationList(false); // Chat ekranını göster
+          } else {
+            throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
+          }
+        } else {
+          // Konuşma varsa listeyi göster, kullanıcı seçim yapacak
+          setShowConversationList(true);
+        }
+      } else {
+        // Hata durumunda yeni konuşma oluştur
+        const conversationResult = await dispatch<any>(
+          createConversation({
+            user_id: userId,
+            subject: 'Misafir Desteği',
+            source: 'web',
+          })
+        );
+
+        if (createConversation.fulfilled.match(conversationResult)) {
+          const conversationId = conversationResult.payload.conversation_id;
+          await dispatch<any>(getMessages({ conversation_id: conversationId }));
+          setShowConversationList(false);
+        } else {
+          throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
+        }
+      }
+    } catch (error: any) {
+      console.error('DialogFusion initialization error:', error);
+      Alert.alert('Hata', error.message || 'Başlatma sırasında hata oluştu');
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+
+  const handleSendText = async () => {
     if (!inputText.trim() || isProcessing) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      isUser: true,
-      timestamp: getCurrentTime(),
-      imageUri: selectedImage || undefined,
-    };
+    // Gerekli bilgileri kontrol et
+    if (!visitor.user_id || !currentConversation.conversation_id) {
+      Alert.alert('Hata', 'Lütfen bekleyin, bağlantı kuruluyor...');
+      return;
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
+    const messageText = inputText.trim();
     setInputText('');
-    setSelectedImage(null);
     setIsProcessing(true);
     setBotStatus('typing');
 
     try {
-      const response = await aiService.sendTextToAI(userMessage.text || 'Görsel gönderildi');
-      
-      if (response.success && response.data?.aiResponse) {
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: response.data.aiResponse,
-          isUser: false,
-          timestamp: getCurrentTime(),
-        };
-        setMessages((prev) => [...prev, botMessage]);
+      // Mesajı gönder
+      const sendResult = await dispatch<any>(
+        sendMessage({
+          conversation_id: currentConversation.conversation_id,
+          user_id: visitor.user_id,
+          message: messageText,
+        })
+      );
+
+      if (sendMessage.fulfilled.match(sendResult)) {
+        // Mesaj gönderildi, hemen yeni mesajları kontrol et
+        // Polling zaten çalışıyor ama hemen kontrol edelim
+        setTimeout(async () => {
+          if (currentConversation.conversation_id && visitor.user_id) {
+            const lastMessage = dialogfusionMessages.length > 0 
+              ? dialogfusionMessages[dialogfusionMessages.length - 1] 
+              : undefined;
+            const lastMessageId = lastMessage?.id;
+            const lastMessageDateTime = (lastMessage as any)?.creation_time;
+            
+            await dispatch<any>(
+              getNewMessages({
+                conversation_id: currentConversation.conversation_id,
+                user_id: visitor.user_id,
+                last_message_id: lastMessageId,
+                datetime: lastMessageDateTime,
+              })
+            );
+          }
+          setBotStatus('online');
+        }, 500); // 500ms sonra kontrol et
       } else {
-        Alert.alert('Hata', response.message || 'Mesaj gönderilirken hata oluştu');
+        throw new Error(sendResult.payload || 'Mesaj gönderilemedi');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Mesaj gönderme hatası:', error);
-      Alert.alert('Hata', 'Mesaj gönderilirken hata oluştu');
+      Alert.alert('Hata', error.message || 'Mesaj gönderilirken hata oluştu');
+      setBotStatus('online');
     } finally {
       setIsProcessing(false);
-      setBotStatus('online');
-    }
-  };
-
-  // Görsel seçme
-  const handleImagePicker = async () => {
-    try {
-      Alert.alert(
-        'Görsel Seç',
-        'Görsel seçmek için bir seçenek seçin',
-        [
-          {
-            text: 'Galeri',
-            onPress: async () => {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets[0]) {
-                setSelectedImage(result.assets[0].uri);
-              }
-            },
-          },
-          {
-            text: 'Kamera',
-            onPress: async () => {
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets[0]) {
-                setSelectedImage(result.assets[0].uri);
-              }
-            },
-          },
-          {
-            text: 'İptal',
-            style: 'cancel',
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Görsel seçme hatası:', error);
-      Alert.alert('Hata', 'Görsel seçilemedi');
-    }
-  };
-
-  // Ses kaydetme (AI'dan bağımsız)
-  const handleVoicePress = async () => {
-    if (isRecording) {
-      await stopRecordingOnly();
-    } else {
-      await startRecordingOnly();
-    }
-  };
-
-  const startRecordingOnly = async () => {
-    try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Hata', 'Mikrofon izni gerekli!');
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      recordingRef.current = recording;
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Kayıt başlatma hatası:', error);
-      Alert.alert('Hata', 'Kayıt başlatılamadı');
-    }
-  };
-
-  const stopRecordingOnly = async () => {
-    try {
-      if (!recordingRef.current) {
-        return;
-      }
-
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
-      setIsRecording(false);
-
-      if (uri) {
-        const audioMessage: Message = {
-          id: Date.now().toString(),
-          text: '',
-          isUser: true,
-          timestamp: getCurrentTime(),
-          audioUri: uri,
-        };
-        setMessages((prev) => [...prev, audioMessage]);
-      }
-    } catch (error) {
-      console.error('Kayıt durdurma hatası:', error);
-      Alert.alert('Hata', 'Kayıt durdurulamadı');
-      setIsRecording(false);
-    }
-  };
-
-  // AI ile ses kaydetme (mevcut fonksiyon)
-  const handleAIVoicePress = async () => {
-    if (isRecording) {
-      await stopRecordingAI();
-    } else {
-      await startRecordingAI();
-    }
-  };
-
-  const startRecordingAI = async () => {
-    try {
-      const success = await aiService.startRecording();
-      if (success) {
-        setIsRecording(true);
-      } else {
-        Alert.alert('Hata', 'Kayıt başlatılamadı');
-      }
-    } catch (error) {
-      console.error('Kayıt başlatma hatası:', error);
-      Alert.alert('Hata', 'Kayıt başlatılamadı');
-    }
-  };
-
-  const stopRecordingAI = async () => {
-    try {
-      setIsRecording(false);
-      setIsProcessing(true);
-      setBotStatus('typing');
-
-      const audioUri = await aiService.stopRecording();
-      if (audioUri) {
-        const response = await aiService.sendVoiceToAI(audioUri);
-        
-        if (response.success && response.data) {
-          // Kullanıcı mesajı (transcription)
-          const userMessage: Message = {
-            id: Date.now().toString(),
-            text: response.data.transcription,
-            isUser: true,
-            timestamp: getCurrentTime(),
-          };
-          
-          // Bot mesajı
-          const botMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            text: response.data.aiResponse,
-            isUser: false,
-            timestamp: getCurrentTime(),
-          };
-          
-          setMessages((prev) => [...prev, userMessage, botMessage]);
-        } else {
-          Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
-        }
-      } else {
-        Alert.alert('Hata', 'Ses kaydedilemedi');
-      }
-    } catch (error) {
-      console.error('Kayıt durdurma hatası:', error);
-      Alert.alert('Hata', 'Kayıt durdurulamadı');
-    } finally {
-      setIsProcessing(false);
-      setBotStatus('online');
     }
   };
 
@@ -315,106 +335,121 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
     return 'Bugün';
   };
 
-  // Ses oynatıcı component
-  const AudioPlayer = ({ uri }: { uri: string }) => {
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [duration, setDuration] = useState<number | null>(null);
-    const [position, setPosition] = useState<number | null>(null);
+  // Conversation seçildiğinde
+  const handleSelectConversation = async (conversationId: string) => {
+    if (!conversationId) {
+      Alert.alert('Hata', 'Geçersiz konuşma ID');
+      return;
+    }
 
-    useEffect(() => {
-      return () => {
-        if (sound) {
-          sound.unloadAsync();
-        }
-      };
-    }, [sound]);
+    setIsInitializing(true);
+    try {
+      console.log('🔍 [ChatBot] Conversation seçiliyor:', conversationId);
+      
+      // Conversation'ı seç
+      dispatch({
+        type: 'dialogfusion/selectConversation',
+        payload: {
+          conversation_id: String(conversationId),
+          user_id: visitor.user_id || null,
+        },
+      });
 
-    const loadSound = async () => {
-      try {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri },
-          { shouldPlay: false }
-        );
-        setSound(newSound);
-        
-        const status = await newSound.getStatusAsync();
-        if (status.isLoaded) {
-          setDuration(status.durationMillis || null);
-        }
+      // Kısa bir bekleme - reducer'ın state'i güncellemesi için
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-        newSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded) {
-            setIsPlaying(status.isPlaying);
-            setPosition(status.positionMillis);
-            if (status.didJustFinish) {
-              setIsPlaying(false);
-              setPosition(0);
-            }
-          }
-        });
-      } catch (error) {
-        console.error('Ses yükleme hatası:', error);
+      // Mesajları getir
+      await dispatch<any>(getMessages({ conversation_id: String(conversationId) }));
+      
+      // Chat ekranına geç
+      setShowConversationList(false);
+    } catch (error: any) {
+      console.error('Conversation seçme hatası:', error);
+      Alert.alert('Hata', error.message || 'Konuşma yüklenirken hata oluştu');
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  // Yeni conversation oluştur
+  const handleCreateNewConversation = async () => {
+    if (!visitor.user_id) {
+      Alert.alert('Hata', 'Kullanıcı bilgileri bulunamadı');
+      return;
+    }
+
+    setIsInitializing(true);
+    try {
+      const conversationResult = await dispatch<any>(
+        createConversation({
+          user_id: visitor.user_id,
+          subject: 'Misafir Desteği',
+          source: 'web',
+        })
+      );
+
+      if (createConversation.fulfilled.match(conversationResult)) {
+        const conversationId = conversationResult.payload.conversation_id;
+        // Mesajları getir ve chat ekranına geç
+        await dispatch<any>(getMessages({ conversation_id: conversationId }));
+        setShowConversationList(false);
+      } else {
+        throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
       }
-    };
+    } catch (error: any) {
+      console.error('Yeni conversation oluşturma hatası:', error);
+      Alert.alert('Hata', error.message || 'Konuşma oluşturulamadı');
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
-    useEffect(() => {
-      loadSound();
-    }, [uri]);
-
-    const playPause = async () => {
-      if (!sound) return;
-
-      try {
-        if (isPlaying) {
-          await sound.pauseAsync();
-        } else {
-          await sound.playAsync();
-        }
-      } catch (error) {
-        console.error('Ses oynatma hatası:', error);
+  // Tarih formatla
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    
+    try {
+      // API'den gelen format: "2025-11-11 16:29:23" veya "conversation_creation_time"
+      let date: Date;
+      
+      // Eğer "conversation_creation_time" formatındaysa
+      if (dateString.includes(' ')) {
+        // "YYYY-MM-DD HH:mm:ss" formatını parse et
+        const [datePart, timePart] = dateString.split(' ');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes, seconds] = timePart.split(':').map(Number);
+        date = new Date(year, month - 1, day, hours, minutes, seconds);
+      } else {
+        date = new Date(dateString);
       }
-    };
 
-    const formatTime = (millis: number | null) => {
-      if (!millis) return '0:00';
-      const totalSeconds = Math.floor(millis / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
+      // Invalid date kontrolü
+      if (isNaN(date.getTime())) {
+        console.warn('⚠️ [ChatBot] Invalid date:', dateString);
+        return '';
+      }
 
-    return (
-      <View style={styles.audioPlayer}>
-        <TouchableOpacity onPress={playPause} style={styles.playButton}>
-          <Ionicons
-            name={isPlaying ? 'pause' : 'play'}
-            size={20}
-            color={Colors.primary}
-          />
-        </TouchableOpacity>
-        <View style={styles.audioInfo}>
-          <View style={styles.audioProgressBar}>
-            <View
-              style={[
-                styles.audioProgress,
-                {
-                  width: duration && position
-                    ? `${(position / duration) * 100}%`
-                    : '0%',
-                },
-              ]}
-            />
-          </View>
-          <ReusableText
-            text={formatTime(position) + ' / ' + formatTime(duration)}
-            family="regular"
-            size={FontSizes.xxSmall}
-            color={Colors.description}
-          />
-        </View>
-      </View>
-    );
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Aynı gün mü kontrol et
+      const isToday = date.toDateString() === now.toDateString();
+      const isYesterday = date.toDateString() === new Date(now.getTime() - 24 * 60 * 60 * 1000).toDateString();
+
+      if (isToday) {
+        return 'Bugün';
+      } else if (isYesterday) {
+        return 'Dün';
+      } else if (diffDays <= 7) {
+        return `${diffDays} gün önce`;
+      } else {
+        return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+      }
+    } catch (error) {
+      console.warn('⚠️ [ChatBot] Tarih formatlama hatası:', dateString, error);
+      return '';
+    }
   };
 
   return (
@@ -438,62 +473,200 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
             end={{ x: 1, y: 0 }}
           >
             <View style={styles.headerLeft}>
+              {!showConversationList && (
+                <TouchableOpacity
+                  onPress={() => setShowConversationList(true)}
+                  style={styles.backButton}
+                >
+                  <Ionicons name="arrow-back" size={24} color={Colors.white} />
+                </TouchableOpacity>
+              )}
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>
-                  <MaterialCommunityIcons name="robot" size={24} color={Colors.lightGray} />
+                  <MaterialCommunityIcons 
+                    name={showConversationList ? "message-text" : "robot"} 
+                    size={24} 
+                    color={Colors.lightGray} 
+                  />
                 </View>
-                {botStatus === 'online' && (
+                {!showConversationList && botStatus === 'online' && (
                   <View style={styles.onlineIndicator} />
                 )}
               </View>
               <View style={styles.headerTextContainer}>
                 <ReusableText
-                  text="Bot"
+                  text={showConversationList ? "Sohbetler" : (currentConversation.subject || "Bot")}
                   family="bold"
                   size={FontSizes.medium}
                   color={Colors.white}
                 />
-                {botStatus === 'typing' ? (
-                  <ReusableText
-                    text="Yazıyor..."
-                    family="regular"
-                    size={FontSizes.xSmall}
-                    color={Colors.white}
-                  />
-                ) : (
-                  <ReusableText
-                    text="İnternet üzerinden"
-                    family="regular"
-                    size={FontSizes.xSmall}
-                    color={Colors.white}
-                  />
+                {!showConversationList && (
+                  botStatus === 'typing' ? (
+                    <ReusableText
+                      text="Yazıyor..."
+                      family="regular"
+                      size={FontSizes.xSmall}
+                      color={Colors.white}
+                    />
+                  ) : (
+                    <ReusableText
+                      text="İnternet üzerinden"
+                      family="regular"
+                      size={FontSizes.xSmall}
+                      color={Colors.white}
+                    />
+                  )
                 )}
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color={Colors.white} />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color={Colors.white} />
+              </TouchableOpacity>
+            </View>
           </LinearGradient>
 
-          {/* Chat Area */}
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.chatArea}
-            contentContainerStyle={styles.chatContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Date Separator */}
-            <View style={styles.dateSeparator}>
-              <ReusableText
-                text={getTodayLabel()}
-                family="regular"
-                size={FontSizes.small}
-                color={Colors.description}
-              />
+          {/* Conversation List Screen */}
+          {showConversationList && (
+            <View style={styles.conversationListContainer}>
+              <ScrollView
+                style={styles.conversationList}
+                contentContainerStyle={styles.conversationListContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Loading State */}
+                {isInitializing && conversations.length === 0 && (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <ReusableText
+                      text="Yükleniyor..."
+                      family="regular"
+                      size={FontSizes.small}
+                      color={Colors.description}
+                      style={styles.loadingText}
+                    />
+                  </View>
+                )}
+
+                {/* Yeni Conversation Butonu */}
+                <TouchableOpacity
+                  style={styles.newConversationButton}
+                  onPress={handleCreateNewConversation}
+                  disabled={isInitializing}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
+                  <ReusableText
+                    text="Yeni Sohbet Başlat"
+                    family="bold"
+                    size={FontSizes.medium}
+                    color={Colors.primary}
+                  />
+                </TouchableOpacity>
+
+                  {/* Conversation List */}
+                  {conversations.length > 0 && (
+                    <View key="conversation-list-wrapper">
+                      <View style={styles.conversationListHeader}>
+                        <ReusableText
+                          text="Geçmiş Sohbetler"
+                          family="bold"
+                          size={FontSizes.medium}
+                          color={Colors.black}
+                        />
+                      </View>
+
+                      {conversations.map((conv) => {
+                        const convId = conv.id || (conv as any).conversation_id || String((conv as any).id);
+                        if (!convId) {
+                          console.warn('⚠️ [ChatBot] Conversation ID bulunamadı:', conv);
+                          return null;
+                        }
+                        
+                        return (
+                          <TouchableOpacity
+                            key={convId}
+                            style={styles.conversationItem}
+                            onPress={() => handleSelectConversation(convId)}
+                            disabled={isInitializing}
+                          >
+                            <View style={styles.conversationItemContent}>
+                              <View style={styles.conversationItemLeft}>
+                                <View style={styles.conversationAvatar}>
+                                  <MaterialCommunityIcons name="message-text" size={20} color={Colors.primary} />
+                                </View>
+                                <View style={styles.conversationItemText}>
+                                  <ReusableText
+                                    text={(conv as any).title || conv.subject || 'Sohbet'}
+                                    family="bold"
+                                    size={FontSizes.small}
+                                    color={Colors.black}
+                                  />
+                                  <ReusableText
+                                    text={formatDate((conv as any).conversation_creation_time || conv.creation_time || '')}
+                                    family="regular"
+                                    size={FontSizes.xSmall}
+                                    color={Colors.description}
+                                  />
+                                </View>
+                              </View>
+                              <Ionicons name="chevron-forward" size={20} color={Colors.description} />
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+              </ScrollView>
             </View>
+          )}
+
+          {/* Chat Area */}
+          {!showConversationList && (
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.chatArea}
+              contentContainerStyle={styles.chatContent}
+              showsVerticalScrollIndicator={false}
+            >
+            {/* Loading State */}
+            {isInitializing && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <ReusableText
+                  text="Bağlanıyor..."
+                  family="regular"
+                  size={FontSizes.small}
+                  color={Colors.description}
+                  style={styles.loadingText}
+                />
+              </View>
+            )}
+
+            {/* Date Separator */}
+            {!isInitializing && (
+              <View style={styles.dateSeparator}>
+                <ReusableText
+                  text={getTodayLabel()}
+                  family="regular"
+                  size={FontSizes.small}
+                  color={Colors.description}
+                />
+              </View>
+            )}
 
             {/* Messages */}
-            {messages.map((message) => (
+            {!isInitializing && messages.length === 0 && (
+              <View style={styles.emptyState}>
+                <ReusableText
+                  text="Merhaba! Size nasıl yardımcı olabilirim?"
+                  family="regular"
+                  size={FontSizes.medium}
+                  color={Colors.description}
+                />
+              </View>
+            )}
+
+            {!isInitializing && messages.map((message) => (
               <View
                 key={message.id}
                 style={[
@@ -512,16 +685,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                     message.isUser ? styles.userBubble : styles.botBubble,
                   ]}
                 >
-                  {message.imageUri && (
-                    <Image
-                      source={{ uri: message.imageUri }}
-                      style={styles.messageImage}
-                      resizeMode="cover"
-                    />
-                  )}
-                  {message.audioUri && (
-                    <AudioPlayer uri={message.audioUri} />
-                  )}
                   {message.text && (
                     <ReusableText
                       text={message.text}
@@ -541,7 +704,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
               </View>
             ))}
 
-            {isProcessing && (
+            {!isInitializing && isProcessing && (
               <View style={styles.botMessageContainer}>
                 <View style={styles.botAvatar}>
                   <MaterialCommunityIcons name="robot" size={20} color={Colors.lightGray} />
@@ -552,26 +715,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
               </View>
             )}
           </ScrollView>
-
-          {/* Input Area */}
-          {selectedImage && (
-            <View style={styles.selectedImageWrapper}>
-              <View style={styles.selectedImageContainer}>
-                <Image
-                  source={{ uri: selectedImage }}
-                  style={styles.selectedImage}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => setSelectedImage(null)}
-                >
-                  <Ionicons name="close-circle" size={24} color={Colors.red} />
-                </TouchableOpacity>
-              </View>
-            </View>
           )}
-          <View style={styles.inputContainer}>
+
+          {/* Input Area - Sadece chat ekranında göster */}
+          {!showConversationList && (
+            <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
               placeholder="Bir mesaj yaz..."
@@ -580,41 +728,25 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
               onChangeText={setInputText}
               multiline
               maxLength={500}
-              editable={!isProcessing}
+              editable={!isProcessing && !isInitializing}
             />
             <View style={styles.inputIcons}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={handleImagePicker}
-                disabled={isProcessing}
-              >
-                <Ionicons name="attach" size={24} color={Colors.description} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.iconButton, isRecording && styles.recordingButton]}
-                onPress={handleVoicePress}
-                disabled={isProcessing}
-              >
-                {isRecording ? (
-                  <ActivityIndicator size="small" color={Colors.red} />
-                ) : (
-                  <Ionicons name="mic" size={24} color={Colors.description} />
-                )}
-              </TouchableOpacity>
               {inputText.trim() && (
                 <TouchableOpacity
                   style={styles.sendButton}
                   onPress={handleSendText}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isInitializing}
                 >
                   <Ionicons name="send" size={20} color={Colors.white} />
                 </TouchableOpacity>
               )}
             </View>
           </View>
+          )}
 
           {/* Footer Branding */}
-          <View style={styles.footer}>
+          {!showConversationList && (
+            <View style={styles.footer}>
             <ReusableText
               text="dialogfusion"
               family="regular"
@@ -622,6 +754,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
               color={Colors.description}
             />
           </View>
+          )}
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -673,6 +806,14 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     gap: 2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backButton: {
+    padding: 4,
   },
   closeButton: {
     padding: 4,
@@ -755,12 +896,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  iconButton: {
-    padding: 8,
-  },
-  recordingButton: {
-    opacity: 0.6,
-  },
   sendButton: {
     backgroundColor: Colors.primary,
     width: 36,
@@ -774,66 +909,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.white,
   },
-  messageImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 12,
-    marginBottom: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
   },
-  audioPlayer: {
+  loadingText: {
+    marginTop: 12,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  conversationListContainer: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  conversationList: {
+    flex: 1,
+  },
+  conversationListContent: {
+    padding: 16,
+  },
+  newConversationButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 24,
     gap: 12,
-    paddingVertical: 8,
-    minWidth: 250,
   },
-  playButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  conversationListHeader: {
+    marginBottom: 12,
+  },
+  conversationItem: {
     backgroundColor: Colors.backgroundBox,
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  conversationItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  conversationItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  conversationAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  audioInfo: {
+  conversationItemText: {
     flex: 1,
     gap: 4,
-    minWidth: 200,
-  },
-  audioProgressBar: {
-    height: 4,
-    backgroundColor: Colors.backgroundBox,
-    borderRadius: 2,
-    overflow: 'hidden',
-    width: '100%',
-    minWidth: 200,
-  },
-  audioProgress: {
-    height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  },
-  selectedImageWrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    backgroundColor: Colors.backgroundBox,
-  },
-  selectedImageContainer: {
-    position: 'relative',
-    alignSelf: 'flex-start',
-  },
-  selectedImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
   },
 });
 
