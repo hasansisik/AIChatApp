@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   listContainer: {
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   gridContainer: {
     flexDirection: 'row',

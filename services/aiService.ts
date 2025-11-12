@@ -187,9 +187,10 @@ class AIService {
   }
 
   // Ses dosyasını backend'e gönder ve AI yanıtı al
-  async sendVoiceToAI(audioUri: string): Promise<VoiceResponse> {
+  async sendVoiceToAI(audioUri: string, voice: string = 'alloy'): Promise<VoiceResponse> {
     try {
       console.log('📱 Frontend: Ses dosyası gönderiliyor:', audioUri);
+      console.log('📱 Frontend: Voice seçildi:', voice);
       
       // FormData oluştur
       const formData = new FormData();
@@ -200,6 +201,9 @@ class AIService {
         type: 'audio/m4a',
         name: 'audio.m4a',
       } as any);
+      
+      // Voice bilgisini ekle
+      formData.append('voice', voice);
 
       console.log('📱 Frontend: FormData oluşturuldu, backend\'e gönderiliyor...');
       console.log('📱 Frontend: API URL:', `${API_BASE_URL}/voice`);
@@ -238,16 +242,17 @@ class AIService {
   }
 
   // Metin gönder ve AI yanıtı al
-  async sendTextToAI(text: string): Promise<TextResponse> {
+  async sendTextToAI(text: string, voice: string = 'alloy'): Promise<TextResponse> {
     try {
       console.log('📝 Frontend: Metin gönderiliyor:', text);
+      console.log('📝 Frontend: Voice seçildi:', voice);
       
       const response = await fetch(`${API_BASE_URL}/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, voice: voice }),
       });
 
       console.log('📝 Frontend: Backend yanıtı alındı, status:', response.status);
@@ -265,16 +270,17 @@ class AIService {
   }
 
   // AI yanıtını sese çevir
-  async textToSpeech(text: string): Promise<string | null> {
+  async textToSpeech(text: string, voice: string = 'alloy'): Promise<string | null> {
     try {
       console.log('🔊 Frontend: TTS isteği gönderiliyor:', text);
+      console.log('🔊 Frontend: Voice seçildi:', voice);
       
       const response = await fetch(`${API_BASE_URL}/tts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, voice }),
       });
 
       console.log('🔊 Frontend: TTS yanıtı alındı, status:', response.status);

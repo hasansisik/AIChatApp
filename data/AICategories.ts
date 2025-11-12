@@ -7,6 +7,7 @@ export interface AICategory {
   isFavorite: boolean;
   description: string;
   avatar_id: number;
+  voice: string; // OpenAI TTS voice name
 }
 
 export interface CategoryFilter {
@@ -34,6 +35,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: false,
     description: 'Ben Emma, eğitim konularında sana yardımcı olmak için buradayım. Öğrenme sürecinde yanında olacağım.',
     avatar_id: 1,
+    voice: 'fable', // Kadın sesi
   },
   {
     id: '2',
@@ -44,6 +46,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: true,
     description: 'Ben Alexander, iş konularında sana yardımcı olmak için buradayım. Kariyerinde yanında olacağım.',
     avatar_id: 2,
+    voice: 'alloy', // Erkek sesi
   },
   {
     id: '3',
@@ -54,6 +57,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: false,
     description: 'Ben Sophia, yaşam tarzı konularında sana yardımcı olmak için buradayım. Hayatında yanında olacağım.',
     avatar_id: 3,
+    voice: 'nova', // Kadın sesi
   },
   {
     id: '4',
@@ -64,6 +68,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: true,
     description: 'Ben James, eğitim konularında sana yardımcı olmak için buradayım. Öğrenme yolculuğunda yanında olacağım.',
     avatar_id: 4,
+    voice: 'echo', // Erkek sesi
   },
   {
     id: '5',
@@ -74,6 +79,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: false,
     description: 'Ben Isabella, iş konularında sana yardımcı olmak için buradayım. Profesyonel hayatında yanında olacağım.',
     avatar_id: 5,
+    voice: 'shimmer', // Kadın sesi
   },
   {
     id: '6',
@@ -84,5 +90,6 @@ export const aiCategories: AICategory[] = [
     isFavorite: false,
     description: 'Ben Michael, yaşam tarzı konularında sana yardımcı olmak için buradayım. Günlük hayatında yanında olacağım.',
     avatar_id: 6,
+    voice: 'onyx', // Erkek sesi
   },
 ];

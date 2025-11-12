@@ -223,7 +223,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
       const audioUri = await aiService.stopRecording();
       if (audioUri) {
-        const response = await aiService.sendVoiceToAI(audioUri);
+        // Karaktere özel voice'u kullan
+        const voice = item.voice || 'alloy';
+        const response = await aiService.sendVoiceToAI(audioUri, voice);
         
         if (response.success && response.data) {
           // Ses mesajları transcript olarak gösterilmez, sadece işlenir
@@ -263,7 +265,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       setIsProcessing(true);
       try {
         // STT olmadan direkt LLM'e gönder
-        const response = await aiService.sendTextToAI(textToSend);
+        // Karaktere özel voice'u kullan
+        const voice = item.voice || 'alloy';
+        const response = await aiService.sendTextToAI(textToSend, voice);
         if (response.success && response.data) {
           // Mesaj gönderildikten sonra input'u temizle
           setConversationText('');
