@@ -9,7 +9,7 @@ interface AIState {
   };
   conversation: {
     conversation_id: string | null;
-    web_stream_url: string | null;
+    websocket_stream_url: string | null;
     avatar_id: number | null;
     status: string | null;
   };
@@ -31,7 +31,7 @@ const initialState: AIState = {
   },
   conversation: {
     conversation_id: null,
-    web_stream_url: null,
+    websocket_stream_url: null,
     avatar_id: null,
     status: null,
   },
@@ -81,14 +81,14 @@ export const aiReducer = createReducer(initialState, (builder) => {
     .addCase(startConversation.fulfilled, (state, action) => {
       console.log("✅ [aiReducer] startConversation.fulfilled:", {
         conversation_id: action.payload.conversation_id,
-        web_stream_url: action.payload.web_stream_url,
+        websocket_stream_url: action.payload.websocket_stream_url,
         avatar_id: action.payload.avatar_id,
         status: action.payload.status,
       });
       state.loading = false;
       state.conversation = {
         conversation_id: action.payload.conversation_id,
-        web_stream_url: action.payload.web_stream_url,
+        websocket_stream_url: action.payload.websocket_stream_url,
         avatar_id: action.payload.avatar_id,
         status: action.payload.status,
       };

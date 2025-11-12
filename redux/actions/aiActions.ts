@@ -15,7 +15,7 @@ interface StartConversationPayload {
 
 interface StartConversationResponse {
   conversation_id: string;
-  web_stream_url: string;
+  websocket_stream_url: string;
   avatar_id: number;
   status: string;
 }
@@ -100,7 +100,7 @@ export const startConversation = createAsyncThunk(
 
       console.log("✅ [aiActions] startConversation: Konuşma başlatıldı:", {
         conversation_id: data.conversation_id,
-        web_stream_url: data.web_stream_url,
+        websocket_stream_url: data.websocket_stream_url,
         avatar_id: data.avatar_id,
         status: data.status,
       });
@@ -128,7 +128,7 @@ export const startConversation = createAsyncThunk(
             );
             console.log("✅ [aiActions] startConversation: Retry başarılı:", {
               conversation_id: data.conversation_id,
-              web_stream_url: data.web_stream_url,
+              websocket_stream_url: data.websocket_stream_url,
             });
             return data;
           } catch (retryError: any) {

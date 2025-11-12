@@ -227,23 +227,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         
         if (response.success && response.data) {
           // Ses mesajları transcript olarak gösterilmez, sadece işlenir
+          // Ses WebSocket'ten gelecek, buradan oynatmaya gerek yok
           
-          // Backend zaten TTS yapıp audioUrl döndürüyor, direkt kullan
-          if (response.data.audioUrl) {
-            console.log('🎵 [AIDetailVideoView] Backend\'den gelen audioUrl oynatılıyor');
-            // Ses dosyasını oynat (async olarak, beklemeden devam et)
-            aiService.playAudioFromUrl(response.data.audioUrl).catch(err => {
-              console.error('❌ [AIDetailVideoView] Ses oynatma hatası:', err);
-            });
-            
-            // AudioUrl'i sendAudio'ya gönder
-            if (aiState.conversation.conversation_id) {
-              console.log('📤 [AIDetailVideoView] Backend audioUrl sendAudio\'ya gönderiliyor');
-              dispatch(sendAudio({
-                conversation_id: aiState.conversation.conversation_id,
-                audio: response.data.audioUrl,
-              }) as any);
-            }
+          // AudioUrl'i sendAudio'ya gönder (backend'e bildirmek için)
+          if (response.data.audioUrl && aiState.conversation.conversation_id) {
+            console.log('📤 [AIDetailVideoView] Backend audioUrl sendAudio\'ya gönderiliyor (ses WebSocket\'ten gelecek)');
+            dispatch(sendAudio({
+              conversation_id: aiState.conversation.conversation_id,
+              audio: response.data.audioUrl,
+            }) as any);
           }
         } else {
           Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
@@ -277,18 +269,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           setConversationText('');
           setIsKeyboardVisible(false);
           
-          // TTS çağrısı yap (async olarak, beklemeden devam et)
-          aiService.textToSpeech(response.data!.aiResponse).then(audioUrl => {
-            if (audioUrl && aiState.conversation.conversation_id) {
-              console.log('📤 [AIDetailVideoView] TTS audioUrl sendAudio\'ya gönderiliyor');
-              dispatch(sendAudio({
-                conversation_id: aiState.conversation.conversation_id,
-                audio: audioUrl,
-              }) as any);
-            }
-          }).catch(err => {
-            console.error('❌ [AIDetailVideoView] TTS hatası:', err);
-          });
+          // Ses WebSocket'ten gelecek, TTS çağrısı yapmaya gerek yok
+          // Sadece backend'e bildirmek için sendAudio gönder
+          if (aiState.conversation.conversation_id) {
+            console.log('📤 [AIDetailVideoView] Metin gönderildi, ses WebSocket\'ten gelecek');
+            // Backend'e metin mesajını bildir (ses WebSocket stream'inden gelecek)
+          }
         } else {
           Alert.alert('Hata', response.message || 'Metin işlenirken hata oluştu');
         }
@@ -303,11 +289,322 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   };
 
+  // WebSocket URL kontrolü
+  if (!webStreamUrl) {
+    console.error('❌ WebSocket URL is missing!');
+  } else {
+    console.log('✅ WebSocket URL:', webStreamUrl);
+  }
+
+  // WebSocket URL'ini kullanarak HTML sayfası oluştur
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        html, body {
+          width: 100vw;
+          height: 100vh;
+          overflow: hidden;
+          background: black;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+        }
+        #video-container {
+          width: 100vw;
+          height: 100vh;
+          position: absolute;
+          top: 0;
+          left: 0;
+          background: black;
+        }
+        video, canvas, img {
+          width: 100vw;
+          height: 100vh;
+          object-fit: contain;
+          position: absolute;
+          top: 0;
+          left: 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="video-container">
+        <video id="video" autoplay playsinline muted style="display:none;"></video>
+        <canvas id="canvas"></canvas>
+        <img id="img" style="display:none;" />
+      </div>
+      <script>
+        (function() {
+          const wsUrl = '${webStreamUrl}';
+          console.log('🔌 Connecting to WebSocket:', wsUrl);
+          
+          const video = document.getElementById('video');
+          const canvas = document.getElementById('canvas');
+          const img = document.getElementById('img');
+          const ctx = canvas.getContext('2d');
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          
+          let ws = null;
+          let frameCount = 0;
+          let audioContext = null;
+          
+          function connectWebSocket() {
+            try {
+              console.log('🔌 Connecting to WebSocket...');
+              ws = new WebSocket(wsUrl);
+              
+              ws.binaryType = 'arraybuffer'; // Binary data için
+              
+              ws.onopen = function() {
+                console.log('✅ WebSocket connected');
+                // React Native'e mesaj gönder
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'ws_status',
+                  status: 'connected'
+                }));
+              };
+              
+              ws.onmessage = function(event) {
+                // Binary data kontrolü
+                if (event.data instanceof ArrayBuffer) {
+                  handleBinaryData(event.data);
+                } else if (event.data instanceof Blob) {
+                  event.data.arrayBuffer().then(buffer => handleBinaryData(buffer));
+                } else if (typeof event.data === 'string') {
+                  console.log('📝 String data received:', event.data.substring(0, 100));
+                  handleStringData(event.data);
+                }
+              };
+              
+              ws.onerror = function(error) {
+                console.error('❌ WebSocket error:', error);
+                // React Native'e mesaj gönder
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'ws_status',
+                  status: 'error',
+                  error: String(error)
+                }));
+                // Reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+              };
+              
+              ws.onclose = function(event) {
+                console.log('🔌 WebSocket closed, code:', event.code, 'reason:', event.reason, '- Reconnecting...');
+                // React Native'e mesaj gönder
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'ws_status',
+                  status: 'closed',
+                  code: event.code,
+                  reason: event.reason
+                }));
+                // Reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+              };
+            } catch (error) {
+              console.error('❌ WebSocket connection error:', error);
+              setTimeout(connectWebSocket, 3000);
+            }
+          }
+          
+          function handleStringData(data) {
+            // Text mesajları genellikle status update'leri için kullanılır
+            console.log('📝 Text message:', data);
+            try {
+              const json = JSON.parse(data);
+              console.log('📋 JSON message:', json);
+            } catch (e) {
+              // JSON değilse direkt text mesajı
+            }
+          }
+          
+          function handleBinaryData(buffer) {
+            try {
+              const view = new DataView(buffer);
+              
+              // İlk byte type indicator: 0 = video frame, 1 = audio chunk
+              const type = view.getUint8(0);
+              
+              if (type === 0) {
+                // Video frame (JPEG) - ilk byte'ı atla, kalanı JPEG olarak göster
+                frameCount++;
+                if (frameCount % 30 === 0) {
+                  console.log('📹 Receiving frames... (' + frameCount + ')');
+                }
+                
+                const jpegData = buffer.slice(1); // İlk byte'ı atla
+                const jpeg = new Blob([jpegData], { type: 'image/jpeg' });
+                const url = URL.createObjectURL(jpeg);
+                
+                img.onload = function() {
+                  // Canvas'ı temizle
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  
+                  // Image boyutlarını al
+                  const imgWidth = img.naturalWidth;
+                  const imgHeight = img.naturalHeight;
+                  
+                  // Aspect ratio'yu koruyarak canvas'a sığdır (contain)
+                  const canvasAspect = canvas.width / canvas.height;
+                  const imgAspect = imgWidth / imgHeight;
+                  
+                  let drawWidth, drawHeight, drawX, drawY;
+                  
+                  if (imgAspect > canvasAspect) {
+                    // Image daha geniş, yatay
+                    drawWidth = canvas.width;
+                    drawHeight = canvas.width / imgAspect;
+                    drawX = 0;
+                    drawY = (canvas.height - drawHeight) / 2;
+                  } else {
+                    // Image daha yüksek, dikey
+                    drawHeight = canvas.height;
+                    drawWidth = canvas.height * imgAspect;
+                    drawX = (canvas.width - drawWidth) / 2;
+                    drawY = 0;
+                  }
+                  
+                  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+                  
+                  // Eski blob URL'ini temizle
+                  setTimeout(() => URL.revokeObjectURL(url), 2000);
+                };
+                img.onerror = function() {
+                  console.error('❌ Image load error');
+                  URL.revokeObjectURL(url);
+                };
+                img.src = url;
+                
+                if (frameCount === 1) {
+                  console.log('✅ First video frame received');
+                }
+                
+              } else if (type === 1) {
+                // Audio chunk (PCM16) - Web Audio API ile oynat
+                const sampleRate = view.getUint32(1, false);
+                const channels = view.getUint8(5);
+                const pcmData = buffer.slice(6);
+                
+                console.log('🔊 Audio chunk received - SampleRate:', sampleRate, 'Channels:', channels, 'Size:', pcmData.byteLength);
+                
+                // Audio context'i ilk audio chunk'ta başlat
+                if (!audioContext) {
+                  try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('🔊 Audio context initialized');
+                    
+                    // iOS için suspended state'i resume et
+                    if (audioContext.state === 'suspended') {
+                      audioContext.resume().then(() => {
+                        console.log('🔊 Audio context resumed');
+                      }).catch(err => {
+                        console.error('❌ Audio context resume error:', err);
+                      });
+                    }
+                  } catch (error) {
+                    console.error('❌ Audio context creation error:', error);
+                    return;
+                  }
+                }
+                
+                // Audio context suspended ise resume et
+                if (audioContext.state === 'suspended') {
+                  audioContext.resume().catch(err => {
+                    console.error('❌ Audio context resume error:', err);
+                  });
+                }
+                
+                try {
+                  // PCM16'yı Float32'ye çevir
+                  const pcm16 = new Int16Array(pcmData);
+                  const audioFrameCount = pcm16.length / channels;
+                  
+                  if (audioFrameCount === 0) {
+                    console.warn('⚠️ Empty audio chunk');
+                    return;
+                  }
+                  
+                  const audioBuffer = audioContext.createBuffer(channels, audioFrameCount, sampleRate);
+                  
+                  // Deinterleave channels (kanalları ayır)
+                  for (let ch = 0; ch < channels; ch++) {
+                    const channelData = audioBuffer.getChannelData(ch);
+                    for (let i = 0; i < audioFrameCount; i++) {
+                      // PCM16 (-32768 to 32767) -> Float32 (-1.0 to 1.0)
+                      channelData[i] = pcm16[i * channels + ch] / 32768.0;
+                    }
+                  }
+                  
+                  // Audio'yu oynat
+                  const source = audioContext.createBufferSource();
+                  source.buffer = audioBuffer;
+                  source.connect(audioContext.destination);
+                  source.start();
+                  
+                  console.log('🔊 Audio chunk playing - Frames:', audioFrameCount, 'Duration:', (audioFrameCount / sampleRate).toFixed(3) + 's');
+                } catch (error) {
+                  console.error('❌ Audio playback error:', error);
+                }
+                
+              } else {
+                // Bilinmeyen type, direkt JPEG olarak dene
+                const bytes = new Uint8Array(buffer);
+                if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+                  // JPEG magic number - direkt JPEG
+                  const blob = new Blob([buffer], { type: 'image/jpeg' });
+                  displayBlobImage(blob);
+                } else {
+                  console.log('⚠️ Unknown binary data type:', type, 'Size:', buffer.byteLength);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Binary data handling error:', error);
+            }
+          }
+          
+          function displayBlobImage(blob) {
+            const url = URL.createObjectURL(blob);
+            img.onload = function() {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              setTimeout(() => URL.revokeObjectURL(url), 2000);
+            };
+            img.onerror = function() {
+              console.error('❌ Blob image load error');
+              URL.revokeObjectURL(url);
+            };
+            img.src = url;
+          }
+          
+          // Bağlantıyı başlat
+          connectWebSocket();
+          
+          // Window resize
+          window.addEventListener('resize', function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+          });
+        })();
+      </script>
+    </body>
+    </html>
+  `;
+
   return (
     <View style={styles.container}>
       {/* WebView Background */}
       <WebView
-        source={{ uri: webStreamUrl }}
+        source={{ html: htmlContent }}
         style={styles.webView}
         allowsInlineMediaPlayback={true}
         mediaPlaybackRequiresUserAction={false}
@@ -320,167 +617,19 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         androidLayerType="hardware"
         androidHardwareAccelerationDisabled={false}
         originWhitelist={['*']}
-        injectedJavaScriptBeforeContentLoaded={`
-          (function() {
-            // Viewport meta tag ekle - sayfa yüklenmeden önce
-            var meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-            document.head.appendChild(meta);
-          })();
-          true;
-        `}
-        injectedJavaScript={`
-          (function() {
-            // Viewport meta tag güncelle
-            var viewport = document.querySelector('meta[name="viewport"]');
-            if (!viewport) {
-              viewport = document.createElement('meta');
-              viewport.name = 'viewport';
-              viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-              document.head.appendChild(viewport);
-            } else {
-              viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'ws_status') {
+              console.log('📡 WebSocket Status:', data.status, data.error || '');
             }
-            
-            // CSS stillerini ekle
-            var style = document.createElement('style');
-            style.id = 'fullscreen-styles';
-            style.innerHTML = \`
-              * {
-                margin: 0 !important;
-                padding: 0 !important;
-                box-sizing: border-box !important;
-              }
-              html {
-                width: 100vw !important;
-                height: 100vh !important;
-                min-width: 100vw !important;
-                min-height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                background: black !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                -webkit-overflow-scrolling: touch !important;
-              }
-              body {
-                width: 100vw !important;
-                height: 100vh !important;
-                min-width: 100vw !important;
-                min-height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                background: black !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                -webkit-overflow-scrolling: touch !important;
-              }
-              video, iframe, canvas, img {
-                position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                min-width: 100vw !important;
-                min-height: 100vh !important;
-                max-width: 100vw !important;
-                max-height: 100vh !important;
-                object-fit: cover !important;
-                object-position: center !important;
-                background: black !important;
-                border: none !important;
-              }
-            \`;
-            
-            // Eski stil varsa kaldır
-            var oldStyle = document.getElementById('fullscreen-styles');
-            if (oldStyle) {
-              oldStyle.remove();
-            }
-            document.head.appendChild(style);
-            
-            // HTML ve body stillerini doğrudan uygula
-            document.documentElement.style.width = '100vw';
-            document.documentElement.style.height = '100vh';
-            document.documentElement.style.margin = '0';
-            document.documentElement.style.padding = '0';
-            document.documentElement.style.overflow = 'hidden';
-            document.documentElement.style.position = 'fixed';
-            document.documentElement.style.top = '0';
-            document.documentElement.style.left = '0';
-            document.documentElement.style.right = '0';
-            document.documentElement.style.bottom = '0';
-            
-            if (document.body) {
-              document.body.style.width = '100vw';
-              document.body.style.height = '100vh';
-              document.body.style.margin = '0';
-              document.body.style.padding = '0';
-              document.body.style.overflow = 'hidden';
-              document.body.style.position = 'fixed';
-              document.body.style.top = '0';
-              document.body.style.left = '0';
-              document.body.style.right = '0';
-              document.body.style.bottom = '0';
-            }
-            
-            // Tüm medya elementlerini güncelle
-            function updateMediaElements() {
-              var elements = document.querySelectorAll('video, iframe, canvas, img');
-              elements.forEach(function(el) {
-                el.style.position = 'absolute';
-                el.style.top = '0';
-                el.style.left = '0';
-                el.style.width = '100vw';
-                el.style.height = '100vh';
-                el.style.objectFit = 'cover';
-                el.style.objectPosition = 'center';
-                el.style.background = 'black';
-                if (el.tagName === 'IFRAME') {
-                  el.style.border = 'none';
-                }
-              });
-            }
-            
-            // İlk güncelleme
-            updateMediaElements();
-            
-            // DOM değişikliklerini izle
-            var observer = new MutationObserver(function(mutations) {
-              updateMediaElements();
-            });
-            
-            observer.observe(document.body || document.documentElement, {
-              childList: true,
-              subtree: true
-            });
-            
-            // Sayfa yüklendiğinde tekrar güncelle
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', updateMediaElements);
-            } else {
-              updateMediaElements();
-            }
-            
-            // Window resize'da güncelle
-            window.addEventListener('resize', updateMediaElements);
-          })();
-          true;
-        `}
-        onMessage={() => {}}
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }}
+        onConsoleMessage={(event: any) => {
+          console.log('🌐 WebView Console:', event.nativeEvent.message);
+        }}
         userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
       />
 

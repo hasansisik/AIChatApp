@@ -38,8 +38,8 @@ const AIDetailPage = () => {
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
   
-  // Get web_stream_url from Redux state
-  const webStreamUrl = aiState.conversation.web_stream_url;
+  // Get websocket_stream_url from Redux state
+  const webStreamUrl = aiState.conversation.websocket_stream_url;
 
   if (!item) {
     return (
