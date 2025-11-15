@@ -101,17 +101,10 @@ export const aiReducer = createReducer(initialState, (builder) => {
     })
     // Send Audio
     .addCase(sendAudio.pending, (state) => {
-      console.log("⏳ [aiReducer] sendAudio.pending");
       state.loading = true;
       state.error = null;
     })
     .addCase(sendAudio.fulfilled, (state, action) => {
-      console.log("✅ [aiReducer] sendAudio.fulfilled:", {
-        conversation_id: action.payload.conversation_id,
-        status: action.payload.status,
-        message: action.payload.message,
-        has_speech: action.payload.has_speech,
-      });
       state.loading = false;
       state.audioResponse = {
         conversation_id: action.payload.conversation_id,
@@ -122,7 +115,6 @@ export const aiReducer = createReducer(initialState, (builder) => {
       state.error = null;
     })
     .addCase(sendAudio.rejected, (state, action) => {
-      console.error("❌ [aiReducer] sendAudio.rejected:", action.payload);
       state.loading = false;
       state.error = action.payload as string | null;
     })

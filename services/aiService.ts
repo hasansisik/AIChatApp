@@ -17,6 +17,7 @@ export interface TextResponse {
   success: boolean;
   data?: {
     aiResponse: string;
+    audioUrl?: string;
   };
   message?: string;
 }
@@ -31,6 +32,10 @@ class AIService {
   private voiceActivityCheckInterval: ReturnType<typeof setInterval> | null = null;
   private minRecordingDuration: number = 1000; // Minimum 1 saniye kayıt
   private silenceThreshold: number = 2000; // 2 saniye daha kayıt (toplam 3 saniye)
+  private audioPlaybackStartTime: number = 0;
+  private audioDuration: number = 0;
+  private streamDuration: number = 0; // Stream'in tahmini süresi
+  private streamDurationSet: boolean = false; // Stream süresi bir kez ayarlandı mı?
 
   // Ses kaydını başlat
   async startRecording(): Promise<boolean> {
@@ -188,52 +193,35 @@ class AIService {
 
   // Ses dosyasını backend'e gönder ve AI yanıtı al
   async sendVoiceToAI(audioUri: string, voice: string = 'alloy'): Promise<VoiceResponse> {
+    const startTime = Date.now();
     try {
-      console.log('📱 Frontend: Ses dosyası gönderiliyor:', audioUri);
-      console.log('📱 Frontend: Voice seçildi:', voice);
-      
-      // FormData oluştur
       const formData = new FormData();
-      
-      // Ses dosyasını FormData'ya ekle
       formData.append('audio', {
         uri: audioUri,
         type: 'audio/m4a',
         name: 'audio.m4a',
       } as any);
-      
-      // Voice bilgisini ekle
       formData.append('voice', voice);
 
-      console.log('📱 Frontend: FormData oluşturuldu, backend\'e gönderiliyor...');
-      console.log('📱 Frontend: API URL:', `${API_BASE_URL}/voice`);
-
-      // Backend'e gönder - Content-Type'ı manuel ayarlama, tarayıcı otomatik ayarlar
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 saniye timeout (STT + AI + TTS için yeterli)
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
       
       const response = await fetch(`${API_BASE_URL}/voice`, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
-        // Content-Type'ı kaldırdık - tarayıcı otomatik ayarlayacak
       });
       
       clearTimeout(timeoutId);
-
-      console.log('📱 Frontend: Backend yanıtı alındı, status:', response.status);
-      console.log('📱 Frontend: Response headers:', response.headers);
-
       const data = await response.json();
-      console.log('📱 Frontend: Parsed response:', data);
+      
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`⏱️ Voice API: ${duration}s`);
       
       return data;
     } catch (error) {
-      console.error('❌ Frontend: Ses gönderimi hatası:', error);
-      console.error('❌ Frontend: Error details:', {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.error(`❌ Voice API hatası (${duration}s):`, error instanceof Error ? error.message : String(error));
       return {
         success: false,
         message: 'Ses gönderilirken hata oluştu'
@@ -243,10 +231,8 @@ class AIService {
 
   // Metin gönder ve AI yanıtı al
   async sendTextToAI(text: string, voice: string = 'alloy'): Promise<TextResponse> {
+    const startTime = Date.now();
     try {
-      console.log('📝 Frontend: Metin gönderiliyor:', text);
-      console.log('📝 Frontend: Voice seçildi:', voice);
-      
       const response = await fetch(`${API_BASE_URL}/text`, {
         method: 'POST',
         headers: {
@@ -255,13 +241,15 @@ class AIService {
         body: JSON.stringify({ message: text, voice: voice }),
       });
 
-      console.log('📝 Frontend: Backend yanıtı alındı, status:', response.status);
       const data = await response.json();
-      console.log('📝 Frontend: Parsed response:', data);
+      
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`⏱️ Text API: ${duration}s`);
       
       return data;
     } catch (error) {
-      console.error('❌ Frontend: Metin gönderimi hatası:', error instanceof Error ? error.message : String(error));
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.error(`❌ Text API hatası (${duration}s):`, error instanceof Error ? error.message : String(error));
       return {
         success: false,
         message: 'Metin gönderilirken hata oluştu'
@@ -304,36 +292,83 @@ class AIService {
     }
   }
 
-  // URL'den ses oynat
-  async playAudioFromUrl(audioUrl: string): Promise<void> {
+  // Ses oynatmayı durdur
+  async stopAudio(): Promise<void> {
     try {
-      console.log('🎵 Frontend: Ses oynatma başlatılıyor:', audioUrl.substring(0, 50) + '...');
-      
-      // Önceki sesi durdur
       if (this.sound) {
-        console.log('🛑 Frontend: Önceki ses durduruluyor');
+        console.log('🛑 Frontend: Ses durduruluyor');
+        await this.sound.stopAsync();
         await this.sound.unloadAsync();
+        this.sound = null;
       }
+    } catch (error) {
+      console.error('❌ Frontend: Ses durdurma hatası:', error instanceof Error ? error.message : String(error));
+    }
+  }
 
-      // Yeni ses oluştur
+  // Stream süresini ayarla (WebSocket'ten gelen audio chunk bilgilerinden)
+  setStreamDuration(duration: number) {
+    if (duration > this.streamDuration) {
+      this.streamDuration = duration;
+      this.streamDurationSet = true;
+    }
+  }
+
+  // URL'den ses oynat - Stream ile eş zamanlı
+  async playAudioFromUrl(audioUrl: string, rate: number = 1.0): Promise<void> {
+    const startTime = Date.now();
+    try {
+      if (!audioUrl || audioUrl.trim().length === 0) {
+        throw new Error('audioUrl boş olamaz');
+      }
+      
+      await this.stopAudio();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
-        { shouldPlay: true }
+        { 
+          shouldPlay: true,
+          rate: rate,
+          shouldCorrectPitch: true,
+          isLooping: false,
+          volume: 1.0,
+        }
       );
 
       this.sound = sound;
-      console.log('✅ Frontend: Ses oynatma başladı');
+      this.audioPlaybackStartTime = Date.now();
+      this.streamDurationSet = false;
+      
+      const status = await sound.getStatusAsync();
+      if (status.isLoaded) {
+        if (status.durationMillis) {
+          this.audioDuration = status.durationMillis / 1000;
+        }
+        if (!status.isPlaying) {
+          await sound.playAsync();
+        }
+      }
 
-      // Ses bittiğinde temizle
-      sound.setOnPlaybackStatusUpdate((status) => {
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`⏱️ TTS başlatıldı: ${duration}s`);
+
+      sound.setOnPlaybackStatusUpdate(async (status) => {
         if (status.isLoaded && status.didJustFinish) {
-          console.log('🏁 Frontend: Ses oynatma tamamlandı');
+          const elapsed = ((Date.now() - this.audioPlaybackStartTime) / 1000).toFixed(2);
+          console.log(`⏱️ TTS tamamlandı: ${elapsed}s`);
           sound.unloadAsync();
           this.sound = null;
         }
       });
     } catch (error) {
-      console.error('❌ Frontend: Ses oynatma hatası:', error instanceof Error ? error.message : String(error));
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.error(`❌ TTS hatası (${duration}s):`, error instanceof Error ? error.message : String(error));
     }
   }
 

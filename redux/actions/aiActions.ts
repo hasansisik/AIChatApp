@@ -150,22 +150,15 @@ export const startConversation = createAsyncThunk(
 export const sendAudio = createAsyncThunk(
   "ai/sendAudio",
   async ({ conversation_id, audio }: SendAudioPayload, thunkAPI) => {
+    const startTime = Date.now();
     try {
-      console.log("🎵 [aiActions] sendAudio: Ses gönderiliyor...", {
-        conversation_id,
-        audio: typeof audio === "string" ? audio.substring(0, 50) + "..." : "File object",
-      });
-      // Get token from AsyncStorage or fetch new one
       let token = await AsyncStorage.getItem("aiToken");
       
       if (!token) {
-        console.log("⚠️ [aiActions] sendAudio: Token bulunamadı, yeni token alınıyor...");
-        // If no token, get a new one first
         const tokenResult = await thunkAPI.dispatch(getToken());
         if (getToken.fulfilled.match(tokenResult)) {
           token = tokenResult.payload.access_token;
         } else {
-          console.error("❌ [aiActions] sendAudio: Token alınamadı");
           return thunkAPI.rejectWithValue("Failed to get authentication token");
         }
       }
@@ -173,19 +166,14 @@ export const sendAudio = createAsyncThunk(
       const formData = new FormData();
       formData.append("conversation_id", conversation_id);
       
-      // Handle audio file - could be a URI or file object
       if (typeof audio === "string") {
-        // If it's a URI, we need to create a file object
-        // In React Native, we typically use the URI directly
         formData.append("audio", {
           uri: audio,
-          type: "audio/mpeg", // Adjust type as needed
+          type: "audio/mpeg",
           name: "audio.mp3",
         } as any);
-        console.log("📎 [aiActions] sendAudio: Audio URI eklendi:", audio);
       } else {
         formData.append("audio", audio);
-        console.log("📎 [aiActions] sendAudio: Audio file object eklendi");
       }
 
       const { data } = await axios.post<SendAudioResponse>(
@@ -199,19 +187,15 @@ export const sendAudio = createAsyncThunk(
         }
       );
 
-      console.log("✅ [aiActions] sendAudio: Ses gönderildi, yanıt:", {
-        conversation_id: data.conversation_id,
-        status: data.status,
-        message: data.message,
-        has_speech: data.has_speech,
-      });
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`⏱️ sendAudio API: ${duration}s`);
 
       return data;
     } catch (error: any) {
-      console.error("❌ [aiActions] sendAudio: Hata:", error.response?.data?.message || error.message);
-      // If token is invalid, try to get a new one and retry
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.error(`❌ sendAudio API hatası (${duration}s):`, error.response?.data?.message || error.message);
+      
       if (error.response?.status === 401) {
-        console.log("🔄 [aiActions] sendAudio: Token geçersiz, yeniden deneniyor...");
         await AsyncStorage.removeItem("aiToken");
         const tokenResult = await thunkAPI.dispatch(getToken());
         if (getToken.fulfilled.match(tokenResult)) {
@@ -240,13 +224,8 @@ export const sendAudio = createAsyncThunk(
                 },
               }
             );
-            console.log("✅ [aiActions] sendAudio: Retry başarılı:", {
-              conversation_id: data.conversation_id,
-              status: data.status,
-            });
             return data;
           } catch (retryError: any) {
-            console.error("❌ [aiActions] sendAudio: Retry hatası:", retryError.response?.data?.message || retryError.message);
             return thunkAPI.rejectWithValue(
               retryError.response?.data?.message || retryError.message || "Failed to send audio"
             );

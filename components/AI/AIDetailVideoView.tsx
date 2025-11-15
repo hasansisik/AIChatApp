@@ -68,14 +68,51 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const [isInfinityMode, setIsInfinityMode] = React.useState(false);
   const infinityModeIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [pendingTTSAudioUrl, setPendingTTSAudioUrl] = React.useState<string | null>(null);
+  const pendingTTSAudioUrlRef = React.useRef<string | null>(null);
+  const ttsStartedRef = React.useRef(false);
+  const wsConnectedRef = React.useRef(false);
+  const isManuallyOpeningKeyboardRef = React.useRef(false);
+  const voiceApiStartTimeRef = React.useRef<number | null>(null);
+  const streamStartTimeRef = React.useRef<number | null>(null);
+  const totalStartTimeRef = React.useRef<number | null>(null);
+  const sendAudioStartTimeRef = React.useRef<number | null>(null);
+  const streamTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // pendingTTSAudioUrl state'i değiştiğinde ref'i güncelle
+  React.useEffect(() => {
+    pendingTTSAudioUrlRef.current = pendingTTSAudioUrl;
+  }, [pendingTTSAudioUrl]);
 
   const handleKeyboardPress = () => {
-    setIsKeyboardVisible(true);
-    // Kısa bir gecikme ile focus yap ki klavye açılsın
-    setTimeout(() => {
+    if (!isKeyboardVisible) {
+      isManuallyOpeningKeyboardRef.current = true;
+      setIsKeyboardVisible(true);
+      // Kısa bir gecikme ile focus yap ki klavye açılsın
+      setTimeout(() => {
+        textInputRef.current?.focus();
+        // Focus yapıldıktan sonra flag'i sıfırla
+        setTimeout(() => {
+          isManuallyOpeningKeyboardRef.current = false;
+        }, 500);
+      }, 150);
+    } else {
+      // Eğer zaten açıksa, focus yap
       textInputRef.current?.focus();
-    }, 100);
+    }
   };
+
+  // isKeyboardVisible true olduğunda TextInput'a focus yap
+  useEffect(() => {
+    if (isKeyboardVisible && textInputRef.current && !isManuallyOpeningKeyboardRef.current) {
+      // requestAnimationFrame ile bir sonraki render cycle'da focus yap
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          textInputRef.current?.focus();
+        }, 100);
+      });
+    }
+  }, [isKeyboardVisible]);
 
   // Sonsuzluk modu - sürekli ses algılama (otomatik durdurma ile)
   useEffect(() => {
@@ -164,6 +201,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (event) => {
+        // Eğer manuel olarak açılıyorsa, kapanma event'ini ignore et
+        if (isManuallyOpeningKeyboardRef.current) {
+          return;
+        }
+        
         // Klavye kapanınca input alanını gizle
         setIsKeyboardVisible(false);
         
@@ -223,21 +265,62 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
       const audioUri = await aiService.stopRecording();
       if (audioUri) {
+        // Toplam süre başlangıcı
+        totalStartTimeRef.current = Date.now();
+        voiceApiStartTimeRef.current = Date.now();
+        streamStartTimeRef.current = null;
+        
         // Karaktere özel voice'u kullan
         const voice = item.voice || 'alloy';
         const response = await aiService.sendVoiceToAI(audioUri, voice);
         
         if (response.success && response.data) {
-          // Ses mesajları transcript olarak gösterilmez, sadece işlenir
-          // Ses WebSocket'ten gelecek, buradan oynatmaya gerek yok
-          
-          // AudioUrl'i sendAudio'ya gönder (backend'e bildirmek için)
           if (response.data.audioUrl && aiState.conversation.conversation_id) {
-            console.log('📤 [AIDetailVideoView] Backend audioUrl sendAudio\'ya gönderiliyor (ses WebSocket\'ten gelecek)');
+            // sendAudio çağrıldığında timestamp al
+            sendAudioStartTimeRef.current = Date.now();
+            
+            // Önceki timeout'u temizle
+            if (streamTimeoutRef.current) {
+              clearTimeout(streamTimeoutRef.current);
+            }
+            
+            // Stream başlamazsa 5 saniye sonra toplam süreyi logla
+            streamTimeoutRef.current = setTimeout(() => {
+              if (!streamStartTimeRef.current && totalStartTimeRef.current) {
+                const now = Date.now();
+                const totalDuration = ((now - totalStartTimeRef.current) / 1000).toFixed(2);
+                console.log(`⏱️ Toplam (timeout): ${totalDuration}s (stream başlamadı)`);
+              }
+            }, 5000);
+            
             dispatch(sendAudio({
               conversation_id: aiState.conversation.conversation_id,
               audio: response.data.audioUrl,
-            }) as any);
+            }) as any).then(() => {
+              // sendAudio tamamlandığında, eğer stream başlamadıysa süreyi logla
+              setTimeout(() => {
+                if (!streamStartTimeRef.current && sendAudioStartTimeRef.current) {
+                  const now = Date.now();
+                  const sendAudioToNowDuration = ((now - sendAudioStartTimeRef.current) / 1000).toFixed(2);
+                  console.log(`⏱️ sendAudio → Şimdi: ${sendAudioToNowDuration}s (stream bekleniyor)`);
+                }
+              }, 1000);
+            });
+            
+            await aiService.stopAudio();
+            if (response.data?.audioUrl) {
+              setPendingTTSAudioUrl(response.data.audioUrl);
+              ttsStartedRef.current = false;
+              
+              // TTS'i direkt başlat (stream beklemeden)
+              try {
+                ttsStartedRef.current = true;
+                await aiService.playAudioFromUrl(response.data.audioUrl);
+              } catch (error) {
+                console.error('❌ TTS oynatma hatası:', error);
+                ttsStartedRef.current = false;
+              }
+            }
           }
         } else {
           Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
@@ -250,7 +333,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       Alert.alert('Hata', 'Kayıt durdurulamadı');
     } finally {
       setIsProcessing(false);
-      // Sonsuzluk modu aktifse, useEffect otomatik olarak tekrar başlatacak
     }
   };
 
@@ -264,20 +346,44 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     if (textToSend) {
       setIsProcessing(true);
       try {
-        // STT olmadan direkt LLM'e gönder
-        // Karaktere özel voice'u kullan
+        // Toplam süre başlangıcı
+        totalStartTimeRef.current = Date.now();
+        voiceApiStartTimeRef.current = Date.now();
+        streamStartTimeRef.current = null;
+        
+        // Önceki timeout'u temizle
+        if (streamTimeoutRef.current) {
+          clearTimeout(streamTimeoutRef.current);
+        }
+        
         const voice = item.voice || 'alloy';
         const response = await aiService.sendTextToAI(textToSend, voice);
         if (response.success && response.data) {
-          // Mesaj gönderildikten sonra input'u temizle
           setConversationText('');
           setIsKeyboardVisible(false);
           
-          // Ses WebSocket'ten gelecek, TTS çağrısı yapmaya gerek yok
-          // Sadece backend'e bildirmek için sendAudio gönder
-          if (aiState.conversation.conversation_id) {
-            console.log('📤 [AIDetailVideoView] Metin gönderildi, ses WebSocket\'ten gelecek');
-            // Backend'e metin mesajını bildir (ses WebSocket stream'inden gelecek)
+          if (response.data?.audioUrl) {
+            // Stream başlamazsa 5 saniye sonra toplam süreyi logla
+            streamTimeoutRef.current = setTimeout(() => {
+              if (!streamStartTimeRef.current && totalStartTimeRef.current) {
+                const now = Date.now();
+                const totalDuration = ((now - totalStartTimeRef.current) / 1000).toFixed(2);
+                console.log(`⏱️ Toplam (timeout): ${totalDuration}s (stream başlamadı)`);
+              }
+            }, 5000);
+            
+            await aiService.stopAudio();
+            setPendingTTSAudioUrl(response.data.audioUrl);
+            ttsStartedRef.current = false;
+            
+            // TTS'i direkt başlat (stream beklemeden)
+            try {
+              ttsStartedRef.current = true;
+              await aiService.playAudioFromUrl(response.data.audioUrl);
+            } catch (error) {
+              console.error('❌ TTS oynatma hatası:', error);
+              ttsStartedRef.current = false;
+            }
           }
         } else {
           Alert.alert('Hata', response.message || 'Metin işlenirken hata oluştu');
@@ -361,7 +467,14 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           
           let ws = null;
           let frameCount = 0;
-          let audioContext = null;
+          let streamStartTime = null;
+          let lastFrameTime = null;
+          let audioChunkCount = 0;
+          let totalAudioBytes = 0;
+          let firstAudioChunkTime = null;
+          let firstFrameReceived = false;
+          let firstAudioChunkReceived = false;
+          // Audio context kaldırıldı - stream'den ses gelmeyecek
           
           function connectWebSocket() {
             try {
@@ -372,6 +485,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               
               ws.onopen = function() {
                 console.log('✅ WebSocket connected');
+                streamStartTime = Date.now();
                 // React Native'e mesaj gönder
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'ws_status',
@@ -442,8 +556,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               if (type === 0) {
                 // Video frame (JPEG) - ilk byte'ı atla, kalanı JPEG olarak göster
                 frameCount++;
+                lastFrameTime = Date.now();
                 if (frameCount % 30 === 0) {
-                  console.log('📹 Receiving frames... (' + frameCount + ')');
+                  const elapsed = streamStartTime ? (lastFrameTime - streamStartTime) / 1000 : 0;
+                  console.log('📹 Receiving frames... (' + frameCount + ') Elapsed: ' + elapsed.toFixed(2) + 's');
                 }
                 
                 const jpegData = buffer.slice(1); // İlk byte'ı atla
@@ -491,73 +607,75 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 
                 if (frameCount === 1) {
                   console.log('✅ First video frame received');
+                  streamStartTime = Date.now();
+                  firstFrameReceived = true;
+                  // React Native'e ilk frame geldiğini bildir
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'first_frame',
+                    timestamp: streamStartTime,
+                    frameCount: frameCount,
+                    audioChunkCount: audioChunkCount
+                  }));
+                } else if (frameCount > 1) {
+                  // Her frame'de güncel sayıları gönder
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'frame_received',
+                    frameCount: frameCount,
+                    audioChunkCount: audioChunkCount
+                  }));
                 }
                 
               } else if (type === 1) {
-                // Audio chunk (PCM16) - Web Audio API ile oynat
+                // Audio chunk (PCM16) - Stream'den gelen ses chunk'larını takip et
                 const sampleRate = view.getUint32(1, false);
                 const channels = view.getUint8(5);
                 const pcmData = buffer.slice(6);
                 
-                console.log('🔊 Audio chunk received - SampleRate:', sampleRate, 'Channels:', channels, 'Size:', pcmData.byteLength);
+                audioChunkCount++;
+                totalAudioBytes += pcmData.byteLength;
                 
-                // Audio context'i ilk audio chunk'ta başlat
-                if (!audioContext) {
-                  try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    console.log('🔊 Audio context initialized');
-                    
-                    // iOS için suspended state'i resume et
-                    if (audioContext.state === 'suspended') {
-                      audioContext.resume().then(() => {
-                        console.log('🔊 Audio context resumed');
-                      }).catch(err => {
-                        console.error('❌ Audio context resume error:', err);
-                      });
-                    }
-                  } catch (error) {
-                    console.error('❌ Audio context creation error:', error);
-                    return;
-                  }
+                if (!firstAudioChunkTime) {
+                  firstAudioChunkTime = Date.now();
+                  firstAudioChunkReceived = true;
+                  console.log('✅ First audio chunk received');
+                  // React Native'e ilk audio chunk geldiğini bildir
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'first_audio_chunk',
+                    timestamp: firstAudioChunkTime,
+                    frameCount: frameCount,
+                    audioChunkCount: audioChunkCount
+                  }));
                 }
                 
-                // Audio context suspended ise resume et
-                if (audioContext.state === 'suspended') {
-                  audioContext.resume().catch(err => {
-                    console.error('❌ Audio context resume error:', err);
-                  });
-                }
+                // Her audio chunk'ta güncel sayıları gönder
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'audio_chunk_received',
+                  frameCount: frameCount,
+                  audioChunkCount: audioChunkCount
+                }));
                 
-                try {
-                  // PCM16'yı Float32'ye çevir
-                  const pcm16 = new Int16Array(pcmData);
-                  const audioFrameCount = pcm16.length / channels;
+                // Her 10 chunk'ta bir log ve stream süresini güncelle
+                if (audioChunkCount % 10 === 0) {
+                  const elapsed = firstAudioChunkTime ? (Date.now() - firstAudioChunkTime) / 1000 : 0;
+                  const estimatedDuration = (totalAudioBytes / 2 / channels / sampleRate); // PCM16 = 2 bytes per sample
                   
-                  if (audioFrameCount === 0) {
-                    console.warn('⚠️ Empty audio chunk');
-                    return;
-                  }
+                  // Stream süresini tahmin et: elapsed time (gerçek geçen süre) + gelecek tahmini
+                  // Elapsed time stream'in gerçek süresini gösterir (boşluklar dahil)
+                  // Gelecek için: kalan audio chunk'ların tahmini süresi
+                  // Daha konservatif tahmin: elapsed time'ın 1.2-1.5 katı (boşluklar için buffer)
+                  const streamDurationEstimate = elapsed * 1.3; // Gerçek geçen sürenin 1.3 katı (boşluklar için)
                   
-                  const audioBuffer = audioContext.createBuffer(channels, audioFrameCount, sampleRate);
+                  console.log('🔇 Audio chunks received:', audioChunkCount, 'Total bytes:', totalAudioBytes, 'Elapsed:', elapsed.toFixed(2) + 's', 'Est. duration:', estimatedDuration.toFixed(2) + 's', 'Stream est:', streamDurationEstimate.toFixed(2) + 's');
                   
-                  // Deinterleave channels (kanalları ayır)
-                  for (let ch = 0; ch < channels; ch++) {
-                    const channelData = audioBuffer.getChannelData(ch);
-                    for (let i = 0; i < audioFrameCount; i++) {
-                      // PCM16 (-32768 to 32767) -> Float32 (-1.0 to 1.0)
-                      channelData[i] = pcm16[i * channels + ch] / 32768.0;
-                    }
-                  }
-                  
-                  // Audio'yu oynat
-                  const source = audioContext.createBufferSource();
-                  source.buffer = audioBuffer;
-                  source.connect(audioContext.destination);
-                  source.start();
-                  
-                  console.log('🔊 Audio chunk playing - Frames:', audioFrameCount, 'Duration:', (audioFrameCount / sampleRate).toFixed(3) + 's');
-                } catch (error) {
-                  console.error('❌ Audio playback error:', error);
+                  // React Native'e audio chunk bilgilerini gönder (elapsed time'ı stream süresi olarak kullan)
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'audio_chunk_info',
+                    chunkCount: audioChunkCount,
+                    totalBytes: totalAudioBytes,
+                    elapsed: elapsed,
+                    estimatedDuration: estimatedDuration,
+                    streamDurationEstimate: streamDurationEstimate // Gerçek stream süresi tahmini
+                  }));
                 }
                 
               } else {
@@ -621,11 +739,35 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         androidLayerType="hardware"
         androidHardwareAccelerationDisabled={false}
         originWhitelist={['*']}
-        onMessage={(event) => {
+        onMessage={async (event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
             if (data.type === 'ws_status') {
-              console.log('📡 WebSocket Status:', data.status, data.error || '');
+              if (data.status === 'connected') {
+                wsConnectedRef.current = true;
+              }
+            } else if (data.type === 'first_audio_chunk') {
+              // Stream başlangıç zamanını kaydet (TTS zaten başladı, sadece log için)
+              if (!streamStartTimeRef.current) {
+                streamStartTimeRef.current = Date.now();
+                
+                // Timeout'u temizle
+                if (streamTimeoutRef.current) {
+                  clearTimeout(streamTimeoutRef.current);
+                  streamTimeoutRef.current = null;
+                }
+                
+                // Süre hesaplamaları
+                if (sendAudioStartTimeRef.current) {
+                  const sendAudioToStreamDuration = ((streamStartTimeRef.current - sendAudioStartTimeRef.current) / 1000).toFixed(2);
+                  console.log(`⏱️ sendAudio → Stream: ${sendAudioToStreamDuration}s`);
+                }
+                
+                if (totalStartTimeRef.current) {
+                  const totalDuration = ((streamStartTimeRef.current - totalStartTimeRef.current) / 1000).toFixed(2);
+                  console.log(`⏱️ Toplam: ${totalDuration}s`);
+                }
+              }
             }
           } catch (e) {
             // Ignore parse errors
@@ -740,39 +882,46 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       </Animated.View>
 
       {/* Keyboard Input */}
-      {isKeyboardVisible && (
-        <Animated.View 
-          style={[
-            styles.keyboardInputContainer,
-            { transform: [{ translateY: inputAreaTranslateY }] }
-          ]}
-        >
-          <View style={styles.keyboardInputWrapper}>
-            <TextInput
-              ref={textInputRef}
-              style={styles.keyboardInput}
-              placeholder="Mesajınızı yazın..."
-              placeholderTextColor="rgba(11, 11, 11, 0.5)"
-              multiline
-              value={conversationText}
-              onChangeText={setConversationText}
-              onSubmitEditing={handleSendText}
-              blurOnSubmit={false}
-            />
-            <TouchableOpacity 
-              style={[
-                styles.sendButton,
-                !conversationText.trim() && styles.sendButtonDisabled
-              ]}
-              onPress={handleSendText}
-              disabled={!conversationText.trim() || isProcessing}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="send" size={20} color={Colors.primary} />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
+      <Animated.View 
+        style={[
+          styles.keyboardInputContainer,
+          { 
+            transform: [{ translateY: inputAreaTranslateY }],
+            opacity: isKeyboardVisible ? 1 : 0,
+          }
+        ]}
+        pointerEvents={isKeyboardVisible ? 'auto' : 'none'}
+      >
+        <View style={styles.keyboardInputWrapper}>
+          <TextInput
+            ref={textInputRef}
+            style={styles.keyboardInput}
+            placeholder="Mesajınızı yazın..."
+            placeholderTextColor="rgba(11, 11, 11, 0.5)"
+            multiline
+            value={conversationText}
+            onChangeText={setConversationText}
+            onSubmitEditing={handleSendText}
+            blurOnSubmit={false}
+            onBlur={() => {
+              // Klavye kapanınca input alanını gizle
+              // Sadece kullanıcı manuel olarak blur yaptıysa (klavye kapanınca otomatik blur)
+              // Keyboard event listener zaten handle edecek, burada sadece fallback
+            }}
+          />
+          <TouchableOpacity 
+            style={[
+              styles.sendButton,
+              !conversationText.trim() && styles.sendButtonDisabled
+            ]}
+            onPress={handleSendText}
+            disabled={!conversationText.trim() || isProcessing}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="send" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </View>
   );
 };
