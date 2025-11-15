@@ -78,6 +78,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const totalStartTimeRef = React.useRef<number | null>(null);
   const sendAudioStartTimeRef = React.useRef<number | null>(null);
   const streamTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProcessingMicrophoneRef = React.useRef(false);
   
   // pendingTTSAudioUrl state'i değiştiğinde ref'i güncelle
   React.useEffect(() => {
@@ -114,63 +115,59 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   }, [isKeyboardVisible]);
 
-  // Sonsuzluk modu - sürekli ses algılama (otomatik durdurma ile)
+  // Sonsuzluk modu - S2S sürekli kayıt
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
     
-    if (isInfinityMode && !isRecording && !isProcessing) {
-      // Sonsuzluk modu aktifse ve kayıt yoksa, otomatik kayıt başlat
-      const startAutoRecording = async () => {
+    if (isInfinityMode && !isRecording) {
+      // Sonsuzluk modu aktifse, S2S sürekli kayıt başlat
+      const startInfinityS2S = async () => {
         if (!isMounted) return;
         
         try {
-          const success = await aiService.startRecording();
+          const voice = item.voice || 'alloy';
+          
+          if (!aiState.conversation.conversation_id) {
+            console.error('🔄 [Infinity S2S] Conversation ID bulunamadı');
+            return;
+          }
+          
+          const success = await aiService.startContinuousRecording(
+            aiState.conversation.conversation_id,
+            voice,
+            2000, // İlk chunk 2 saniye sonra gönder
+            2000  // Sonraki chunk'lar her 2 saniyede bir (VAD backend'de)
+          );
+          
           if (success && isMounted) {
             setIsRecording(true);
-            console.log('🔄 [Infinity Mode] Otomatik kayıt başlatıldı');
-            
-            // Otomatik durdurma callback'ini ayarla (ses seviyesine göre)
-            aiService.setAutoStopCallback(async () => {
-              if (isMounted && isInfinityMode && isRecording) {
-                console.log('🔄 [Infinity Mode] Ses seviyesi düştü - kayıt durduruluyor');
-                await stopRecording();
-              }
-            }); // Ses seviyesine göre otomatik durdur
+            console.log('🔄 [Infinity S2S] Sürekli kayıt başlatıldı');
           }
         } catch (error) {
-          console.error('🔄 [Infinity Mode] Otomatik kayıt başlatma hatası:', error);
-          // Hata durumunda tekrar deneme için kısa bir gecikme
-          if (isMounted && isInfinityMode) {
-            timeoutId = setTimeout(() => {
-              startAutoRecording();
-            }, 2000); // 2 saniye bekle ve tekrar dene
-          }
+          console.error('🔄 [Infinity S2S] Kayıt başlatma hatası:', error);
         }
       };
       
-      // Kısa bir gecikme ile başlat (önceki işlem bitmiş olsun)
-      timeoutId = setTimeout(() => {
-        startAutoRecording();
-      }, 1000); // 1 saniye bekle
-    } else if (!isInfinityMode) {
-      // Sonsuzluk modu kapatıldıysa, otomatik durdurma callback'ini temizle
-      aiService.clearAutoStop();
-      if (infinityModeIntervalRef.current) {
-        clearInterval(infinityModeIntervalRef.current);
-        infinityModeIntervalRef.current = null;
-      }
+      // Kısa bir gecikme ile başlat
+      setTimeout(() => {
+        startInfinityS2S();
+      }, 500);
+    } else if (!isInfinityMode && isRecording) {
+      // Sonsuzluk modu kapatıldıysa, sürekli kayıt durdur
+      aiService.stopContinuousRecording().then(() => {
+        if (isMounted) {
+          setIsRecording(false);
+        }
+      });
     }
     
     return () => {
       isMounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      if (!isInfinityMode) {
+        aiService.stopContinuousRecording();
       }
-      // Cleanup'ta otomatik durdurma callback'ini temizle
-      aiService.clearAutoStop();
     };
-  }, [isInfinityMode, isRecording, isProcessing]);
+  }, [isInfinityMode]);
 
   // Klavye açılıp kapanma durumlarını dinle
   useEffect(() => {
@@ -237,18 +234,51 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       return;
     }
     
+    // Çift basışı önle
+    if (isProcessingMicrophoneRef.current) {
+      return;
+    }
+    
     if (isRecording) {
-      await stopRecording();
+      // Sürekli kayıt durdur
+      isProcessingMicrophoneRef.current = true;
+      try {
+        await aiService.stopContinuousRecording();
+        setIsRecording(false);
+      } finally {
+        isProcessingMicrophoneRef.current = false;
+      }
     } else {
-      await startRecording();
+      // Sürekli kayıt başlat (S2S)
+      isProcessingMicrophoneRef.current = true;
+      try {
+        await startContinuousRecording();
+      } finally {
+        isProcessingMicrophoneRef.current = false;
+      }
     }
   };
 
-  const startRecording = async () => {
+  const startContinuousRecording = async () => {
     try {
-      const success = await aiService.startRecording();
+      const voice = item.voice || 'alloy';
+      
+      // Sürekli kayıt başlat - WebSocket S2S ile
+      if (!aiState.conversation.conversation_id) {
+        Alert.alert('Hata', 'Conversation ID bulunamadı');
+        return;
+      }
+      
+      const success = await aiService.startContinuousRecording(
+        aiState.conversation.conversation_id,
+        voice,
+        2000, // İlk chunk 2 saniye sonra gönder
+        2000  // Sonraki chunk'lar her 2 saniyede bir (VAD backend'de)
+      );
+      
       if (success) {
         setIsRecording(true);
+        console.log('🔄 [S2S] Sürekli kayıt başlatıldı');
       } else {
         Alert.alert('Hata', 'Kayıt başlatılamadı');
       }
@@ -259,6 +289,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   };
 
   const stopRecording = async () => {
+    const processingStartTime = Date.now();
     try {
       setIsRecording(false);
       setIsProcessing(true);
@@ -333,6 +364,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       Alert.alert('Hata', 'Kayıt durdurulamadı');
     } finally {
       setIsProcessing(false);
+      const processingDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
+      console.log(`⏱️ Processing (sarı ikon) süresi: ${processingDuration}s`);
     }
   };
 
@@ -344,6 +377,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const handleSendText = async () => {
     const textToSend = conversationText.trim();
     if (textToSend) {
+      const processingStartTime = Date.now();
       setIsProcessing(true);
       try {
         // Toplam süre başlangıcı
@@ -393,6 +427,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         Alert.alert('Hata', 'Metin gönderilemedi');
       } finally {
         setIsProcessing(false);
+        const processingDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
+        console.log(`⏱️ Processing (sarı ikon) süresi: ${processingDuration}s`);
       }
     } else {
       setIsKeyboardVisible(true);
