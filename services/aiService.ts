@@ -28,6 +28,7 @@ class AIService {
   private sound: Audio.Sound | null = null;
   private recordingStartTime: number = 0;
   private lastSoundTime: number = 0;
+  private currentConversationId: string | null = null; // Mevcut conversation ID
   private autoStopTimeout: ReturnType<typeof setTimeout> | null = null;
   private onAutoStopCallback: (() => void) | null = null;
   private voiceActivityCheckInterval: ReturnType<typeof setInterval> | null = null;
@@ -324,10 +325,38 @@ class AIService {
         encoding: FileSystem.EncodingType.Base64
       });
 
-      // TTS kuyruğuna ekle
-      await this.addToPlaybackQueue(`file://${tempFilePath}`);
+      const audioUri = `file://${tempFilePath}`;
+
+      // TTS kuyruğuna ekle (oynatma için)
+      await this.addToPlaybackQueue(audioUri);
+
+      // Stream'a gönder (sendAudio ile)
+      if (this.currentConversationId) {
+        this.sendTTSToStream(audioUri, this.currentConversationId).catch((error) => {
+          console.error('❌ TTS stream gönderme hatası:', error);
+        });
+      }
     } catch (error) {
       console.error('❌ TTS chunk işleme hatası:', error);
+    }
+  }
+
+  // TTS sesini stream'a gönder (sendAudio ile)
+  private async sendTTSToStream(audioUri: string, conversationId: string) {
+    try {
+      // sendAudio action'ını dinamik olarak import et
+      const { sendAudio } = await import('@/redux/actions/aiActions');
+      const { store } = await import('@/redux/store');
+      
+      // sendAudio action'ını dispatch et
+      store.dispatch(sendAudio({
+        conversation_id: conversationId,
+        audio: audioUri
+      }));
+      
+      console.log(`📤 TTS chunk stream'a gönderildi (chunk: ${audioUri})`);
+    } catch (error) {
+      console.error('❌ TTS stream gönderme hatası:', error);
     }
   }
 
@@ -344,10 +373,13 @@ class AIService {
   async startContinuousRecording(
     conversationId: string,
     voice: string = 'alloy',
-    firstChunkDelay: number = 2000, // İlk chunk için gecikme (2 saniye)
-    intervalMs: number = 1500 // Sonraki chunk'lar için interval (1.5 saniye)
+    firstChunkDelay: number = 1000, // İlk chunk için gecikme (1 saniye - hızlandırıldı)
+    intervalMs: number = 1000 // Sonraki chunk'lar için interval (1 saniye - hızlandırıldı)
   ): Promise<boolean> {
     try {
+      // Conversation ID'yi sakla (TTS chunk'larını stream'a göndermek için)
+      this.currentConversationId = conversationId;
+      
       // WebSocket bağlantısı kur
       const wsConnected = await this.connectS2SWebSocket(conversationId, voice);
       if (!wsConnected) {
@@ -492,6 +524,15 @@ class AIService {
         console.error('❌ Kayıt durdurma hatası:', error);
       }
     }
+    
+    // WebSocket'i kapat
+    if (this.s2sWebSocket) {
+      this.s2sWebSocket.close();
+      this.s2sWebSocket = null;
+    }
+    
+    // Conversation ID'yi temizle
+    this.currentConversationId = null;
     
     console.log('🛑 [S2S] Sürekli kayıt durduruldu');
   }

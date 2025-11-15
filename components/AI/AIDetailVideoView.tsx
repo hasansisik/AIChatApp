@@ -272,8 +272,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       const success = await aiService.startContinuousRecording(
         aiState.conversation.conversation_id,
         voice,
-        2000, // İlk chunk 2 saniye sonra gönder
-        2000  // Sonraki chunk'lar her 2 saniyede bir (VAD backend'de)
+        1000, // İlk chunk 1 saniye sonra gönder (hızlandırıldı)
+        1000  // Sonraki chunk'lar her 1 saniyede bir (hızlandırıldı)
       );
       
       if (success) {
