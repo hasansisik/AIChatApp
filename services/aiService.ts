@@ -7,12 +7,14 @@ const FIRST_CHUNK_DELAY_MS = 120;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
+type TTSAudioHandler = (audioUri: string) => void;
 
 class AIService {
   private recording: Audio.Recording | null = null;
   private sttSocket: WebSocket | null = null;
   private transcriptionHandlers = new Set<TranscriptionHandler>();
   private statusHandlers = new Set<StatusHandler>();
+  private ttsAudioHandlers = new Set<TTSAudioHandler>();
   private socketReady: Promise<void> | null = null;
   private chunkTimer: ReturnType<typeof setTimeout> | null = null;
   private isStreaming = false;
@@ -36,6 +38,14 @@ class AIService {
 
   offSocketStatus(handler: StatusHandler) {
     this.statusHandlers.delete(handler);
+  }
+
+  onTTSAudio(handler: TTSAudioHandler) {
+    this.ttsAudioHandlers.add(handler);
+  }
+
+  offTTSAudio(handler: TTSAudioHandler) {
+    this.ttsAudioHandlers.delete(handler);
   }
 
   private notifyStatus(status: string) {
@@ -351,6 +361,8 @@ class AIService {
         encoding: FileSystem.EncodingType.Base64
       });
       this.ttsQueue.push(fileUri);
+      // Notify handlers about the TTS audio file
+      this.ttsAudioHandlers.forEach(handler => handler(fileUri));
       this.playNextTTS();
     } catch (error) {
       console.error('TTS kuyruğa eklenemedi:', error);

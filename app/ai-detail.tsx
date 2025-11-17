@@ -7,12 +7,13 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/redux/store';
 import ReusableText from '@/components/ui/ReusableText';
 import SelectionModal from '@/components/ui/SelectionModal';
 import { AICategory, aiCategories } from '@/data/AICategories';
 import aiService from '@/services/aiService';
+import { sendAudio } from '@/redux/actions/aiActions';
 import AIDetailInitialView from '@/components/AI/AIDetailInitialView';
 import AIDetailVideoView from '@/components/AI/AIDetailVideoView';
 
@@ -20,6 +21,7 @@ const { width, height } = Dimensions.get('window');
 
 const AIDetailPage = () => {
   const router = useRouter();
+  const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
   const aiState = useSelector((state: RootState) => state.ai);
   const [isGradientVisible, setIsGradientVisible] = useState(true);
@@ -107,6 +109,29 @@ const AIDetailPage = () => {
       aiService.cleanup();
     };
   }, []);
+
+  // Listen for TTS audio and send to conversation
+  useEffect(() => {
+    const handleTTSAudio = async (audioUri: string) => {
+      const conversationId = aiState.conversation.conversation_id;
+      if (!conversationId) {
+        console.warn('⚠️ [ai-detail] TTS audio alındı ama conversation_id yok');
+        return;
+      }
+
+      try {
+        await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri })).unwrap();
+        console.log('✅ [ai-detail] TTS audio conversation\'a gönderildi');
+      } catch (error) {
+        console.error('❌ [ai-detail] TTS audio gönderilemedi:', error);
+      }
+    };
+
+    aiService.onTTSAudio(handleTTSAudio);
+    return () => {
+      aiService.offTTSAudio(handleTTSAudio);
+    };
+  }, [dispatch, aiState.conversation.conversation_id]);
 
   return (
     <View style={styles.container}>
