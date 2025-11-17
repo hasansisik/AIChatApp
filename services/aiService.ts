@@ -20,9 +20,6 @@ class AIService {
   private isStreaming = false;
   private isStartingRecording = false;
   private currentVoice: string = 'alloy';
-  private ttsQueue: string[] = [];
-  private isPlayingTTS = false;
-  private ttsSound: Audio.Sound | null = null;
 
   onTranscription(handler: TranscriptionHandler) {
     this.transcriptionHandlers.add(handler);
@@ -348,8 +345,6 @@ class AIService {
 
   async cleanup(): Promise<void> {
     await this.stopLiveTranscription();
-    await this.stopTTSAudio();
-    this.ttsQueue = [];
     this.disconnectSttSocket();
   }
 
@@ -360,71 +355,18 @@ class AIService {
       await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
         encoding: FileSystem.EncodingType.Base64
       });
-      this.ttsQueue.push(fileUri);
-      // Notify handlers about the TTS audio file
+      // Notify handlers about the TTS audio file (for sending to conversation)
+      // Local playback disabled - audio will come from stream
       this.ttsAudioHandlers.forEach(handler => handler(fileUri));
-      this.playNextTTS();
+      // Clean up file after a delay (handlers should have sent it by then)
+      setTimeout(() => {
+        FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
+      }, 5000);
     } catch (error) {
-      console.error('TTS kuyruğa eklenemedi:', error);
+      console.error('TTS dosyası oluşturulamadı:', error);
     }
   }
 
-  private async playNextTTS() {
-    if (this.isPlayingTTS || this.ttsQueue.length === 0) {
-      return;
-    }
-
-    const nextUri = this.ttsQueue.shift();
-    if (!nextUri) {
-      return;
-    }
-
-    this.isPlayingTTS = true;
-
-    try {
-      await this.stopTTSAudio();
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: nextUri },
-        { shouldPlay: true, rate: 1.0 }
-      );
-      this.ttsSound = sound;
-      sound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          await sound.unloadAsync().catch(() => {});
-          this.ttsSound = null;
-          try {
-            await FileSystem.deleteAsync(nextUri, { idempotent: true });
-          } catch {
-            // ignore
-          }
-          this.isPlayingTTS = false;
-          this.playNextTTS();
-        }
-      });
-    } catch (error) {
-      console.error('TTS oynatılamadı:', error);
-      try {
-        await FileSystem.deleteAsync(nextUri, { idempotent: true });
-      } catch {
-        // ignore
-      }
-      this.isPlayingTTS = false;
-      this.playNextTTS();
-    }
-  }
-
-  private async stopTTSAudio() {
-    if (this.ttsSound) {
-      try {
-        await this.ttsSound.stopAsync();
-        await this.ttsSound.unloadAsync();
-      } catch {
-        // ignore
-      }
-      this.ttsSound = null;
-    }
-    this.isPlayingTTS = false;
-  }
 }
 
 export default new AIService();

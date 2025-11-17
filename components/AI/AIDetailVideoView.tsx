@@ -242,7 +242,98 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           let firstAudioChunkTime = null;
           let firstFrameReceived = false;
           let firstAudioChunkReceived = false;
-          // Audio context kaldırıldı - stream'den ses gelmeyecek
+          
+          // Audio context for playing stream audio
+          let audioContext = null;
+          let audioQueue = [];
+          let isPlayingAudio = false;
+          
+          function initAudioContext() {
+            if (!audioContext) {
+              try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('✅ AudioContext initialized');
+                // Resume AudioContext if suspended (required on some browsers)
+                if (audioContext.state === 'suspended') {
+                  audioContext.resume().then(() => {
+                    console.log('✅ AudioContext resumed');
+                  }).catch((error) => {
+                    console.error('❌ AudioContext resume hatası:', error);
+                  });
+                }
+              } catch (error) {
+                console.error('❌ AudioContext oluşturulamadı:', error);
+              }
+            }
+            return audioContext;
+          }
+          
+          async function playAudioChunk(pcmData, sampleRate, channels) {
+            if (!audioContext) {
+              initAudioContext();
+            }
+            if (!audioContext) {
+              return;
+            }
+            
+            // Resume AudioContext if suspended
+            if (audioContext.state === 'suspended') {
+              try {
+                await audioContext.resume();
+              } catch (error) {
+                console.error('❌ AudioContext resume hatası:', error);
+                return;
+              }
+            }
+            
+            try {
+              // PCM16 to Float32Array conversion
+              const samples = new Int16Array(pcmData);
+              const float32Samples = new Float32Array(samples.length);
+              for (let i = 0; i < samples.length; i++) {
+                float32Samples[i] = samples[i] / 32768.0;
+              }
+              
+              // Create AudioBuffer
+              const audioBuffer = audioContext.createBuffer(channels, float32Samples.length / channels, sampleRate);
+              
+              if (channels === 1) {
+                audioBuffer.getChannelData(0).set(float32Samples);
+              } else {
+                const leftChannel = new Float32Array(float32Samples.length / 2);
+                const rightChannel = new Float32Array(float32Samples.length / 2);
+                for (let i = 0; i < float32Samples.length; i += 2) {
+                  leftChannel[i / 2] = float32Samples[i];
+                  rightChannel[i / 2] = float32Samples[i + 1];
+                }
+                audioBuffer.getChannelData(0).set(leftChannel);
+                audioBuffer.getChannelData(1).set(rightChannel);
+              }
+              
+              // Create and play audio source
+              const source = audioContext.createBufferSource();
+              source.buffer = audioBuffer;
+              source.connect(audioContext.destination);
+              
+              source.onended = () => {
+                isPlayingAudio = false;
+                if (audioQueue.length > 0) {
+                  const next = audioQueue.shift();
+                  playAudioChunk(next.pcmData, next.sampleRate, next.channels);
+                }
+              };
+              
+              if (isPlayingAudio) {
+                audioQueue.push({ pcmData, sampleRate, channels });
+              } else {
+                isPlayingAudio = true;
+                source.start(0);
+              }
+            } catch (error) {
+              console.error('❌ Audio oynatma hatası:', error);
+              isPlayingAudio = false;
+            }
+          }
           
           function connectWebSocket() {
             try {
@@ -254,6 +345,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               ws.onopen = function() {
                 console.log('✅ WebSocket connected');
                 streamStartTime = Date.now();
+                // Initialize AudioContext when WebSocket connects
+                initAudioContext();
                 // React Native'e mesaj gönder
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'ws_status',
@@ -394,7 +487,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 }
                 
               } else if (type === 1) {
-                // Audio chunk (PCM16) - Stream'den gelen ses chunk'larını takip et
+                // Audio chunk (PCM16) - Stream'den gelen ses chunk'larını oynat
                 const sampleRate = view.getUint32(1, false);
                 const channels = view.getUint8(5);
                 const pcmData = buffer.slice(6);
@@ -402,10 +495,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 audioChunkCount++;
                 totalAudioBytes += pcmData.byteLength;
                 
+                // Play audio chunk
+                playAudioChunk(pcmData, sampleRate, channels);
+                
                 if (!firstAudioChunkTime) {
                   firstAudioChunkTime = Date.now();
                   firstAudioChunkReceived = true;
-                  console.log('✅ First audio chunk received');
+                  console.log('✅ First audio chunk received and playing');
                   // React Native'e ilk audio chunk geldiğini bildir
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'first_audio_chunk',
