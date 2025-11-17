@@ -34,6 +34,7 @@ const AIDetailPage = () => {
   const bottomAreaOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
   const overlayOpacity = useRef(new Animated.Value(1)).current;
+  const videoOpacity = useRef(new Animated.Value(0)).current;
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
@@ -79,6 +80,11 @@ const AIDetailPage = () => {
     ]).start(() => {
       setIsGradientVisible(false);
       setIsTextVisible(false);
+      Animated.timing(videoOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
     });
   };
 
@@ -112,21 +118,23 @@ const AIDetailPage = () => {
       
       {/* Initial View (Gradient + Text) or Video View (WebView + All UI) */}
       {webStreamUrl && !isGradientVisible ? (
-        <AIDetailVideoView
-          webStreamUrl={webStreamUrl}
-          item={item}
-          bottomAreaOpacity={bottomAreaOpacity}
-          isKeyboardVisible={isKeyboardVisible}
-          setIsKeyboardVisible={setIsKeyboardVisible}
-          conversationText={conversationText}
-          setConversationText={setConversationText}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          isProcessing={isProcessing}
-          setIsProcessing={setIsProcessing}
-          selectedDetectionMethod={selectedDetectionMethod}
-          onGoBack={handleGoBack}
-        />
+        <Animated.View style={{ flex: 1, opacity: videoOpacity }}>
+          <AIDetailVideoView
+            webStreamUrl={webStreamUrl}
+            item={item}
+            bottomAreaOpacity={bottomAreaOpacity}
+            isKeyboardVisible={isKeyboardVisible}
+            setIsKeyboardVisible={setIsKeyboardVisible}
+            conversationText={conversationText}
+            setConversationText={setConversationText}
+            isRecording={isRecording}
+            setIsRecording={setIsRecording}
+            isProcessing={isProcessing}
+            setIsProcessing={setIsProcessing}
+            selectedDetectionMethod={selectedDetectionMethod}
+            onGoBack={handleGoBack}
+          />
+        </Animated.View>
       ) : (
         <AIDetailInitialView
           item={item}
