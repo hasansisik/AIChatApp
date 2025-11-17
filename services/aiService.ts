@@ -2,8 +2,8 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const STT_WS_URL = 'ws://localhost:5001/ws/stt';
-const CHUNK_INTERVAL_MS = 350;
-const FIRST_CHUNK_DELAY_MS = 200;
+const CHUNK_INTERVAL_MS = 220;
+const FIRST_CHUNK_DELAY_MS = 120;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
@@ -17,6 +17,10 @@ class AIService {
   private chunkTimer: ReturnType<typeof setTimeout> | null = null;
   private isStreaming = false;
   private isStartingRecording = false;
+  private currentVoice: string = 'alloy';
+  private ttsQueue: string[] = [];
+  private isPlayingTTS = false;
+  private ttsSound: Audio.Sound | null = null;
 
   onTranscription(handler: TranscriptionHandler) {
     this.transcriptionHandlers.add(handler);
@@ -42,6 +46,22 @@ class AIService {
     this.transcriptionHandlers.forEach(cb => cb(text));
   }
 
+  setVoice(voice: string) {
+    if (voice && voice.trim().length > 0) {
+      this.currentVoice = voice.trim();
+      this.sendVoiceConfig();
+    }
+  }
+
+  private sendVoiceConfig() {
+    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+      this.sttSocket.send(JSON.stringify({
+        type: 'config',
+        voice: this.currentVoice
+      }));
+    }
+  }
+
   private connectSttSocket() {
     if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
       return;
@@ -54,6 +74,7 @@ class AIService {
 
         this.sttSocket.onopen = () => {
           this.notifyStatus('WebSocket bağlandı');
+          this.sendVoiceConfig();
           resolve();
         };
 
@@ -68,6 +89,16 @@ class AIService {
               case 'transcription_complete':
                 if (message.text) {
                   this.notifyTranscription(message.text);
+                }
+                break;
+              case 'llm_response':
+                if (message.text) {
+                  this.notifyStatus(`AI: ${message.text}`);
+                }
+                break;
+              case 'tts_audio':
+                if (message.audio) {
+                  this.enqueueTTSAudio(message.audio, message.mimeType);
                 }
                 break;
               case 'error':
@@ -269,9 +300,13 @@ class AIService {
     }
   }
 
-  async startLiveTranscription(): Promise<boolean> {
+  async startLiveTranscription(voice?: string): Promise<boolean> {
     if (this.isStreaming) {
       return false;
+    }
+
+    if (voice) {
+      this.setVoice(voice);
     }
 
     await this.ensureSocket();
@@ -303,7 +338,80 @@ class AIService {
 
   async cleanup(): Promise<void> {
     await this.stopLiveTranscription();
+    await this.stopTTSAudio();
+    this.ttsQueue = [];
     this.disconnectSttSocket();
+  }
+
+  private async enqueueTTSAudio(base64Audio: string, mimeType: string = 'audio/mpeg') {
+    try {
+      const extension = mimeType.includes('wav') ? 'wav' : 'mp3';
+      const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.${extension}`;
+      await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
+        encoding: FileSystem.EncodingType.Base64
+      });
+      this.ttsQueue.push(fileUri);
+      this.playNextTTS();
+    } catch (error) {
+      console.error('TTS kuyruğa eklenemedi:', error);
+    }
+  }
+
+  private async playNextTTS() {
+    if (this.isPlayingTTS || this.ttsQueue.length === 0) {
+      return;
+    }
+
+    const nextUri = this.ttsQueue.shift();
+    if (!nextUri) {
+      return;
+    }
+
+    this.isPlayingTTS = true;
+
+    try {
+      await this.stopTTSAudio();
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: nextUri },
+        { shouldPlay: true, rate: 1.0 }
+      );
+      this.ttsSound = sound;
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          await sound.unloadAsync().catch(() => {});
+          this.ttsSound = null;
+          try {
+            await FileSystem.deleteAsync(nextUri, { idempotent: true });
+          } catch {
+            // ignore
+          }
+          this.isPlayingTTS = false;
+          this.playNextTTS();
+        }
+      });
+    } catch (error) {
+      console.error('TTS oynatılamadı:', error);
+      try {
+        await FileSystem.deleteAsync(nextUri, { idempotent: true });
+      } catch {
+        // ignore
+      }
+      this.isPlayingTTS = false;
+      this.playNextTTS();
+    }
+  }
+
+  private async stopTTSAudio() {
+    if (this.ttsSound) {
+      try {
+        await this.ttsSound.stopAsync();
+        await this.ttsSound.unloadAsync();
+      } catch {
+        // ignore
+      }
+      this.ttsSound = null;
+    }
+    this.isPlayingTTS = false;
   }
 }
 

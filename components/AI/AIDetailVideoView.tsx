@@ -143,7 +143,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
     if (!isRecording) {
       setIsProcessing(true);
-      const started = await aiService.startLiveTranscription();
+      const started = await aiService.startLiveTranscription(item.voice || 'alloy');
       setIsProcessing(false);
       if (started) {
         setIsRecording(true);
