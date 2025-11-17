@@ -5,7 +5,6 @@ import {
   Dimensions,
   Image,
   TouchableOpacity,
-  ScrollView,
   Animated,
   TextInput,
   Alert,
@@ -14,19 +13,13 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@/redux/store';
-import { sendAudio } from '@/redux/actions/aiActions';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { Sizes } from '@/constants/Sizes';
 
-const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
 interface AIDetailVideoViewProps {
@@ -61,52 +54,29 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   onGoBack,
 }) => {
   const router = useRouter();
-  const dispatch = useDispatch();
-  const aiState = useSelector((state: RootState) => state.ai);
   const textInputRef = useRef<TextInput>(null);
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
-  const [isInfinityMode, setIsInfinityMode] = React.useState(false);
-  const infinityModeIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [pendingTTSAudioUrl, setPendingTTSAudioUrl] = React.useState<string | null>(null);
-  const pendingTTSAudioUrlRef = React.useRef<string | null>(null);
-  const ttsStartedRef = React.useRef(false);
-  const wsConnectedRef = React.useRef(false);
   const isManuallyOpeningKeyboardRef = React.useRef(false);
-  const voiceApiStartTimeRef = React.useRef<number | null>(null);
-  const streamStartTimeRef = React.useRef<number | null>(null);
-  const totalStartTimeRef = React.useRef<number | null>(null);
-  const sendAudioStartTimeRef = React.useRef<number | null>(null);
-  const streamTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isProcessingMicrophoneRef = React.useRef(false);
-  
-  // pendingTTSAudioUrl state'i değiştiğinde ref'i güncelle
-  React.useEffect(() => {
-    pendingTTSAudioUrlRef.current = pendingTTSAudioUrl;
-  }, [pendingTTSAudioUrl]);
+  const [liveTranscript, setLiveTranscript] = React.useState('');
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
       isManuallyOpeningKeyboardRef.current = true;
       setIsKeyboardVisible(true);
-      // Kısa bir gecikme ile focus yap ki klavye açılsın
       setTimeout(() => {
         textInputRef.current?.focus();
-        // Focus yapıldıktan sonra flag'i sıfırla
         setTimeout(() => {
           isManuallyOpeningKeyboardRef.current = false;
-        }, 500);
+        }, 300);
       }, 150);
     } else {
-      // Eğer zaten açıksa, focus yap
       textInputRef.current?.focus();
     }
   };
 
-  // isKeyboardVisible true olduğunda TextInput'a focus yap
   useEffect(() => {
     if (isKeyboardVisible && textInputRef.current && !isManuallyOpeningKeyboardRef.current) {
-      // requestAnimationFrame ile bir sonraki render cycle'da focus yap
       requestAnimationFrame(() => {
         setTimeout(() => {
           textInputRef.current?.focus();
@@ -115,79 +85,29 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   }, [isKeyboardVisible]);
 
-  // Sonsuzluk modu - S2S sürekli kayıt
   useEffect(() => {
-    let isMounted = true;
-    
-    if (isInfinityMode && !isRecording) {
-      // Sonsuzluk modu aktifse, S2S sürekli kayıt başlat
-      const startInfinityS2S = async () => {
-        if (!isMounted) return;
-        
-        try {
-          const voice = item.voice || 'alloy';
-          
-          if (!aiState.conversation.conversation_id) {
-            console.error('🔄 [Infinity S2S] Conversation ID bulunamadı');
-            return;
-          }
-          
-          const success = await aiService.startContinuousRecording(
-            aiState.conversation.conversation_id,
-            voice,
-            2000, // İlk chunk 2 saniye sonra gönder
-            2000  // Sonraki chunk'lar her 2 saniyede bir (VAD backend'de)
-          );
-          
-          if (success && isMounted) {
-            setIsRecording(true);
-            console.log('🔄 [Infinity S2S] Sürekli kayıt başlatıldı');
-          }
-        } catch (error) {
-          console.error('🔄 [Infinity S2S] Kayıt başlatma hatası:', error);
-        }
-      };
-      
-      // Kısa bir gecikme ile başlat
-      setTimeout(() => {
-        startInfinityS2S();
-      }, 500);
-    } else if (!isInfinityMode && isRecording) {
-      // Sonsuzluk modu kapatıldıysa, sürekli kayıt durdur
-      aiService.stopContinuousRecording().then(() => {
-        if (isMounted) {
-          setIsRecording(false);
-        }
-      });
-    }
-    
+    const handler = (text: string) => setLiveTranscript(text);
+    aiService.onTranscription(handler);
     return () => {
-      isMounted = false;
-      if (!isInfinityMode) {
-        aiService.stopContinuousRecording();
-      }
+      aiService.offTranscription(handler);
     };
-  }, [isInfinityMode]);
+  }, []);
 
-  // Klavye açılıp kapanma durumlarını dinle
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (event) => {
         setIsKeyboardVisible(true);
         const height = event.endCoordinates.height;
-        // Input alanı yüksekliği yaklaşık 80px (padding + input + button)
         const inputAreaHeight = 80;
         const totalOffset = height + inputAreaHeight;
-        
-        // Butonları yukarı taşı
+
         Animated.timing(bottomAreaTranslateY, {
           toValue: -totalOffset,
           duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
           useNativeDriver: true,
         }).start();
-        
-        // Input alanını klavye yüksekliği kadar yukarı taşı
+
         Animated.timing(inputAreaTranslateY, {
           toValue: -height,
           duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
@@ -195,25 +115,22 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         }).start();
       }
     );
+
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (event) => {
-        // Eğer manuel olarak açılıyorsa, kapanma event'ini ignore et
         if (isManuallyOpeningKeyboardRef.current) {
           return;
         }
-        
-        // Klavye kapanınca input alanını gizle
+
         setIsKeyboardVisible(false);
-        
-        // Butonları eski pozisyonuna getir
+
         Animated.timing(bottomAreaTranslateY, {
           toValue: 0,
           duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
           useNativeDriver: true,
         }).start();
-        
-        // Input alanını eski pozisyonuna getir
+
         Animated.timing(inputAreaTranslateY, {
           toValue: 0,
           duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
@@ -229,220 +146,44 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, [setIsKeyboardVisible, bottomAreaTranslateY, inputAreaTranslateY]);
 
   const handleMicrophonePress = async () => {
-    // Sonsuzluk modu aktifse, normal mikrofon butonu çalışmasın
-    if (isInfinityMode) {
+    if (isProcessing) {
       return;
     }
-    
-    // Çift basışı önle
-    if (isProcessingMicrophoneRef.current) {
-      return;
-    }
-    
-    if (isRecording) {
-      // Sürekli kayıt durdur
-      isProcessingMicrophoneRef.current = true;
-      try {
-        await aiService.stopContinuousRecording();
-        setIsRecording(false);
-      } finally {
-        isProcessingMicrophoneRef.current = false;
-      }
-    } else {
-      // Sürekli kayıt başlat (S2S)
-      isProcessingMicrophoneRef.current = true;
-      try {
-        await startContinuousRecording();
-      } finally {
-        isProcessingMicrophoneRef.current = false;
-      }
-    }
-  };
 
-  const startContinuousRecording = async () => {
-    try {
-      const voice = item.voice || 'alloy';
-      
-      // Sürekli kayıt başlat - WebSocket S2S ile
-      if (!aiState.conversation.conversation_id) {
-        Alert.alert('Hata', 'Conversation ID bulunamadı');
-        return;
-      }
-      
-      const success = await aiService.startContinuousRecording(
-        aiState.conversation.conversation_id,
-        voice,
-        1000, // İlk chunk 1 saniye sonra gönder (hızlandırıldı)
-        1000  // Sonraki chunk'lar her 1 saniyede bir (hızlandırıldı)
-      );
-      
-      if (success) {
+    if (!isRecording) {
+      setIsProcessing(true);
+      const started = await aiService.startLiveTranscription();
+      setIsProcessing(false);
+      if (started) {
         setIsRecording(true);
-        console.log('🔄 [S2S] Sürekli kayıt başlatıldı');
       } else {
         Alert.alert('Hata', 'Kayıt başlatılamadı');
       }
-    } catch (error) {
-      console.error('Kayıt başlatma hatası:', error);
-      Alert.alert('Hata', 'Kayıt başlatılamadı');
+      return;
     }
-  };
 
-  const stopRecording = async () => {
-    const processingStartTime = Date.now();
+    setIsProcessing(true);
     try {
+      await aiService.stopLiveTranscription();
       setIsRecording(false);
-      setIsProcessing(true);
-
-      const audioUri = await aiService.stopRecording();
-      if (audioUri) {
-        // Toplam süre başlangıcı
-        totalStartTimeRef.current = Date.now();
-        voiceApiStartTimeRef.current = Date.now();
-        streamStartTimeRef.current = null;
-        
-        // Karaktere özel voice'u kullan
-        const voice = item.voice || 'alloy';
-        const response = await aiService.sendVoiceToAI(audioUri, voice);
-        
-        if (response.success && response.data) {
-          if (response.data.audioUrl && aiState.conversation.conversation_id) {
-            // sendAudio çağrıldığında timestamp al
-            sendAudioStartTimeRef.current = Date.now();
-            
-            // Önceki timeout'u temizle
-            if (streamTimeoutRef.current) {
-              clearTimeout(streamTimeoutRef.current);
-            }
-            
-            // Stream başlamazsa 5 saniye sonra toplam süreyi logla
-            streamTimeoutRef.current = setTimeout(() => {
-              if (!streamStartTimeRef.current && totalStartTimeRef.current) {
-                const now = Date.now();
-                const totalDuration = ((now - totalStartTimeRef.current) / 1000).toFixed(2);
-                console.log(`⏱️ Toplam (timeout): ${totalDuration}s (stream başlamadı)`);
-              }
-            }, 5000);
-            
-            dispatch(sendAudio({
-              conversation_id: aiState.conversation.conversation_id,
-              audio: response.data.audioUrl,
-            }) as any).then(() => {
-              // sendAudio tamamlandığında, eğer stream başlamadıysa süreyi logla
-              setTimeout(() => {
-                if (!streamStartTimeRef.current && sendAudioStartTimeRef.current) {
-                  const now = Date.now();
-                  const sendAudioToNowDuration = ((now - sendAudioStartTimeRef.current) / 1000).toFixed(2);
-                  console.log(`⏱️ sendAudio → Şimdi: ${sendAudioToNowDuration}s (stream bekleniyor)`);
-                }
-              }, 1000);
-            });
-            
-            await aiService.stopAudio();
-            if (response.data?.audioUrl) {
-              setPendingTTSAudioUrl(response.data.audioUrl);
-              ttsStartedRef.current = false;
-              
-              // TTS'i direkt başlat (stream beklemeden)
-              try {
-                ttsStartedRef.current = true;
-                await aiService.playAudioFromUrl(response.data.audioUrl);
-              } catch (error) {
-                console.error('❌ TTS oynatma hatası:', error);
-                ttsStartedRef.current = false;
-              }
-            }
-          }
-        } else {
-          Alert.alert('Hata', response.message || 'Ses işlenirken hata oluştu');
-        }
-      } else {
-        Alert.alert('Hata', 'Ses kaydedilemedi');
-      }
     } catch (error) {
       console.error('Kayıt durdurma hatası:', error);
-      Alert.alert('Hata', 'Kayıt durdurulamadı');
+      Alert.alert('Hata', 'Ses gönderilemedi');
     } finally {
       setIsProcessing(false);
-      const processingDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-      console.log(`⏱️ Processing (sarı ikon) süresi: ${processingDuration}s`);
     }
   };
 
-  const handleTextPress = async () => {
-    // Sonsuzluk ikonu butonu - toggle yap
-    setIsInfinityMode(prev => !prev);
-  };
-
-  const handleSendText = async () => {
+  const handleSendText = () => {
     const textToSend = conversationText.trim();
-    if (textToSend) {
-      const processingStartTime = Date.now();
-      setIsProcessing(true);
-      try {
-        // Toplam süre başlangıcı
-        totalStartTimeRef.current = Date.now();
-        voiceApiStartTimeRef.current = Date.now();
-        streamStartTimeRef.current = null;
-        
-        // Önceki timeout'u temizle
-        if (streamTimeoutRef.current) {
-          clearTimeout(streamTimeoutRef.current);
-        }
-        
-        const voice = item.voice || 'alloy';
-        const response = await aiService.sendTextToAI(textToSend, voice);
-        if (response.success && response.data) {
-          setConversationText('');
-          setIsKeyboardVisible(false);
-          
-          if (response.data?.audioUrl) {
-            // Stream başlamazsa 5 saniye sonra toplam süreyi logla
-            streamTimeoutRef.current = setTimeout(() => {
-              if (!streamStartTimeRef.current && totalStartTimeRef.current) {
-                const now = Date.now();
-                const totalDuration = ((now - totalStartTimeRef.current) / 1000).toFixed(2);
-                console.log(`⏱️ Toplam (timeout): ${totalDuration}s (stream başlamadı)`);
-              }
-            }, 5000);
-            
-            await aiService.stopAudio();
-            setPendingTTSAudioUrl(response.data.audioUrl);
-            ttsStartedRef.current = false;
-            
-            // TTS'i direkt başlat (stream beklemeden)
-            try {
-              ttsStartedRef.current = true;
-              await aiService.playAudioFromUrl(response.data.audioUrl);
-            } catch (error) {
-              console.error('❌ TTS oynatma hatası:', error);
-              ttsStartedRef.current = false;
-            }
-          }
-        } else {
-          Alert.alert('Hata', response.message || 'Metin işlenirken hata oluştu');
-        }
-      } catch (error) {
-        console.error('Metin gönderme hatası:', error);
-        Alert.alert('Hata', 'Metin gönderilemedi');
-      } finally {
-        setIsProcessing(false);
-        const processingDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-        console.log(`⏱️ Processing (sarı ikon) süresi: ${processingDuration}s`);
-      }
-    } else {
+    if (!textToSend) {
       setIsKeyboardVisible(true);
+      return;
     }
+    setConversationText('');
+    setIsKeyboardVisible(false);
   };
 
-  // WebSocket URL kontrolü
-  if (!webStreamUrl) {
-    console.error('❌ WebSocket URL is missing!');
-  } else {
-    console.log('✅ WebSocket URL:', webStreamUrl);
-  }
-
-  // WebSocket URL'ini kullanarak HTML sayfası oluştur
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -775,40 +516,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         androidLayerType="hardware"
         androidHardwareAccelerationDisabled={false}
         originWhitelist={['*']}
-        onMessage={async (event) => {
-          try {
-            const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === 'ws_status') {
-              if (data.status === 'connected') {
-                wsConnectedRef.current = true;
-              }
-            } else if (data.type === 'first_audio_chunk') {
-              // Stream başlangıç zamanını kaydet (TTS zaten başladı, sadece log için)
-              if (!streamStartTimeRef.current) {
-                streamStartTimeRef.current = Date.now();
-                
-                // Timeout'u temizle
-                if (streamTimeoutRef.current) {
-                  clearTimeout(streamTimeoutRef.current);
-                  streamTimeoutRef.current = null;
-                }
-                
-                // Süre hesaplamaları
-                if (sendAudioStartTimeRef.current) {
-                  const sendAudioToStreamDuration = ((streamStartTimeRef.current - sendAudioStartTimeRef.current) / 1000).toFixed(2);
-                  console.log(`⏱️ sendAudio → Stream: ${sendAudioToStreamDuration}s`);
-                }
-                
-                if (totalStartTimeRef.current) {
-                  const totalDuration = ((streamStartTimeRef.current - totalStartTimeRef.current) / 1000).toFixed(2);
-                  console.log(`⏱️ Toplam: ${totalDuration}s`);
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }}
         onConsoleMessage={(event: any) => {
           console.log('🌐 WebView Console:', event.nativeEvent.message);
         }}
@@ -818,20 +525,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       {/* Header */}
       <SafeAreaView style={styles.header}>
         <View style={styles.headerContent}>
-          {/* Close Button */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onGoBack}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="close"
-              size={24}
-              color={Colors.lightWhite}
-            />
+          <TouchableOpacity style={styles.closeButton} onPress={onGoBack} activeOpacity={0.7}>
+            <Ionicons name="close" size={24} color={Colors.lightWhite} />
           </TouchableOpacity>
-          
-          {/* Profile Section */}
+
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               <Image
@@ -840,7 +537,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 resizeMode="contain"
               />
             </View>
-            
+
             <ReusableText
               text={item.title}
               family="bold"
@@ -849,67 +546,57 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               style={styles.nameText}
             />
           </View>
-          
+
           <View style={styles.rightSpacer} />
         </View>
       </SafeAreaView>
-      
 
-      
-      {/* Bottom Area - Control Buttons */}
-      <Animated.View style={[
-        styles.bottomArea, 
-        { 
-          opacity: bottomAreaOpacity,
-          transform: [{ translateY: bottomAreaTranslateY }],
-        },
-      ]}>
+      {liveTranscript.length > 0 && (
+        <View style={styles.transcriptionBubble}>
+          <ReusableText
+            text={liveTranscript}
+            family="medium"
+            size={18}
+            color={Colors.lightWhite}
+          />
+        </View>
+      )}
+
+      <Animated.View
+        style={[
+          styles.bottomArea,
+          {
+            opacity: bottomAreaOpacity,
+            transform: [{ translateY: bottomAreaTranslateY }],
+          },
+        ]}
+      >
         <View style={styles.bottomAreaContent}>
           <View style={styles.iconCirclesContainer}>
             <TouchableOpacity style={styles.circleButton} onPress={handleKeyboardPress}>
               <MaterialIcons name="keyboard" size={28} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.circleButton, 
+                styles.circleButton,
                 isRecording && styles.recordingButton,
                 isProcessing && styles.processingButton,
-                isInfinityMode && styles.infinityModeMicrophone
-              ]} 
+              ]}
               onPress={handleMicrophonePress}
-              disabled={isProcessing || isInfinityMode}
             >
               {isRecording ? (
                 <Ionicons name="stop" size={28} color="white" />
               ) : isProcessing ? (
                 <Ionicons name="hourglass-outline" size={28} color="white" />
-              ) : selectedDetectionMethod === 'microphone' ? (
-                <Ionicons name="mic-outline" size={28} color="white" />
               ) : selectedDetectionMethod === 'hand' ? (
                 <Ionicons name="hand-left-outline" size={28} color="white" />
               ) : (
                 <Ionicons name="mic-outline" size={28} color="white" />
               )}
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.circleButton,
-                isInfinityMode && styles.infinityModeActive
-              ]} 
-              onPress={handleTextPress}
-            >
-              <Ionicons 
-                name={isInfinityMode ? "infinite" : "text-outline"} 
-                size={28} 
-                color={isInfinityMode ? Colors.primary : "white"} 
-              />
-            </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.circleButton, styles.redCircleButton]}
-              onPress={() => {
-                // Telefon kapatma butonu - tabs/tabs'a git
-                router.push('/(tabs)/tabs');
-              }}
+              onPress={() => router.push('/(tabs)/tabs')}
             >
               <Ionicons name="call" size={28} color="white" />
             </TouchableOpacity>
@@ -917,14 +604,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         </View>
       </Animated.View>
 
-      {/* Keyboard Input */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.keyboardInputContainer,
-          { 
+          {
             transform: [{ translateY: inputAreaTranslateY }],
             opacity: isKeyboardVisible ? 1 : 0,
-          }
+          },
         ]}
         pointerEvents={isKeyboardVisible ? 'auto' : 'none'}
       >
@@ -932,20 +618,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           <TextInput
             ref={textInputRef}
             style={styles.keyboardInput}
-            placeholder="Mesajınızı yazın..."
+            placeholder="Not alın..."
             placeholderTextColor="rgba(11, 11, 11, 0.5)"
             multiline
             value={conversationText}
             onChangeText={setConversationText}
             onSubmitEditing={handleSendText}
             blurOnSubmit={false}
-            onBlur={() => {
-              // Klavye kapanınca input alanını gizle
-              // Sadece kullanıcı manuel olarak blur yaptıysa (klavye kapanınca otomatik blur)
-              // Keyboard event listener zaten handle edecek, burada sadece fallback
-            }}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.sendButton,
               !conversationText.trim() && styles.sendButtonDisabled
@@ -992,6 +673,15 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 1001,
   },
+  transcriptionBubble: {
+    position: 'absolute',
+    top: 90,
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1034,33 +724,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: Colors.lightWhite,
-  },
-  content: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: screenWidth,
-    height: screenHeight,
-
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  spacer: {
-    flex: 1,
-  },
-  conversationContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 15,
-    padding: 15,
-    marginHorizontal: 20,
-    marginVertical: 10,
-  },
-  conversationText: {
-    lineHeight: 24,
   },
   bottomArea: {
     position: 'absolute',
@@ -1128,7 +791,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: 12,
     color: 'black',
     fontSize: 16,
     maxHeight: 100,
@@ -1155,14 +817,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     shadowOpacity: 0,
     elevation: 0,
-  },
-  infinityModeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderColor: Colors.primary,
-    borderWidth: 2,
-  },
-  infinityModeMicrophone: {
-    opacity: 0.5,
   },
 });
 
