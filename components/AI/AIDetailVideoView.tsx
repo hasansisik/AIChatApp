@@ -58,7 +58,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
-  const [liveTranscript, setLiveTranscript] = React.useState('');
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -84,14 +83,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       });
     }
   }, [isKeyboardVisible]);
-
-  useEffect(() => {
-    const handler = (text: string) => setLiveTranscript(text);
-    aiService.onTranscription(handler);
-    return () => {
-      aiService.offTranscription(handler);
-    };
-  }, []);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -551,17 +542,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         </View>
       </SafeAreaView>
 
-      {liveTranscript.length > 0 && (
-        <View style={styles.transcriptionBubble}>
-          <ReusableText
-            text={liveTranscript}
-            family="medium"
-            size={18}
-            color={Colors.lightWhite}
-          />
-        </View>
-      )}
-
       <Animated.View
         style={[
           styles.bottomArea,
@@ -596,7 +576,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.circleButton, styles.redCircleButton]}
-              onPress={() => router.push('/(tabs)/tabs')}
+              onPress={async () => {
+                try {
+                  await aiService.cleanup();
+                } finally {
+                  router.push('/(tabs)/tabs');
+                }
+              }}
             >
               <Ionicons name="call" size={28} color="white" />
             </TouchableOpacity>
@@ -672,15 +658,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1001,
-  },
-  transcriptionBubble: {
-    position: 'absolute',
-    top: 90,
-    left: 20,
-    right: 20,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
   headerContent: {
     flexDirection: 'row',
