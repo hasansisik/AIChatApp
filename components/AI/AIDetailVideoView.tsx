@@ -249,10 +249,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           
           // Audio context for playing stream audio
           let audioContext = null;
-          let audioQueue = [];
+          let audioBufferQueue = [];
           let nextPlayTime = 0;
           let currentSampleRate = 16000;
           let currentChannels = 1;
+          let isPlaying = false;
+          let lastChunkEnd = null; // For crossfade
           
           function initAudioContext(sampleRate, channels) {
             // If context exists but sample rate changed, close and recreate
@@ -261,6 +263,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 audioContext.close();
               } catch (e) {}
               audioContext = null;
+              audioBufferQueue = [];
+              lastChunkEnd = null;
             }
             
             if (!audioContext) {
@@ -271,7 +275,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 });
                 currentSampleRate = sampleRate;
                 currentChannels = channels;
-                nextPlayTime = audioContext.currentTime;
+                nextPlayTime = audioContext.currentTime + 0.1; // Small buffer
                 console.log('✅ AudioContext initialized with sample rate:', sampleRate, 'channels:', channels);
                 
                 // Resume AudioContext if suspended (required on some browsers)
@@ -289,13 +293,40 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                   audioContext = new (window.AudioContext || window.webkitAudioContext)();
                   currentSampleRate = audioContext.sampleRate;
                   currentChannels = channels;
-                  nextPlayTime = audioContext.currentTime;
+                  nextPlayTime = audioContext.currentTime + 0.1;
                 } catch (e) {
                   console.error('❌ Fallback AudioContext oluşturulamadı:', e);
                 }
               }
             }
             return audioContext;
+          }
+          
+          function processAudioQueue() {
+            if (isPlaying || audioBufferQueue.length === 0 || !audioContext) {
+              return;
+            }
+            
+            isPlaying = true;
+            const { buffer, playAt } = audioBufferQueue.shift();
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            
+            source.onended = () => {
+              isPlaying = false;
+              // Process next chunk in queue
+              if (audioBufferQueue.length > 0) {
+                processAudioQueue();
+              }
+            };
+            
+            const actualPlayTime = Math.max(playAt, audioContext.currentTime);
+            source.start(actualPlayTime);
+            
+            // Update next play time
+            nextPlayTime = actualPlayTime + buffer.duration;
           }
           
           async function playAudioChunk(pcmData, sampleRate, channels) {
@@ -312,7 +343,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             if (audioContext.state === 'suspended') {
               try {
                 await audioContext.resume();
-                nextPlayTime = audioContext.currentTime;
+                nextPlayTime = audioContext.currentTime + 0.1;
               } catch (error) {
                 console.error('❌ AudioContext resume hatası:', error);
                 return;
@@ -320,31 +351,70 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             }
             
             try {
-              // PCM16 to Float32Array conversion (use 32767.0 to match server conversion)
+              // PCM16 to Float32Array conversion
               const samples = new Int16Array(pcmData);
               const frameCount = samples.length / channels;
               const float32Samples = new Float32Array(samples.length);
               
-              // Convert with proper normalization and prevent clipping
+              // Convert with proper normalization (use 32767.0 to match server)
               for (let i = 0; i < samples.length; i++) {
                 // Normalize to [-1.0, 1.0] range with clipping protection
-                const normalized = samples[i] / 32767.0;
-                float32Samples[i] = Math.max(-1.0, Math.min(1.0, normalized));
+                float32Samples[i] = Math.max(-1.0, Math.min(1.0, samples[i] / 32767.0));
               }
               
-              // Apply gentle fade-in/fade-out to prevent clicks (only first and last few samples)
-              const fadeSamples = Math.min(32, frameCount / 8); // Fade over ~2ms at 16kHz
-              if (fadeSamples > 0) {
-                // Fade in at the beginning
-                for (let i = 0; i < fadeSamples && i < frameCount; i++) {
-                  const fadeFactor = i / fadeSamples;
+              // Apply longer fade-in to prevent clicks (64 samples = ~4ms at 16kHz)
+              const fadeInSamples = Math.min(64, Math.floor(frameCount / 4));
+              if (fadeInSamples > 0) {
+                for (let i = 0; i < fadeInSamples && i < frameCount; i++) {
+                  const fadeFactor = i / fadeInSamples;
+                  // Smooth fade-in curve (ease-in)
+                  const smoothFade = fadeFactor * fadeFactor;
                   for (let ch = 0; ch < channels; ch++) {
-                    float32Samples[i * channels + ch] *= fadeFactor;
+                    float32Samples[i * channels + ch] *= smoothFade;
                   }
                 }
-                // Fade out at the end (only if this might be the last chunk)
-                // Note: We don't know if it's the last chunk, so we'll skip fade-out
-                // to avoid cutting off audio prematurely
+              }
+              
+              // Apply fade-out at the end to prevent clicks
+              const fadeOutSamples = Math.min(64, Math.floor(frameCount / 4));
+              if (fadeOutSamples > 0) {
+                const fadeOutStart = frameCount - fadeOutSamples;
+                for (let i = fadeOutStart; i < frameCount; i++) {
+                  const fadeProgress = (frameCount - i) / fadeOutSamples;
+                  // Smooth fade-out curve (ease-out)
+                  const smoothFade = fadeProgress * fadeProgress;
+                  for (let ch = 0; ch < channels; ch++) {
+                    float32Samples[i * channels + ch] *= smoothFade;
+                  }
+                }
+              }
+              
+              // Crossfade with previous chunk if available (to eliminate gaps)
+              if (lastChunkEnd && lastChunkEnd.length > 0) {
+                const crossfadeSamples = Math.min(32, Math.min(lastChunkEnd.length, fadeInSamples));
+                if (crossfadeSamples > 0) {
+                  for (let i = 0; i < crossfadeSamples; i++) {
+                    const fadeOut = 1 - (i / crossfadeSamples);
+                    const fadeIn = i / crossfadeSamples;
+                    for (let ch = 0; ch < channels; ch++) {
+                      const prevIdx = lastChunkEnd.length - crossfadeSamples + i;
+                      if (prevIdx >= 0 && prevIdx < lastChunkEnd.length) {
+                        float32Samples[i * channels + ch] = 
+                          (lastChunkEnd[prevIdx * channels + ch] * fadeOut) +
+                          (float32Samples[i * channels + ch] * fadeIn);
+                      }
+                    }
+                  }
+                }
+              }
+              
+              // Store end of chunk for next crossfade
+              const endSamples = Math.min(64, frameCount);
+              lastChunkEnd = new Float32Array(endSamples * channels);
+              for (let i = 0; i < endSamples; i++) {
+                for (let ch = 0; ch < channels; ch++) {
+                  lastChunkEnd[i * channels + ch] = float32Samples[(frameCount - endSamples + i) * channels + ch];
+                }
               }
               
               // Create AudioBuffer with correct sample rate
@@ -364,25 +434,26 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 }
               }
               
-              // Calculate duration of this chunk
+              // Calculate duration and schedule
               const chunkDuration = audioBuffer.duration;
-              
-              // Schedule playback at the correct time to avoid gaps
-              const source = audioContext.createBufferSource();
-              source.buffer = audioBuffer;
-              source.connect(audioContext.destination);
-              
-              // Schedule to play immediately or queue if needed
               const playAt = Math.max(nextPlayTime, audioContext.currentTime);
-              source.start(playAt);
+              
+              // Add to queue
+              audioBufferQueue.push({ buffer: audioBuffer, playAt: playAt });
               
               // Update next play time for seamless playback
               nextPlayTime = playAt + chunkDuration;
               
+              // Start processing queue if not already playing
+              if (!isPlaying) {
+                processAudioQueue();
+              }
+              
             } catch (error) {
               console.error('❌ Audio oynatma hatası:', error);
-              // Reset next play time on error
-              nextPlayTime = audioContext.currentTime;
+              // Reset on error
+              nextPlayTime = audioContext.currentTime + 0.1;
+              lastChunkEnd = null;
             }
           }
           
