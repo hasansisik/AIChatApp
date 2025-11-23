@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Image, View, Text, TouchableOpacity, Platform, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker"; 
-import { storage } from "@/config"; 
 import { useSelector } from "react-redux";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadImageToCloudinary } from "@/utils/cloudinary";
 import { Colors } from "@/hooks/useThemeColor";
 interface OpenGalleryCameraProps {
   onUploadComplete: (url: string) => void;
@@ -29,23 +28,16 @@ export default function OpenGalleryCamera({ onUploadComplete }: OpenGalleryCamer
   const uploadImage = async (uri: string, user: any) => {
     try {
       setLoading(true);
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
+      
       const date = new Date();
       const formattedDate = date.toISOString().split(".")[0].replace("T", "-");
-
       const filename = `${user.name}-${formattedDate}.jpg`;
 
-      const storageRef = ref(storage, `UygulamaProfilePhoto/${filename}`);
-
-      await uploadBytes(storageRef, blob);
-
-      const url = await getDownloadURL(storageRef);
-
+      const url = await uploadImageToCloudinary(uri, filename);
       onUploadComplete(url);
     } catch (error) {
       console.error("Image upload failed:", error);
+      Alert.alert("Hata", "Resim yüklenirken bir hata oluştu.");
     } finally {
       setLoading(false);
     }
