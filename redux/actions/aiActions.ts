@@ -167,10 +167,17 @@ export const sendAudio = createAsyncThunk(
       formData.append("conversation_id", conversation_id);
       
       if (typeof audio === "string") {
+        // Determine file extension from URI
+        const uriLower = audio.toLowerCase();
+        const extension = uriLower.includes('.m4a') ? '.m4a' : 
+                         uriLower.includes('.wav') ? '.wav' : '.mp3';
+        const mimeType = extension === '.m4a' ? 'audio/m4a' : 
+                        extension === '.wav' ? 'audio/wav' : 'audio/mpeg';
+        
         formData.append("audio", {
           uri: audio,
-          type: "audio/mpeg",
-          name: "audio.mp3",
+          type: mimeType,
+          name: `audio${extension}`,
         } as any);
       } else {
         formData.append("audio", audio);
@@ -205,10 +212,17 @@ export const sendAudio = createAsyncThunk(
             formData.append("conversation_id", conversation_id);
             
             if (typeof audio === "string") {
+              // Determine file extension from URI
+              const uriLower = audio.toLowerCase();
+              const extension = uriLower.includes('.m4a') ? '.m4a' : 
+                               uriLower.includes('.wav') ? '.wav' : '.mp3';
+              const mimeType = extension === '.m4a' ? 'audio/m4a' : 
+                              extension === '.wav' ? 'audio/wav' : 'audio/mpeg';
+              
               formData.append("audio", {
                 uri: audio,
-                type: "audio/mpeg",
-                name: "audio.mp3",
+                type: mimeType,
+                name: `audio${extension}`,
               } as any);
             } else {
               formData.append("audio", audio);

@@ -8,6 +8,7 @@ const FIRST_CHUNK_DELAY_MS = 120;
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
 type TTSAudioHandler = (audioUri: string) => void;
+type RecordingForLipsyncHandler = (audioUri: string) => void;
 
 class AIService {
   private recording: Audio.Recording | null = null;
@@ -15,6 +16,7 @@ class AIService {
   private transcriptionHandlers = new Set<TranscriptionHandler>();
   private statusHandlers = new Set<StatusHandler>();
   private ttsAudioHandlers = new Set<TTSAudioHandler>();
+  private recordingForLipsyncHandlers = new Set<RecordingForLipsyncHandler>();
   private socketReady: Promise<void> | null = null;
   private chunkTimer: ReturnType<typeof setTimeout> | null = null;
   private isStreaming = false;
@@ -43,6 +45,14 @@ class AIService {
 
   offTTSAudio(handler: TTSAudioHandler) {
     this.ttsAudioHandlers.delete(handler);
+  }
+
+  onRecordingForLipsync(handler: RecordingForLipsyncHandler) {
+    this.recordingForLipsyncHandlers.add(handler);
+  }
+
+  offRecordingForLipsync(handler: RecordingForLipsyncHandler) {
+    this.recordingForLipsyncHandlers.delete(handler);
   }
 
   private notifyStatus(status: string) {
@@ -294,7 +304,31 @@ class AIService {
       return;
     }
 
+    // Send to STT for transcription
     await this.sendBinaryAudio(audioUri);
+    
+    // If this is the final recording, notify lipsync handlers
+    if (isFinal) {
+      // Copy the file before deleting (for lipsync)
+      const lipsyncAudioUri = `${FileSystem.cacheDirectory}lipsync_${Date.now()}.m4a`;
+      try {
+        const base64Data = await FileSystem.readAsStringAsync(audioUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await FileSystem.writeAsStringAsync(lipsyncAudioUri, base64Data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        // Notify handlers about the recording for lipsync
+        this.recordingForLipsyncHandlers.forEach(handler => handler(lipsyncAudioUri));
+      } catch (error) {
+        console.error('Lipsync audio kopyalanamadı:', error);
+      }
+      
+      if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+        this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
+      }
+    }
+    
     await FileSystem.deleteAsync(audioUri, { idempotent: true });
 
     if (!isFinal) {
@@ -302,8 +336,6 @@ class AIService {
       if (!restarted) {
         throw new Error('Yeni kayıt başlatılamadı');
       }
-    } else if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
-      this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
     }
   }
 

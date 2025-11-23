@@ -155,13 +155,17 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
     setIsProcessing(true);
     try {
+      // Stop recording - this will trigger the recordingForLipsync handler
+      // which will send the audio to the server for processing
       await aiService.stopLiveTranscription();
       setIsRecording(false);
+      // Note: isProcessing will be set to false in the recordingForLipsync handler
+      // after the audio is successfully sent to the server (or on error)
     } catch (error) {
       console.error('Kayıt durdurma hatası:', error);
       Alert.alert('Hata', 'Ses gönderilemedi');
-    } finally {
       setIsProcessing(false);
+      setIsRecording(false);
     }
   };
 
@@ -246,13 +250,30 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           // Audio context for playing stream audio
           let audioContext = null;
           let audioQueue = [];
-          let isPlayingAudio = false;
+          let nextPlayTime = 0;
+          let currentSampleRate = 16000;
+          let currentChannels = 1;
           
-          function initAudioContext() {
+          function initAudioContext(sampleRate, channels) {
+            // If context exists but sample rate changed, close and recreate
+            if (audioContext && (audioContext.sampleRate !== sampleRate || currentChannels !== channels)) {
+              try {
+                audioContext.close();
+              } catch (e) {}
+              audioContext = null;
+            }
+            
             if (!audioContext) {
               try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log('✅ AudioContext initialized');
+                // Create AudioContext with the correct sample rate
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                  sampleRate: sampleRate
+                });
+                currentSampleRate = sampleRate;
+                currentChannels = channels;
+                nextPlayTime = audioContext.currentTime;
+                console.log('✅ AudioContext initialized with sample rate:', sampleRate, 'channels:', channels);
+                
                 // Resume AudioContext if suspended (required on some browsers)
                 if (audioContext.state === 'suspended') {
                   audioContext.resume().then(() => {
@@ -263,15 +284,26 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 }
               } catch (error) {
                 console.error('❌ AudioContext oluşturulamadı:', error);
+                // Fallback to default sample rate
+                try {
+                  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                  currentSampleRate = audioContext.sampleRate;
+                  currentChannels = channels;
+                  nextPlayTime = audioContext.currentTime;
+                } catch (e) {
+                  console.error('❌ Fallback AudioContext oluşturulamadı:', e);
+                }
               }
             }
             return audioContext;
           }
           
           async function playAudioChunk(pcmData, sampleRate, channels) {
-            if (!audioContext) {
-              initAudioContext();
+            // Initialize or update AudioContext if needed
+            if (!audioContext || audioContext.sampleRate !== sampleRate || currentChannels !== channels) {
+              initAudioContext(sampleRate, channels);
             }
+            
             if (!audioContext) {
               return;
             }
@@ -280,6 +312,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             if (audioContext.state === 'suspended') {
               try {
                 await audioContext.resume();
+                nextPlayTime = audioContext.currentTime;
               } catch (error) {
                 console.error('❌ AudioContext resume hatası:', error);
                 return;
@@ -287,51 +320,69 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             }
             
             try {
-              // PCM16 to Float32Array conversion
+              // PCM16 to Float32Array conversion (use 32767.0 to match server conversion)
               const samples = new Int16Array(pcmData);
+              const frameCount = samples.length / channels;
               const float32Samples = new Float32Array(samples.length);
+              
+              // Convert with proper normalization and prevent clipping
               for (let i = 0; i < samples.length; i++) {
-                float32Samples[i] = samples[i] / 32768.0;
+                // Normalize to [-1.0, 1.0] range with clipping protection
+                const normalized = samples[i] / 32767.0;
+                float32Samples[i] = Math.max(-1.0, Math.min(1.0, normalized));
               }
               
-              // Create AudioBuffer
-              const audioBuffer = audioContext.createBuffer(channels, float32Samples.length / channels, sampleRate);
+              // Apply gentle fade-in/fade-out to prevent clicks (only first and last few samples)
+              const fadeSamples = Math.min(32, frameCount / 8); // Fade over ~2ms at 16kHz
+              if (fadeSamples > 0) {
+                // Fade in at the beginning
+                for (let i = 0; i < fadeSamples && i < frameCount; i++) {
+                  const fadeFactor = i / fadeSamples;
+                  for (let ch = 0; ch < channels; ch++) {
+                    float32Samples[i * channels + ch] *= fadeFactor;
+                  }
+                }
+                // Fade out at the end (only if this might be the last chunk)
+                // Note: We don't know if it's the last chunk, so we'll skip fade-out
+                // to avoid cutting off audio prematurely
+              }
+              
+              // Create AudioBuffer with correct sample rate
+              const audioBuffer = audioContext.createBuffer(channels, frameCount, sampleRate);
               
               if (channels === 1) {
-                audioBuffer.getChannelData(0).set(float32Samples);
+                // Mono: direct copy
+                const channelData = audioBuffer.getChannelData(0);
+                channelData.set(float32Samples);
               } else {
-                const leftChannel = new Float32Array(float32Samples.length / 2);
-                const rightChannel = new Float32Array(float32Samples.length / 2);
-                for (let i = 0; i < float32Samples.length; i += 2) {
-                  leftChannel[i / 2] = float32Samples[i];
-                  rightChannel[i / 2] = float32Samples[i + 1];
+                // Stereo: deinterleave
+                const leftChannel = audioBuffer.getChannelData(0);
+                const rightChannel = audioBuffer.getChannelData(1);
+                for (let i = 0; i < frameCount; i++) {
+                  leftChannel[i] = float32Samples[i * channels];
+                  rightChannel[i] = float32Samples[i * channels + 1];
                 }
-                audioBuffer.getChannelData(0).set(leftChannel);
-                audioBuffer.getChannelData(1).set(rightChannel);
               }
               
-              // Create and play audio source
+              // Calculate duration of this chunk
+              const chunkDuration = audioBuffer.duration;
+              
+              // Schedule playback at the correct time to avoid gaps
               const source = audioContext.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(audioContext.destination);
               
-              source.onended = () => {
-                isPlayingAudio = false;
-                if (audioQueue.length > 0) {
-                  const next = audioQueue.shift();
-                  playAudioChunk(next.pcmData, next.sampleRate, next.channels);
-                }
-              };
+              // Schedule to play immediately or queue if needed
+              const playAt = Math.max(nextPlayTime, audioContext.currentTime);
+              source.start(playAt);
               
-              if (isPlayingAudio) {
-                audioQueue.push({ pcmData, sampleRate, channels });
-              } else {
-                isPlayingAudio = true;
-                source.start(0);
-              }
+              // Update next play time for seamless playback
+              nextPlayTime = playAt + chunkDuration;
+              
             } catch (error) {
               console.error('❌ Audio oynatma hatası:', error);
-              isPlayingAudio = false;
+              // Reset next play time on error
+              nextPlayTime = audioContext.currentTime;
             }
           }
           

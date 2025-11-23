@@ -133,6 +133,42 @@ const AIDetailPage = () => {
     };
   }, [dispatch, aiState.conversation.conversation_id]);
 
+  // Listen for recording completion and send to conversation for lipsync
+  useEffect(() => {
+    const handleRecordingForLipsync = async (audioUri: string) => {
+      const conversationId = aiState.conversation.conversation_id;
+      if (!conversationId) {
+        console.warn('⚠️ [ai-detail] Recording alındı ama conversation_id yok');
+        return;
+      }
+
+      try {
+        console.log('🎤 [ai-detail] Recording conversation\'a gönderiliyor...');
+        setIsProcessing(true);
+        const result = await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri })).unwrap();
+        console.log('✅ [ai-detail] Recording conversation\'a gönderildi:', result);
+        
+        // Recording sent successfully, server will process it
+        // The WebSocket stream will start receiving synchronized video+audio frames
+        // isProcessing will be set to false when recording stops (in handleMicrophonePress)
+        
+        // Clean up the temporary file after sending
+        setTimeout(() => {
+          const { deleteAsync } = require('expo-file-system/legacy');
+          deleteAsync(audioUri, { idempotent: true }).catch(() => {});
+        }, 5000);
+      } catch (error) {
+        console.error('❌ [ai-detail] Recording gönderilemedi:', error);
+        setIsProcessing(false);
+      }
+    };
+
+    aiService.onRecordingForLipsync(handleRecordingForLipsync);
+    return () => {
+      aiService.offRecordingForLipsync(handleRecordingForLipsync);
+    };
+  }, [dispatch, aiState.conversation.conversation_id]);
+
   return (
     <View style={styles.container}>
       <StatusBar
