@@ -770,7 +770,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <ReusableText
               text={item.title}
               family="bold"
-              size={24}
+              size={20}
               color={Colors.lightWhite}
               style={styles.nameText}
             />
