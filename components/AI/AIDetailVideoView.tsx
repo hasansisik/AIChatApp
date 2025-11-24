@@ -219,25 +219,51 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       try {
         console.log('🔊 TTS audio alındı, oynatılıyor ve conversation\'a gönderiliyor:', audioUri);
         
-        // Önceki ses varsa durdur
+        // Audio mode'u ayarla (cızırtıyı önlemek için)
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+          staysActiveInBackground: false,
+        });
+        
+        // Önceki ses varsa düzgün şekilde durdur (cızırtıyı önlemek için)
         if (ttsSound) {
           try {
-            await ttsSound.unloadAsync();
+            const status = await ttsSound.getStatusAsync();
+            if (status.isLoaded) {
+              if (status.isPlaying) {
+                // Önce durdur
+                await ttsSound.stopAsync();
+              }
+              // Kısa bekleme (cızırtıyı önlemek için)
+              await new Promise(resolve => setTimeout(resolve, 100));
+              // Sonra unload et
+              await ttsSound.unloadAsync();
+            }
           } catch (e) {
-            // Ignore
+            // Ignore - zaten durdurulmuş olabilir
+            try {
+              await ttsSound.unloadAsync();
+            } catch (e2) {
+              // Ignore
+            }
           }
         }
 
-        // Yeni ses dosyasını yükle ve oynat
+        // Yeni ses dosyasını yükle (shouldPlay: false - önce yükle, sonra oynat)
         const { sound } = await Audio.Sound.createAsync(
           { uri: audioUri },
-          { shouldPlay: true, isLooping: false }
+          { 
+            shouldPlay: false, // Önce yükle, sonra oynat
+            isLooping: false,
+          }
         );
 
         setTtsSound(sound);
-        setIsTTSPlaying(true);
-
-        // Playback status'u dinle
+        
+        // Ses tamamen yüklendiğinde oynat
         sound.setOnPlaybackStatusUpdate((status) => {
           if (status.isLoaded) {
             setTtsPlaybackStatus({
@@ -254,6 +280,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             }
           }
         });
+
+        // Ses dosyası yüklendiğinde oynatmayı başlat
+        const loadStatus = await sound.getStatusAsync();
+        if (loadStatus.isLoaded) {
+          // Önceki ses tamamen durduktan sonra başlat (cızırtıyı önlemek için)
+          await new Promise(resolve => setTimeout(resolve, 100));
+          await sound.playAsync();
+          setIsTTSPlaying(true);
+        }
 
         // Aynı zamanda conversation'a gönder (lipsync için)
         try {
@@ -277,7 +312,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     return () => {
       aiService.offTTSAudio(handleTTSAudio);
     };
-  }, [ttsSound, conversationId, dispatch]);
+  }, [ttsSound, conversationId, dispatch, isTTSPlaying]);
 
   // Cleanup TTS sound on unmount
   useEffect(() => {
