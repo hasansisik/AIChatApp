@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,12 +17,11 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { Audio } from 'expo-av';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { endConversation, sendAudio } from '@/redux/actions/aiActions';
+import { endConversation } from '@/redux/actions/aiActions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -66,49 +65,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
-  
-  // TTS Audio Playback
-  const [ttsSound, setTtsSound] = useState<Audio.Sound | null>(null);
-  const [isTTSPlaying, setIsTTSPlaying] = useState(false);
-  const [ttsPlaybackStatus, setTtsPlaybackStatus] = useState<{
-    isPlaying: boolean;
-    positionMillis: number;
-    durationMillis: number;
-  } | null>(null);
-  
-  // Stream Audio Tracking (for synchronization)
-  const streamAudioRef = useRef<{
-    totalBytes: number;
-    sampleRate: number;
-    channels: number;
-    startTime: number | null;
-    lastChunkTime: number | null;
-    estimatedDuration: number;
-    actualDuration: number; // Gerçek stream süresi (son chunk'tan itibaren)
-    isStreamActive: boolean; // Stream hala aktif mi?
-    calculatedDuration: number; // Hesaplanan stream süresi (bytes'dan)
-    rateApplied: boolean; // Rate uygulandı mı?
-    // Her TTS audio için ayrı tracking
-    currentTTSStartBytes: number; // Bu TTS audio için stream'in başlangıç bytes'ı
-    currentTTSStartTime: number | null; // Bu TTS audio için stream'in başlangıç zamanı
-    currentTTSCalculatedDuration: number; // Bu TTS audio için hesaplanan stream süresi
-  }>({
-    totalBytes: 0,
-    sampleRate: 16000,
-    channels: 1,
-    startTime: null,
-    lastChunkTime: null,
-    estimatedDuration: 0,
-    actualDuration: 0,
-    isStreamActive: false,
-    calculatedDuration: 0,
-    rateApplied: false,
-    currentTTSStartBytes: 0,
-    currentTTSStartTime: null,
-    currentTTSCalculatedDuration: 0,
-  });
-  
-  const streamAudioCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -240,395 +196,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       Alert.alert(t('common.error'), t('ai.message.sendError'));
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  // TTS Audio Playback Handler - Hem oynat hem conversation'a gönder
-  useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-
-    const handleTTSAudio = async (audioUri: string) => {
-      try {
-        console.log('🔊 TTS audio alındı, oynatılıyor ve conversation\'a gönderiliyor:', audioUri);
-        
-        // Audio mode'u ayarla (cızırtıyı önlemek için)
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-          staysActiveInBackground: false,
-        });
-        
-        // Önceki ses varsa düzgün şekilde durdur (cızırtıyı önlemek için)
-        if (ttsSound) {
-          try {
-            const status = await ttsSound.getStatusAsync();
-            if (status.isLoaded) {
-              if (status.isPlaying) {
-                // Önce durdur
-                await ttsSound.stopAsync();
-              }
-              // Kısa bekleme (cızırtıyı önlemek için)
-              await new Promise(resolve => setTimeout(resolve, 100));
-              // Sonra unload et
-              await ttsSound.unloadAsync();
-            }
-          } catch (e) {
-            // Ignore - zaten durdurulmuş olabilir
-            try {
-              await ttsSound.unloadAsync();
-            } catch (e2) {
-              // Ignore
-            }
-          }
-        }
-
-        // Yeni ses dosyasını yükle (shouldPlay: false - önce yükle, sonra oynat)
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: audioUri },
-          { 
-            shouldPlay: false, // Önce yükle, sonra oynat
-            isLooping: false,
-          }
-        );
-
-        setTtsSound(sound);
-        
-        // Yeni TTS audio geldiğinde bu TTS audio için stream başlangıç noktasını kaydet
-        streamAudioRef.current.rateApplied = false;
-        streamAudioRef.current.currentTTSStartBytes = streamAudioRef.current.totalBytes;
-        streamAudioRef.current.currentTTSStartTime = streamAudioRef.current.startTime || Date.now();
-        streamAudioRef.current.currentTTSCalculatedDuration = 0;
-        
-        console.log('🎯 Yeni TTS audio için stream başlangıç noktası:', {
-          startBytes: streamAudioRef.current.currentTTSStartBytes,
-          startTime: streamAudioRef.current.currentTTSStartTime,
-          totalBytes: streamAudioRef.current.totalBytes,
-        });
-        
-        // TTS audio süresini al
-        const ttsStatus = await sound.getStatusAsync();
-        if (ttsStatus.isLoaded && ttsStatus.durationMillis) {
-          console.log('🎵 TTS audio süresi:', (ttsStatus.durationMillis / 1000).toFixed(2), 'saniye');
-        }
-        
-        // Ses tamamen yüklendiğinde oynat
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded) {
-            setTtsPlaybackStatus({
-              isPlaying: status.isPlaying,
-              positionMillis: status.positionMillis || 0,
-              durationMillis: status.durationMillis || 0,
-            });
-            
-            if (status.didJustFinish) {
-              console.log('✅ TTS audio normal şekilde bitti (playback status update)');
-              setIsTTSPlaying(false);
-              // Stream sync mekanizmasını temizle
-              if (streamAudioCheckIntervalRef.current) {
-                clearInterval(streamAudioCheckIntervalRef.current);
-                streamAudioCheckIntervalRef.current = null;
-              }
-              // Stream audio referansını sıfırla (ama totalBytes'ı sıfırlama, bir sonraki TTS için gerekli)
-              streamAudioRef.current.currentTTSStartBytes = 0;
-              streamAudioRef.current.currentTTSStartTime = null;
-              streamAudioRef.current.currentTTSCalculatedDuration = 0;
-              streamAudioRef.current.rateApplied = false;
-              // Ses dosyasını temizle
-              sound.unloadAsync().catch(() => {});
-              setTtsSound(null);
-              setTtsPlaybackStatus(null);
-            }
-          }
-        });
-
-        // Ses dosyası yüklendiğinde oynatmayı başlat
-        const loadStatus = await sound.getStatusAsync();
-        if (loadStatus.isLoaded) {
-          // Önceki ses tamamen durduktan sonra başlat (cızırtıyı önlemek için)
-          await new Promise(resolve => setTimeout(resolve, 100));
-          await sound.playAsync();
-          setIsTTSPlaying(true);
-          
-          // Stream audio'yu takip et ve TTS audio'yu senkronize et
-          startStreamAudioSync(sound);
-        }
-
-        // Aynı zamanda conversation'a gönder (lipsync için)
-        try {
-          await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
-          console.log('✅ TTS audio conversation\'a gönderildi');
-        } catch (error: any) {
-          // 409 Conflict is normal when audio is already being processed - silently ignore
-          if (error?.response?.status === 409 || error?.message?.includes('409')) {
-            console.log('ℹ️ TTS audio zaten işleniyor - normal durum');
-          } else {
-            console.error('❌ TTS audio conversation\'a gönderilemedi:', error);
-          }
-        }
-      } catch (error) {
-        console.error('❌ TTS audio oynatılamadı:', error);
-        setIsTTSPlaying(false);
-      }
-    };
-
-    aiService.onTTSAudio(handleTTSAudio);
-    return () => {
-      aiService.offTTSAudio(handleTTSAudio);
-    };
-  }, [ttsSound, conversationId, dispatch, isTTSPlaying]);
-
-  // Cleanup TTS sound on unmount
-  useEffect(() => {
-    return () => {
-      if (ttsSound) {
-        ttsSound.unloadAsync().catch(() => {});
-      }
-      if (streamAudioCheckIntervalRef.current) {
-        clearInterval(streamAudioCheckIntervalRef.current);
-        streamAudioCheckIntervalRef.current = null;
-      }
-    };
-  }, [ttsSound]);
-
-  // TTS audio'yu stream süresine göre ayarla
-  const adjustTTSAudioToStream = async () => {
-    if (!ttsSound) {
-      return;
-    }
-    
-    try {
-      const soundStatus = await ttsSound.getStatusAsync();
-      if (!soundStatus.isLoaded || !soundStatus.isPlaying || !soundStatus.durationMillis) {
-        return;
-      }
-      
-      const streamAudio = streamAudioRef.current;
-      if (streamAudio.startTime === null || streamAudio.currentTTSStartTime === null) {
-        return;
-      }
-      
-      // Bu TTS audio için stream'in sadece o kısmının süresini hesapla
-      const bytesForThisTTS = streamAudio.totalBytes - streamAudio.currentTTSStartBytes;
-      
-      // Eğer bytes negatif veya çok küçükse, stream henüz başlamamış demektir
-      if (bytesForThisTTS <= 0) {
-        return;
-      }
-      
-      const totalSamples = bytesForThisTTS / 2 / streamAudio.channels;
-      const streamDurationForThisTTS = totalSamples / streamAudio.sampleRate;
-      
-      // Güncelle
-      streamAudioRef.current.currentTTSCalculatedDuration = streamDurationForThisTTS;
-      
-      const ttsDuration = soundStatus.durationMillis / 1000; // TTS audio süresi (saniye)
-      const streamDuration = streamDurationForThisTTS; // Bu TTS audio için stream süresi (saniye)
-      
-      // TTS audio stream'den daha uzunsa, hızlandır
-      if (ttsDuration > streamDuration && streamDuration > 0.5) { // En az 0.5 saniye stream olmalı
-        const rate = ttsDuration / streamDuration;
-        if (rate > 1.0 && rate < 2.5) { // 1x ile 2.5x arası hızlandır
-          try {
-            // Mevcut rate'i kontrol et, değiştiyse güncelle
-            const currentRate = soundStatus.rate || 1.0;
-            const newRate = rate;
-            
-            // Rate'i her zaman güncelle (stream süresi sürekli artıyor)
-            // Sadece çok küçük değişikliklerde güncelleme yapma (0.05'ten fazla fark varsa)
-            if (Math.abs(currentRate - newRate) > 0.05 || !streamAudio.rateApplied) {
-              await ttsSound.setRateAsync(newRate, true); // true = pitch correction
-              streamAudioRef.current.rateApplied = true;
-              console.log('⚡ TTS audio stream\'e göre hızlandırıldı:', {
-                rate: newRate.toFixed(2),
-                previousRate: currentRate.toFixed(2),
-                ttsDuration: ttsDuration.toFixed(2),
-                streamDuration: streamDuration.toFixed(2),
-                bytesForThisTTS: (streamAudio.totalBytes - streamAudio.currentTTSStartBytes),
-                totalBytes: streamAudio.totalBytes,
-                startBytes: streamAudio.currentTTSStartBytes,
-              });
-            } else {
-              // Rate değişmedi, sadece log
-              console.log('ℹ️ TTS audio rate değişmedi:', {
-                currentRate: currentRate.toFixed(2),
-                newRate: newRate.toFixed(2),
-                ttsDuration: ttsDuration.toFixed(2),
-                streamDuration: streamDuration.toFixed(2),
-              });
-            }
-          } catch (error) {
-            console.error('❌ TTS audio hızlandırılamadı:', error);
-          }
-        } else if (rate >= 2.5) {
-          // Çok yüksek rate, maksimum 2.5x ile sınırla
-          try {
-            await ttsSound.setRateAsync(2.5, true);
-            streamAudioRef.current.rateApplied = true;
-            console.log('⚡ TTS audio maksimum hızda hızlandırıldı (2.5x):', {
-              originalRate: rate.toFixed(2),
-              ttsDuration: ttsDuration.toFixed(2),
-              streamDuration: streamDuration.toFixed(2),
-            });
-          } catch (error) {
-            console.error('❌ TTS audio hızlandırılamadı:', error);
-          }
-        }
-      } else if (ttsDuration <= streamDuration) {
-        // TTS audio stream'den kısa veya eşitse, normal hızda oynat
-        if (streamAudio.rateApplied) {
-          // Eğer daha önce hızlandırıldıysa, normal hıza döndür
-          try {
-            await ttsSound.setRateAsync(1.0, true);
-            streamAudioRef.current.rateApplied = false;
-            console.log('✅ TTS audio normal hıza döndürüldü');
-          } catch (error) {
-            console.error('❌ TTS audio hızı ayarlanamadı:', error);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('❌ TTS audio ayarlama hatası:', error);
-    }
-  };
-
-  // Stream Audio Sync - TTS audio'yu stream audio'ya göre senkronize et
-  const startStreamAudioSync = (sound: Audio.Sound) => {
-    // Önceki interval'i temizle
-    if (streamAudioCheckIntervalRef.current) {
-      clearInterval(streamAudioCheckIntervalRef.current);
-    }
-    
-    let checkCount = 0;
-    
-    // Stream audio bitene kadar kontrol et
-    streamAudioCheckIntervalRef.current = setInterval(async () => {
-      try {
-        const streamAudio = streamAudioRef.current;
-        checkCount++;
-        
-        // Stream audio başlamadıysa bekle (ilk 10 kontrol için)
-        if (!streamAudio.startTime && checkCount < 10) {
-          return;
-        }
-        
-        // Stream audio başlamadıysa ve 10 kontrol geçtiyse, stream başlamamış demektir
-        // Bu durumda TTS audio'yu normal şekilde oynatmaya devam et
-        if (!streamAudio.startTime) {
-          return;
-        }
-        
-        // Stream audio'nun ne kadar süredir devam ettiğini hesapla
-        const streamElapsed = (Date.now() - streamAudio.startTime) / 1000;
-        
-        // Stream audio'nun tahmini süresi
-        const streamDuration = streamAudio.estimatedDuration || 0;
-        
-        // TTS audio'nun kendi durumunu kontrol et
-        const soundStatus = await sound.getStatusAsync();
-        
-        // TTS audio zaten bitmişse, sync mekanizmasını temizle
-        if (soundStatus.isLoaded && soundStatus.didJustFinish) {
-          console.log('✅ TTS audio normal şekilde bitti');
-          setIsTTSPlaying(false);
-          if (streamAudioCheckIntervalRef.current) {
-            clearInterval(streamAudioCheckIntervalRef.current);
-            streamAudioCheckIntervalRef.current = null;
-          }
-          // Sadece bu TTS audio için olan değerleri temizle
-          streamAudioRef.current.currentTTSStartBytes = 0;
-          streamAudioRef.current.currentTTSStartTime = null;
-          streamAudioRef.current.currentTTSCalculatedDuration = 0;
-          streamAudioRef.current.rateApplied = false;
-          return;
-        }
-        
-        // TTS audio hala oynuyorsa, stream audio bitişini kontrol et
-        if (!soundStatus.isLoaded || !soundStatus.isPlaying) {
-          return; // TTS audio zaten durmuş
-        }
-        
-        // Stream audio bitti mi kontrol et
-        const timeSinceLastChunk = streamAudio.lastChunkTime 
-          ? (Date.now() - streamAudio.lastChunkTime) / 1000 
-          : Infinity;
-        
-        // Stream audio aktif mi kontrol et
-        const streamIsActive = timeSinceLastChunk < 3.0; // Son 3 saniye içinde chunk geldiyse aktif
-        streamAudioRef.current.isStreamActive = streamIsActive;
-        
-        // Stream audio bittiğinde gerçek süreyi kaydet (bu TTS audio için)
-        if (!streamIsActive && streamAudio.actualDuration === 0 && streamElapsed > 1.0) {
-          // Bu TTS audio için stream'in sadece o kısmının süresini hesapla
-          const bytesForThisTTS = streamAudio.totalBytes - streamAudio.currentTTSStartBytes;
-          const totalSamples = bytesForThisTTS / 2 / streamAudio.channels;
-          const streamActualDurationForThisTTS = totalSamples / streamAudio.sampleRate;
-          
-          streamAudioRef.current.actualDuration = streamActualDurationForThisTTS;
-          streamAudioRef.current.currentTTSCalculatedDuration = streamActualDurationForThisTTS;
-          
-          console.log('📊 Stream audio gerçek süresi kaydedildi (bu TTS için):', {
-            calculatedDuration: streamActualDurationForThisTTS.toFixed(2),
-            elapsed: streamElapsed.toFixed(2),
-            bytesForThisTTS: bytesForThisTTS,
-            totalBytes: streamAudio.totalBytes,
-            startBytes: streamAudio.currentTTSStartBytes,
-          });
-          
-          // Stream audio bitti, TTS audio hala oynuyorsa ve stream'den uzunsa durdur
-          if (soundStatus.durationMillis && soundStatus.positionMillis) {
-            const ttsDuration = soundStatus.durationMillis / 1000;
-            const ttsPosition = soundStatus.positionMillis / 1000;
-            
-            // TTS audio stream'den daha uzunsa ve stream süresine ulaştıysa durdur
-            if (ttsDuration > streamActualDurationForThisTTS && ttsPosition >= streamActualDurationForThisTTS * 0.95) {
-              console.log('🛑 Stream audio bitti, TTS audio stream süresinde durduruluyor', {
-                streamActualDuration: streamActualDurationForThisTTS.toFixed(2),
-                ttsPosition: ttsPosition.toFixed(2),
-                ttsDuration: ttsDuration.toFixed(2),
-              });
-              await sound.stopAsync();
-              setIsTTSPlaying(false);
-              if (streamAudioCheckIntervalRef.current) {
-                clearInterval(streamAudioCheckIntervalRef.current);
-                streamAudioCheckIntervalRef.current = null;
-              }
-              // Sadece bu TTS audio için olan değerleri temizle
-              streamAudioRef.current.currentTTSStartBytes = 0;
-              streamAudioRef.current.currentTTSStartTime = null;
-              streamAudioRef.current.currentTTSCalculatedDuration = 0;
-              streamAudioRef.current.rateApplied = false;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Stream audio sync hatası:', error);
-      }
-    }, 200); // Her 200ms'de bir kontrol et
-  };
-
-  // TTS Playback Control
-  const handleTTSPlayPause = async () => {
-    if (!ttsSound) {
-      return;
-    }
-
-    try {
-      const status = await ttsSound.getStatusAsync();
-      if (status.isLoaded) {
-        if (status.isPlaying) {
-          await ttsSound.pauseAsync();
-          setIsTTSPlaying(false);
-        } else {
-          await ttsSound.playAsync();
-          setIsTTSPlaying(true);
-        }
-      }
-    } catch (error) {
-      console.error('❌ TTS playback kontrolü hatası:', error);
     }
   };
 
@@ -920,8 +487,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               ws.onopen = function() {
                 console.log('✅ WebSocket connected');
                 streamStartTime = Date.now();
-                // AudioContext artık kullanılmıyor - TTS audio zaten oynatılıyor
-                // initAudioContext(); // DEVRE DIŞI
+                // Initialize AudioContext when WebSocket connects
+                initAudioContext();
                 // React Native'e mesaj gönder
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'ws_status',
@@ -1062,8 +629,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 }
                 
               } else if (type === 1) {
-                // Audio chunk (PCM16) - Stream'den gelen ses chunk'ları (oynatılmıyor, sadece log)
-                // Audio playback devre dışı - TTS audio zaten oynatılıyor
+                // Audio chunk (PCM16) - Stream'den gelen ses chunk'larını oynat
                 const sampleRate = view.getUint32(1, false);
                 const channels = view.getUint8(5);
                 const pcmData = buffer.slice(6);
@@ -1071,13 +637,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 audioChunkCount++;
                 totalAudioBytes += pcmData.byteLength;
                 
-                // Audio chunk'ları oynatma - TTS audio zaten oynatılıyor
-                // playAudioChunk(pcmData, sampleRate, channels); // DEVRE DIŞI
+                // Play audio chunk
+                playAudioChunk(pcmData, sampleRate, channels);
                 
                 if (!firstAudioChunkTime) {
                   firstAudioChunkTime = Date.now();
                   firstAudioChunkReceived = true;
-                  console.log('✅ First audio chunk received (not playing - TTS audio is playing instead)');
+                  console.log('✅ First audio chunk received and playing');
                   // React Native'e ilk audio chunk geldiğini bildir
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'first_audio_chunk',
@@ -1091,8 +657,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'audio_chunk_received',
                   frameCount: frameCount,
-                  audioChunkCount: audioChunkCount,
-                  timestamp: Date.now()
+                  audioChunkCount: audioChunkCount
                 }));
                 
                 // Her 10 chunk'ta bir log ve stream süresini güncelle
@@ -1106,7 +671,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                   // Daha konservatif tahmin: elapsed time'ın 1.2-1.5 katı (boşluklar için buffer)
                   const streamDurationEstimate = elapsed * 1.3; // Gerçek geçen sürenin 1.3 katı (boşluklar için)
                   
-                  console.log('🔇 Audio chunks received (not playing):', audioChunkCount, 'Total bytes:', totalAudioBytes, 'Elapsed:', elapsed.toFixed(2) + 's', 'Est. duration:', estimatedDuration.toFixed(2) + 's', 'Stream est:', streamDurationEstimate.toFixed(2) + 's');
+                  console.log('🔇 Audio chunks received:', audioChunkCount, 'Total bytes:', totalAudioBytes, 'Elapsed:', elapsed.toFixed(2) + 's', 'Est. duration:', estimatedDuration.toFixed(2) + 's', 'Stream est:', streamDurationEstimate.toFixed(2) + 's');
                   
                   // React Native'e audio chunk bilgilerini gönder (elapsed time'ı stream süresi olarak kullan)
                   window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -1115,10 +680,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                     totalBytes: totalAudioBytes,
                     elapsed: elapsed,
                     estimatedDuration: estimatedDuration,
-                    streamDurationEstimate: streamDurationEstimate, // Gerçek stream süresi tahmini
-                    sampleRate: sampleRate,
-                    channels: channels,
-                    timestamp: Date.now()
+                    streamDurationEstimate: streamDurationEstimate // Gerçek stream süresi tahmini
                   }));
                 }
                 
@@ -1186,76 +748,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         onConsoleMessage={(event: any) => {
           console.log('🌐 WebView Console:', event.nativeEvent.message);
         }}
-        onMessage={(event: any) => {
-          try {
-            const message = JSON.parse(event.nativeEvent.data);
-            if (message.type === 'audio_chunk_received' || message.type === 'audio_chunk_info') {
-              // Stream audio chunk bilgilerini güncelle
-              streamAudioRef.current.lastChunkTime = Date.now();
-              streamAudioRef.current.isStreamActive = true;
-              
-              if (message.type === 'audio_chunk_info') {
-                streamAudioRef.current.totalBytes = message.totalBytes || 0;
-                streamAudioRef.current.estimatedDuration = message.streamDurationEstimate || 0;
-                if (message.sampleRate) {
-                  streamAudioRef.current.sampleRate = message.sampleRate;
-                }
-                if (message.channels) {
-                  streamAudioRef.current.channels = message.channels;
-                }
-                
-                // Stream audio'nun gerçek süresini hesapla (bytes'dan)
-                // PCM16 = 2 bytes per sample
-                const totalSamples = streamAudioRef.current.totalBytes / 2 / streamAudioRef.current.channels;
-                streamAudioRef.current.calculatedDuration = totalSamples / streamAudioRef.current.sampleRate;
-                
-                console.log('📊 Stream audio güncellendi:', {
-                  totalBytes: streamAudioRef.current.totalBytes,
-                  calculatedDuration: streamAudioRef.current.calculatedDuration.toFixed(2),
-                  estimatedDuration: streamAudioRef.current.estimatedDuration,
-                  lastChunkTime: streamAudioRef.current.lastChunkTime,
-                });
-                
-                // TTS audio'yu stream süresine göre ayarla
-                // audio_chunk_info zaten her 10 chunk'ta bir gönderiliyor, bu yeterli
-                // Stream süresi sürekli artıyor, bu yüzden rate'i güncellemeliyiz
-                adjustTTSAudioToStream();
-              }
-            } else if (message.type === 'first_audio_chunk') {
-              // İlk audio chunk geldiğinde stream başlangıcını işaretle
-              streamAudioRef.current.startTime = message.timestamp || Date.now();
-              streamAudioRef.current.lastChunkTime = Date.now();
-              streamAudioRef.current.isStreamActive = true;
-              streamAudioRef.current.rateApplied = false;
-              streamAudioRef.current.calculatedDuration = 0;
-              // totalBytes'ı sıfırlama - önceki stream'lerin bytes'ını koru
-              // streamAudioRef.current.totalBytes = 0; // SIFIRLAMA
-              streamAudioRef.current.estimatedDuration = 0;
-              streamAudioRef.current.actualDuration = 0;
-              
-              // Eğer TTS audio zaten oynuyorsa, bu yeni stream için başlangıç noktasını kaydet
-              if (ttsSound && streamAudioRef.current.currentTTSStartBytes === 0) {
-                streamAudioRef.current.currentTTSStartBytes = streamAudioRef.current.totalBytes;
-                streamAudioRef.current.currentTTSStartTime = streamAudioRef.current.startTime;
-                console.log('🎯 Yeni stream başladı, TTS audio için başlangıç noktası güncellendi:', {
-                  startBytes: streamAudioRef.current.currentTTSStartBytes,
-                  startTime: streamAudioRef.current.currentTTSStartTime,
-                  totalBytes: streamAudioRef.current.totalBytes,
-                });
-              }
-              
-              console.log('🎵 Stream audio başladı:', streamAudioRef.current.startTime);
-              
-              // Stream başladığında TTS audio'yu kontrol et ve ayarla
-              // İlk chunk'lar gelene kadar bekle, sonra TTS audio'yu ayarla
-              setTimeout(() => {
-                adjustTTSAudioToStream();
-              }, 1000); // 1 saniye sonra kontrol et (ilk chunk'lar gelene kadar bekle)
-            }
-          } catch (error) {
-            // Ignore parse errors
-          }
-        }}
         userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
       />
 
@@ -1284,17 +776,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             />
           </View>
 
-          <View style={styles.headerRightContainer}>
-            <View style={styles.liveChatContainer}>
-              <View style={styles.liveIndicator} />
-              <ReusableText
-                text={t('ai.liveChat')}
-                family="medium"
-                size={16}
-                color={Colors.lightWhite}
-                style={styles.liveChatText}
-              />
-            </View>
+          <View style={styles.liveChatContainer}>
+            <View style={styles.liveIndicator} />
+            <ReusableText
+              text={t('ai.liveChat')}
+              family="medium"
+              size={16}
+              color={Colors.lightWhite}
+              style={styles.liveChatText}
+            />
           </View>
         </View>
       </SafeAreaView>
@@ -1443,21 +933,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 20,
-  },
-  headerRightContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  ttsPlaybackButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   liveChatContainer: {
     flexDirection: 'row',
