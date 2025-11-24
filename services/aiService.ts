@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
-const STT_WS_URL = 'ws://localhost:5001/ws/stt';
+const STT_WS_URL = 'wss://ai-chat-server-birimajans-cf2523744522.herokuapp.com/ws/stt';
 const CHUNK_INTERVAL_MS = 140;
 const FIRST_CHUNK_DELAY_MS = 60;
 
@@ -267,7 +267,6 @@ class AIService {
       this.recording = recording;
       return true;
     } catch (error) {
-      console.error('Kayıt başlatma hatası:', error);
       return false;
     } finally {
       this.isStartingRecording = false;
@@ -442,7 +441,6 @@ class AIService {
           // Hata olsa bile devam et, bir sonraki chunk'ta tekrar dene
         }
       } catch (error) {
-        console.warn('⚠️ Kayıt başlatma hatası:', error);
         // Hata olsa bile devam et
       }
     }
