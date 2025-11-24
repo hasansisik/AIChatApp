@@ -35,22 +35,15 @@ const TabNavigation = () => {
   const [courseCode, setCourseCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [chatBotVisible, setChatBotVisible] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingOverrideComplete, setOnboardingOverrideComplete] = useState(false);
   
   useEffect(() => {
     // Check if user has courseCode when Edu tab is accessed
     // This will be handled in the Edu component itself
   }, [user]);
 
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-    setShowOnboarding(!isOnboardingCompleted);
-  }, [authLoading, isOnboardingCompleted]);
-
   const handleOnboardingComplete = async () => {
-    setShowOnboarding(false);
+    setOnboardingOverrideComplete(true);
     await dispatch<any>(loadUser());
   };
 
@@ -163,10 +156,12 @@ const TabNavigation = () => {
       backgroundColor: Colors.primary,
     },
   });
-  if (showOnboarding) {
+  const shouldShowOnboarding = !authLoading && !isOnboardingCompleted && !onboardingOverrideComplete;
+
+  if (shouldShowOnboarding) {
     return (
       <OnboardingDemo
-        visible={showOnboarding}
+        visible={shouldShowOnboarding}
         onComplete={handleOnboardingComplete}
       />
     );
