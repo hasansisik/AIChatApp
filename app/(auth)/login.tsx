@@ -25,7 +25,7 @@ import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Colors } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
-import { VideoView, useVideoPlayer } from "expo-video";
+import { Video, ResizeMode } from "expo-av";
 import { useTheme } from "@/hooks/useThemeColor";
 
 interface LoginProps {
@@ -44,15 +44,6 @@ const Login: React.FC<LoginProps> = () => {
   const toastRef = useRef<any>(null);
   const inputAnimation = useRef(new Animated.Value(0)).current;
   const textAnimation = useRef(new Animated.Value(1)).current;
-
-  // Video player for logo
-  const videoSource = isDark 
-    ? require('@/assets/video/Tlogotm-dark.mp4')
-    : require('@/assets/video/Tlogotm.mp4');
-  const player = useVideoPlayer(videoSource, (player: any) => {
-    player.loop = true;
-    player.play();
-  });
 
   useEffect(() => {
     if (status && message) {
@@ -153,11 +144,13 @@ const Login: React.FC<LoginProps> = () => {
               },
             ]}
           >
-            <VideoView
-              player={player}
+            <Video
+              source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
               style={loginStyles.video}
-              contentFit="contain"
-              nativeControls={false}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              isLooping
+              isMuted
             />
           </Animated.View>
           
