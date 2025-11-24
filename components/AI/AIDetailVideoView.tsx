@@ -39,7 +39,7 @@ interface AIDetailVideoViewProps {
   setIsProcessing: (processing: boolean) => void;
   selectedDetectionMethod: string;
   onGoBack: () => void;
-  conversationId: string;
+  conversationId?: string;
 }
 
 const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({

@@ -26,8 +26,8 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
     <Animated.View style={[styles.bottomTextContainer, { opacity }]}>
       <ReusableText
         text={t(item.category)}
-        family="bold"
-        size={18}
+        family="light"
+        size={16}
         color={Colors.lightWhite}
         style={styles.categoryText}
       />

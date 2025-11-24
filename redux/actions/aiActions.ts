@@ -236,6 +236,19 @@ export const sendAudio = createAsyncThunk(
       return data;
     } catch (error: any) {
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      
+      // 409 Conflict: Audio is already being processed - this is normal, silently ignore
+      if (error.response?.status === 409) {
+        console.log(`ℹ️ sendAudio API: Audio zaten işleniyor (${duration}s) - normal durum`);
+        // Return a success response since this is expected behavior
+        return {
+          conversation_id,
+          status: "playing",
+          message: "Audio is already being processed",
+          has_speech: true,
+        } as SendAudioResponse;
+      }
+      
       console.error(`❌ sendAudio API hatası (${duration}s):`, error.response?.data?.message || error.message);
       
       if (error.response?.status === 401) {

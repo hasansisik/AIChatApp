@@ -18,8 +18,6 @@ import { sendAudio } from '@/redux/actions/aiActions';
 import AIDetailInitialView from '@/components/AI/AIDetailInitialView';
 import AIDetailVideoView from '@/components/AI/AIDetailVideoView';
 
-const { width, height } = Dimensions.get('window');
-
 const AIDetailPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -129,10 +127,15 @@ const AIDetailPage = () => {
       }
 
       try {
-        await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri })).unwrap();
+        await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
         console.log('✅ [ai-detail] TTS audio conversation\'a gönderildi');
-      } catch (error) {
-        console.error('❌ [ai-detail] TTS audio gönderilemedi:', error);
+      } catch (error: any) {
+        // 409 Conflict is normal when audio is already being processed - silently ignore
+        if (error?.response?.status === 409 || error?.message?.includes('409')) {
+          console.log('ℹ️ [ai-detail] TTS audio zaten işleniyor - normal durum');
+        } else {
+          console.error('❌ [ai-detail] TTS audio gönderilemedi:', error);
+        }
       }
     };
 
@@ -154,7 +157,7 @@ const AIDetailPage = () => {
       try {
         console.log('🎤 [ai-detail] Recording conversation\'a gönderiliyor...');
         setIsProcessing(true);
-        const result = await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri })).unwrap();
+        const result = await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
         console.log('✅ [ai-detail] Recording conversation\'a gönderildi:', result);
         
         // Recording sent successfully, server will process it
@@ -203,7 +206,7 @@ const AIDetailPage = () => {
             setIsProcessing={setIsProcessing}
             selectedDetectionMethod={selectedDetectionMethod}
             onGoBack={handleGoBack}
-            conversationId={aiState.conversation.conversation_id}
+            conversationId={aiState.conversation.conversation_id ?? undefined}
           />
         </Animated.View>
       ) : (
