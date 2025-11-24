@@ -53,7 +53,7 @@ export const aiCategories: AICategory[] = [
     image: require('@/assets/images/ai/ai-women2.png'),
     description: 'ai.descriptions.sophia',
     avatar_id: 3,
-    voice: 'ash', // Kadın sesi
+    voice: 'shimmer', // Kadın sesi
   },
   {
     id: '4',
