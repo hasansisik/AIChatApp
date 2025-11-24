@@ -427,6 +427,7 @@
   "ai": {
     "notFound": "AI bulunamadı",
     "startButton": "Hemen Başla",
+    "liveChat": "Canlı Sohbet",
     "recording": {
       "startError": "Kayıt başlatılamadı"
     },

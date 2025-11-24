@@ -426,6 +426,7 @@
   "ai": {
     "notFound": "AI not found",
     "startButton": "Start Now",
+    "liveChat": "Live Chat",
     "recording": {
       "startError": "Recording could not be started"
     },

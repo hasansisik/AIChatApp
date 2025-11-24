@@ -777,7 +777,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             />
           </View>
 
-          <View style={styles.rightSpacer} />
+          <View style={styles.liveChatContainer}>
+            <View style={styles.liveIndicator} />
+            <ReusableText
+              text={t('ai.liveChat')}
+              family="medium"
+              size={16}
+              color={Colors.lightWhite}
+              style={styles.liveChatText}
+            />
+          </View>
         </View>
       </SafeAreaView>
 
@@ -926,9 +935,20 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 20,
   },
-  rightSpacer: {
-    width: 40,
-    height: 40,
+  liveChatContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  liveIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+    marginRight: 6,
+  },
+  liveChatText: {
+    opacity: 0.9,
   },
   profileSection: {
     flex: 1,
