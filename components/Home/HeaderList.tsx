@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { Colors, useTheme } from '@/hooks/useThemeColor';
@@ -15,6 +15,15 @@ const HeaderList: React.FC<HeaderListProps> = ({ onSearchPress, onProfilePress }
   const { isDark } = useTheme();
   const router = useRouter();
   const { user } = useSelector((state: any) => state.user);
+
+  // Video player for logo
+  const videoSource = isDark 
+    ? require('@/assets/video/Tlogotm-dark.mp4')
+    : require('@/assets/video/Tlogotm.mp4');
+  const player = useVideoPlayer(videoSource, (player) => {
+    player.loop = true;
+    player.play();
+  });
 
   const handleProfilePress = () => {
     if (onProfilePress) {
@@ -45,12 +54,11 @@ const HeaderList: React.FC<HeaderListProps> = ({ onSearchPress, onProfilePress }
 
         {/* Video Logo */}
         <View style={styles.logoContainer}>
-          <Video
-            source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
+          <VideoView
+            player={player}
             style={styles.video}
-            shouldPlay
-            isLooping
-            resizeMode={ResizeMode.CONTAIN}
+            contentFit="contain"
+            nativeControls={false}
           />
         </View>
 

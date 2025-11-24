@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av';
+import { Recording, requestPermissionsAsync, setAudioModeAsync, RecordingOptionsPresets } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const STT_WS_URL = 'ws://localhost:5001/ws/stt';
@@ -11,7 +11,7 @@ type TTSAudioHandler = (audioUri: string) => void;
 type RecordingForLipsyncHandler = (audioUri: string) => void;
 
 class AIService {
-  private recording: Audio.Recording | null = null;
+  private recording: Recording | null = null;
   private sttSocket: WebSocket | null = null;
   private transcriptionHandlers = new Set<TranscriptionHandler>();
   private statusHandlers = new Set<StatusHandler>();
@@ -248,20 +248,20 @@ class AIService {
     try {
       this.isStartingRecording = true;
 
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestPermissionsAsync();
       if (permission.status !== 'granted') {
         throw new Error('Mikrofon izni reddedildi');
       }
 
-      await Audio.setAudioModeAsync({
+      await setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.MEDIUM_QUALITY
+      const { recording } = await Recording.createAsync(
+        RecordingOptionsPresets.MEDIUM_QUALITY
       );
 
       this.recording = recording;

@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { requestPermissionsAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import ReusableText from '@/components/ui/ReusableText';
 import ReusableButton from '@/components/ui/ReusableButton';
@@ -22,7 +22,7 @@ interface MicrophoneStepProps {
 const MicrophoneStep: React.FC<MicrophoneStepProps> = ({ data, onUpdate }) => {
   const handleEnable = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
+      const { status } = await requestPermissionsAsync();
       if (status === 'granted') {
         onUpdate('microphoneEnabled', true);
         Alert.alert('Başarılı', 'Mikrofon erişimi etkinleştirildi!');

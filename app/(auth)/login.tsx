@@ -25,7 +25,7 @@ import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Colors } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { useTheme } from "@/hooks/useThemeColor";
 
 interface LoginProps {
@@ -44,6 +44,15 @@ const Login: React.FC<LoginProps> = () => {
   const toastRef = useRef<any>(null);
   const inputAnimation = useRef(new Animated.Value(0)).current;
   const textAnimation = useRef(new Animated.Value(1)).current;
+
+  // Video player for logo
+  const videoSource = isDark 
+    ? require('@/assets/video/Tlogotm-dark.mp4')
+    : require('@/assets/video/Tlogotm.mp4');
+  const player = useVideoPlayer(videoSource, (player: any) => {
+    player.loop = true;
+    player.play();
+  });
 
   useEffect(() => {
     if (status && message) {
@@ -106,7 +115,8 @@ const Login: React.FC<LoginProps> = () => {
         await dispatch(loadUser() as any);
         // Get AI token after successful login
         await dispatch(getToken() as any);
-        router.replace("/");
+        // Navigate to tabs using router
+        router.replace("/(tabs)/tabs");
       } else if (login.rejected.match(actionResult)) {
         setStatus("error");
         setMessage((actionResult.payload as string) || t("auth.login.error"));
@@ -143,13 +153,11 @@ const Login: React.FC<LoginProps> = () => {
               },
             ]}
           >
-            <Video
-              source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
+            <VideoView
+              player={player}
               style={loginStyles.video}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
-              isLooping
-              isMuted
+              contentFit="contain"
+              nativeControls={false}
             />
           </Animated.View>
           

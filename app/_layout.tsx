@@ -9,10 +9,9 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
-import { Provider, useDispatch } from "react-redux";
+import { Provider } from "react-redux";
 import { store } from "@/redux/store";
 import { useTheme } from "@/hooks/useThemeColor";
-import { checkInitialAuth } from "@/redux/actions/userActions";
 import "@/locales/i18n";
 
 
@@ -21,7 +20,6 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { theme, isDark } = useTheme();
-  const dispatch = useDispatch();
   const [loaded] = useFonts({
     "Poppins-Regular": require("../assets/fonts/Poppins-Regular.ttf"),
     "Poppins-Bold": require("../assets/fonts/Poppins-Bold.ttf"),
@@ -34,10 +32,8 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
-      // Check initial authentication status when app loads
-      dispatch(checkInitialAuth() as any);
     }
-  }, [loaded, dispatch]);
+  }, [loaded]);
 
   if (!loaded) {
     return null;

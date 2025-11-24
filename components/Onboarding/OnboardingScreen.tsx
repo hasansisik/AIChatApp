@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import ReusableText from '@/components/ui/ReusableText';
 import ReusableButton from '@/components/ui/ReusableButton';
 import { Colors } from '@/constants/Colors';
@@ -24,6 +24,13 @@ interface OnboardingScreenProps {
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  // Video player for background
+  const player = useVideoPlayer(require('@/assets/video/onboarding.mp4'), (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
 
   const handleNext = () => {
     if (currentIndex < onboardingData.length - 1) {
@@ -69,13 +76,11 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <Video
-        source={require('@/assets/video/onboarding.mp4')}
+      <VideoView
+        player={player}
         style={styles.videoBackground}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        isMuted
+        contentFit="cover"
+        nativeControls={false}
       />
       <FlatList
         ref={flatListRef}

@@ -1,44 +1,45 @@
-import React, { useEffect } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { useRouter } from 'expo-router';
 import { loadUser, checkInitialAuth } from '../redux/actions/userActions';
 import { useAuth } from '../hooks/useAuth';
-import TabNavigation from './(tabs)/tabs';
-import Login from './(auth)/login';
-
-const Stack = createNativeStackNavigator();
 
 const Index = () => {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initializeApp = async () => {
+      if (isInitialized) return; // Prevent multiple initializations
+      
       try {
         // Check initial authentication status first
-        await dispatch(checkInitialAuth() as any);
+        const authResult = await dispatch(checkInitialAuth() as any);
         
         // If user is authenticated, load user data to check onboarding status
-        if (isAuthenticated) {
+        if (authResult.payload?.isAuthenticated) {
           await dispatch(loadUser() as any);
+          // Redirect to tabs on initial load if authenticated
+          router.replace("/(tabs)/tabs");
+        } else {
+          // Redirect to login if not authenticated
+          router.replace("/(auth)/login");
         }
+        setIsInitialized(true);
       } catch (error) {
         console.error('Error initializing app:', error);
+        router.replace("/(auth)/login");
+        setIsInitialized(true);
       }
     };
 
     initializeApp();
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, router]);
 
-  return (
-    <Stack.Navigator>
-      {!isAuthenticated ? (
-        <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
-      ) : (
-        <Stack.Screen name="(tabs)/tabs" component={TabNavigation} options={{ headerShown: false }} />
-      )}
-    </Stack.Navigator>
-  );
+  // Show nothing while initializing or redirecting
+  return null;
 };
 
 export default Index;

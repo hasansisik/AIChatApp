@@ -33,7 +33,10 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-web-browser",
+      "expo-video",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
