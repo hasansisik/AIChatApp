@@ -157,10 +157,16 @@
     },
     "faq": {
       "title": "Sıkça Sorulan Sorular",
-      "question1": "Soru 1",
-      "answer1": "Cevap 1",
-      "question2": "Soru 2",
-      "answer2": "Cevap 2"
+      "question1": "AI asistanları nasıl kullanılır?",
+      "answer1": "Ana sayfadan veya liste sayfasından istediğiniz AI asistanını seçin. Seçtiğiniz AI ile conversation başlatılacak ve canlı sohbet ekranına yönlendirileceksiniz. Mikrofon butonuna basarak ses kaydı yapabilir veya klavye ile text mesajı gönderebilirsiniz.",
+      "question2": "Favori AI'ları nasıl ekleyip çıkarabilirim?",
+      "answer2": "AI asistanlarının üzerindeki kalp ikonuna tıklayarak favorilerinize ekleyebilir veya çıkarabilirsiniz. Favori AI'larınızı profil sayfasından 'Favori AI' bölümünden görüntüleyebilir ve yönetebilirsiniz.",
+      "question3": "Ses kaydı nasıl yapılır?",
+      "answer3": "AI detay sayfasında mikrofon butonuna basarak ses kaydına başlayabilirsiniz. Kayıt sırasında butona tekrar basarak kaydı durdurabilir veya pause edebilirsiniz. Kayıt tamamlandığında otomatik olarak AI'ya gönderilir ve cevap alırsınız.",
+      "question4": "Text mesajı nasıl gönderilir?",
+      "answer4": "AI detay sayfasında klavye ikonuna tıklayarak klavyeyi açabilirsiniz. Text input alanına mesajınızı yazıp gönder butonuna basarak mesajınızı gönderebilirsiniz. Text mesajları direkt olarak AI'ya gönderilir ve cevap alırsınız.",
+      "question5": "Conversation nasıl başlatılır ve kapatılır?",
+      "answer5": "Bir AI asistanı seçtiğinizde otomatik olarak conversation başlatılır. Conversation'ı kapatmak için kırmızı telefon butonuna basmanız yeterlidir. Bu işlem hem WebSocket bağlantısını hem de conversation'ı kapatır."
     },
     "help": {
       "aboutUs": "Hakkımızda",

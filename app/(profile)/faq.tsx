@@ -22,6 +22,18 @@ const Faqs = () => {
       question: t("profile.faq.question2"),
       answer: t("profile.faq.answer2"),
     },
+    {
+      question: t("profile.faq.question3"),
+      answer: t("profile.faq.answer3"),
+    },
+    {
+      question: t("profile.faq.question4"),
+      answer: t("profile.faq.answer4"),
+    },
+    {
+      question: t("profile.faq.question5"),
+      answer: t("profile.faq.answer5"),
+    },
   ];
 
   return (
@@ -52,10 +64,10 @@ const Faqs = () => {
               theme={{ colors: { background: Colors.dark } }}
             >
               <List.Item
-                titleNumberOfLines={3}
+                titleNumberOfLines={10}
                 title={item.answer}
                 style={[styles.listItem, { backgroundColor: Colors.dark }]}
-                titleStyle={{ color: Colors.black }}
+                titleStyle={{ color: Colors.black, fontSize: FontSizes.small }}
               />
             </List.Accordion>
           )}

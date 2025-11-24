@@ -156,10 +156,16 @@
     },
     "faq": {
       "title": "Frequently Asked Questions",
-      "question1": "Question 1",
-      "answer1": "Answer 1",
-      "question2": "Question 2",
-      "answer2": "Answer 2"
+      "question1": "How do I use AI assistants?",
+      "answer1": "Select the AI assistant you want from the home page or list page. A conversation will be started with the selected AI and you will be redirected to the live chat screen. You can record audio by pressing the microphone button or send a text message via keyboard.",
+      "question2": "How can I add or remove favorite AIs?",
+      "answer2": "You can add or remove AI assistants to your favorites by clicking the heart icon on them. You can view and manage your favorite AIs from the 'Favorite AI' section on the profile page.",
+      "question3": "How do I record audio?",
+      "answer3": "You can start audio recording by pressing the microphone button on the AI detail page. During recording, you can stop or pause the recording by pressing the button again. When the recording is complete, it is automatically sent to the AI and you receive a response.",
+      "question4": "How do I send a text message?",
+      "answer4": "You can open the keyboard by clicking the keyboard icon on the AI detail page. You can send your message by typing it in the text input field and pressing the send button. Text messages are sent directly to the AI and you receive a response.",
+      "question5": "How do I start and close a conversation?",
+      "answer5": "A conversation is automatically started when you select an AI assistant. To close the conversation, simply press the red phone button. This action closes both the WebSocket connection and the conversation."
     },
     "help": {
       "aboutUs": "About Us",
