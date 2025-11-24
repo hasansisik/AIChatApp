@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { RootState } from '@/redux/store';
 import ReusableText from '@/components/ui/ReusableText';
 import SelectionModal from '@/components/ui/SelectionModal';
@@ -20,6 +21,7 @@ import AIDetailVideoView from '@/components/AI/AIDetailVideoView';
 const { width, height } = Dimensions.get('window');
 
 const AIDetailPage = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
@@ -47,7 +49,7 @@ const AIDetailPage = () => {
   if (!item) {
     return (
       <View style={styles.container}>
-        <ReusableText text="AI not found" />
+        <ReusableText text={t('ai.notFound')} />
       </View>
     );
   }

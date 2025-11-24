@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { Colors } from '@/hooks/useThemeColor';
 import { FontSizes } from '@/constants/Fonts';
 import ReusableText from '@/components/ui/ReusableText';
@@ -43,6 +44,7 @@ interface ChatBotProps {
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.user);
   const {
@@ -213,13 +215,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
   // Hata durumunda alert göster
   useEffect(() => {
     if (dialogfusionError) {
-      Alert.alert('Hata', dialogfusionError);
+      Alert.alert(t('common.error'), dialogfusionError);
     }
-  }, [dialogfusionError]);
+  }, [dialogfusionError, t]);
 
   const initializeDialogFusion = async () => {
     if (!user || !user.email) {
-      Alert.alert('Hata', 'Kullanıcı bilgileri bulunamadı');
+      Alert.alert(t('common.error'), t('chatbot.error.userNotFound'));
         return;
       }
 
@@ -232,7 +234,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       if (!userId) {
         const visitorResult = await dispatch<any>(
           createVisitor({
-            first_name: user.name || 'Kullanıcı',
+            first_name: user.name || t('chatbot.user'),
             last_name: user.surname || '',
             email: user.email,
             source: 'web',
@@ -242,15 +244,15 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         if (createVisitor.fulfilled.match(visitorResult)) {
           userId = visitorResult.payload.user_id?.toString() || null;
           if (!userId) {
-            throw new Error('Kullanıcı ID alınamadı');
+            throw new Error(t('chatbot.error.userIdNotFound'));
           }
         } else {
-          throw new Error(visitorResult.payload || 'Ziyaretçi oluşturulamadı');
+          throw new Error(visitorResult.payload || t('chatbot.error.visitorNotCreated'));
         }
       }
 
       if (!userId) {
-        throw new Error('Kullanıcı ID alınamadı');
+        throw new Error(t('chatbot.error.userIdNotFound'));
       }
 
       // 2. Konuşmaları getir
@@ -268,7 +270,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           const conversationResult = await dispatch<any>(
             createConversation({
               user_id: userId,
-              subject: 'Misafir Desteği',
+              subject: t('chatbot.guestSupport'),
               source: 'web',
             })
           );
@@ -279,7 +281,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
             await dispatch<any>(getMessages({ conversation_id: conversationId }));
             setShowConversationList(false); // Chat ekranını göster
     } else {
-            throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
+            throw new Error(conversationResult.payload || t('chatbot.error.conversationNotCreated'));
           }
         } else {
           // Konuşma varsa listeyi göster, kullanıcı seçim yapacak
@@ -290,7 +292,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         const conversationResult = await dispatch<any>(
           createConversation({
             user_id: userId,
-            subject: 'Misafir Desteği',
+            subject: t('chatbot.guestSupport'),
             source: 'web',
           })
         );
@@ -300,12 +302,12 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           await dispatch<any>(getMessages({ conversation_id: conversationId }));
           setShowConversationList(false);
       } else {
-          throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
+          throw new Error(conversationResult.payload || t('chatbot.error.conversationNotCreated'));
         }
       }
     } catch (error: any) {
       console.error('DialogFusion initialization error:', error);
-      Alert.alert('Hata', error.message || 'Başlatma sırasında hata oluştu');
+      Alert.alert(t('common.error'), error.message || t('chatbot.error.initializationError'));
     } finally {
       setIsInitializing(false);
     }
@@ -317,7 +319,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
     // Gerekli bilgileri kontrol et
     if (!visitor.user_id || !currentConversation.conversation_id) {
-      Alert.alert('Hata', 'Lütfen bekleyin, bağlantı kuruluyor...');
+      Alert.alert(t('common.error'), t('chatbot.pleaseWait'));
       return;
     }
 
@@ -376,11 +378,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           setBotStatus('online');
         }, 500); // 500ms sonra kontrol et
       } else {
-        throw new Error(sendResult.payload || 'Mesaj gönderilemedi');
+        throw new Error(sendResult.payload || t('chatbot.error.messageNotSent'));
       }
     } catch (error: any) {
       console.error('Mesaj gönderme hatası:', error);
-      Alert.alert('Hata', error.message || 'Mesaj gönderilirken hata oluştu');
+      Alert.alert(t('common.error'), error.message || t('chatbot.error.messageSendError'));
       setBotStatus('online');
     } finally {
       setIsProcessing(false);
@@ -396,13 +398,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
     const yesterdayStr = yesterday.toDateString();
     
     // Basit bir kontrol - gerçek uygulamada daha detaylı olabilir
-    return 'Bugün';
+    return t('chatbot.today');
   };
 
   // Conversation seçildiğinde
   const handleSelectConversation = async (conversationId: string) => {
     if (!conversationId) {
-      Alert.alert('Hata', 'Geçersiz konuşma ID');
+      Alert.alert(t('common.error'), t('chatbot.error.invalidConversationId'));
       return;
     }
 
@@ -429,7 +431,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       setShowConversationList(false);
     } catch (error: any) {
       console.error('Conversation seçme hatası:', error);
-      Alert.alert('Hata', error.message || 'Konuşma yüklenirken hata oluştu');
+      Alert.alert(t('common.error'), error.message || t('chatbot.error.conversationLoadError'));
     } finally {
       setIsInitializing(false);
     }
@@ -438,7 +440,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
   // Yeni conversation oluştur
   const handleCreateNewConversation = async () => {
     if (!visitor.user_id) {
-      Alert.alert('Hata', 'Kullanıcı bilgileri bulunamadı');
+      Alert.alert(t('common.error'), t('chatbot.error.userNotFound'));
       return;
     }
 
@@ -447,7 +449,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       const conversationResult = await dispatch<any>(
         createConversation({
           user_id: visitor.user_id,
-          subject: 'Misafir Desteği',
+          subject: t('chatbot.guestSupport'),
           source: 'web',
         })
       );
@@ -458,11 +460,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         await dispatch<any>(getMessages({ conversation_id: conversationId }));
         setShowConversationList(false);
       } else {
-        throw new Error(conversationResult.payload || 'Konuşma oluşturulamadı');
+        throw new Error(conversationResult.payload || t('chatbot.error.conversationNotCreated'));
       }
     } catch (error: any) {
       console.error('Yeni conversation oluşturma hatası:', error);
-      Alert.alert('Hata', error.message || 'Konuşma oluşturulamadı');
+      Alert.alert(t('common.error'), error.message || t('chatbot.error.conversationNotCreated'));
     } finally {
       setIsInitializing(false);
     }
@@ -502,11 +504,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       const isYesterday = date.toDateString() === new Date(now.getTime() - 24 * 60 * 60 * 1000).toDateString();
 
       if (isToday) {
-        return 'Bugün';
+        return t('chatbot.today');
       } else if (isYesterday) {
-        return 'Dün';
+        return t('chatbot.yesterday');
       } else if (diffDays <= 7) {
-        return `${diffDays} gün önce`;
+        return t('chatbot.daysAgo', { count: diffDays });
         } else {
         return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
         }
@@ -559,7 +561,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
               </View>
               <View style={styles.headerTextContainer}>
                 <ReusableText
-                  text={showConversationList ? "Sohbetler" : (currentConversation.subject || "Bot")}
+                  text={showConversationList ? t('chatbot.conversations') : (currentConversation.subject || t('chatbot.bot'))}
                   family="bold"
                   size={FontSizes.medium}
                   color={Colors.white}
@@ -567,14 +569,14 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                 {!showConversationList && (
                   botStatus === 'typing' ? (
                   <ReusableText
-                    text="Yazıyor..."
+                    text={t('chatbot.typing')}
                     family="regular"
                     size={FontSizes.xSmall}
                     color={Colors.white}
                   />
                 ) : (
                   <ReusableText
-                    text="İnternet üzerinden"
+                    text={t('chatbot.online')}
                     family="regular"
                     size={FontSizes.xSmall}
                     color={Colors.white}
@@ -603,7 +605,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={Colors.primary} />
                     <ReusableText
-                      text="Yükleniyor..."
+                      text={t('chatbot.loading')}
                       family="regular"
                       size={FontSizes.small}
                       color={Colors.description}
@@ -620,7 +622,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                 >
                   <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
                   <ReusableText
-                    text="Yeni Sohbet Başlat"
+                    text={t('chatbot.newConversation')}
                     family="bold"
                     size={FontSizes.medium}
                     color={Colors.primary}
@@ -632,7 +634,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                     <View key="conversation-list-wrapper">
                       <View style={styles.conversationListHeader}>
                         <ReusableText
-                          text="Geçmiş Sohbetler"
+                          text={t('chatbot.pastConversations')}
                           family="bold"
                           size={FontSizes.medium}
                           color={Colors.black}
@@ -660,7 +662,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                                 </View>
                                 <View style={styles.conversationItemText}>
                                   <ReusableText
-                                    text={(conv as any).title || conv.subject || 'Sohbet'}
+                                    text={(conv as any).title || conv.subject || t('chatbot.chat')}
                                     family="bold"
                                     size={FontSizes.small}
                                     color={Colors.black}
@@ -697,7 +699,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors.primary} />
                 <ReusableText
-                  text="Bağlanıyor..."
+                  text={t('chatbot.connecting')}
                   family="regular"
                   size={FontSizes.small}
                   color={Colors.description}
@@ -722,7 +724,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
             {!isInitializing && messages.length === 0 && (
               <View style={styles.emptyState}>
                 <ReusableText
-                  text="Merhaba! Size nasıl yardımcı olabilirim?"
+                  text={t('chatbot.welcomeMessage')}
                   family="regular"
                   size={FontSizes.medium}
                   color={Colors.description}
@@ -786,7 +788,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Bir mesaj yaz..."
+              placeholder={t('chatbot.writeMessage')}
               placeholderTextColor={Colors.description}
               value={inputText}
               onChangeText={(text) => {

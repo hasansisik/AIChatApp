@@ -138,7 +138,7 @@ const ProfileDetails: React.FC = () => {
         
         if (editProfile.fulfilled.match(actionResult)) {
           setStatus("success");
-          setMessage(t("profile.profileUpdateSuccess"));
+          setMessage(t("profile.edit.updateSuccess"));
           
           // Reload user data
           dispatch<any>(loadUser());
@@ -163,11 +163,11 @@ const ProfileDetails: React.FC = () => {
         }
       } else {
         setStatus("info");
-        setMessage(t("profile.noChangesMade"));
+        setMessage(t("profile.edit.noChangesMade"));
       }
     } catch (error) {
       setStatus("error");
-      setMessage(t("profile.profileUpdateError"));
+      setMessage(t("profile.edit.updateError"));
     } finally {
       setLoading(false);
     }
@@ -242,7 +242,7 @@ const ProfileDetails: React.FC = () => {
                 disabled={loading}
               >
                 <Text style={styles.cameraText}>
-                  {loading ? "Yükleniyor..." : "Değiştir"}
+                  {loading ? t('profile.edit.uploading') : t('profile.edit.change')}
                 </Text>
               </TouchableOpacity>
             </View>

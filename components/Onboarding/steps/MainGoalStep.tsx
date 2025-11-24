@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 
@@ -15,16 +16,18 @@ interface MainGoalStepProps {
   onUpdate: (key: string, value: any) => void;
 }
 
-const mainGoals = [
-  { id: 'konusma', title: 'Konuşma', emoji: '🗣️' },
-  { id: 'yazma', title: 'Yazma', emoji: '✍️' },
-  { id: 'dinleme', title: 'Dinleme', emoji: '👂' },
-  { id: 'okuma', title: 'Okuma', emoji: '📖' },
-  { id: 'gramer', title: 'Gramer', emoji: '📝' },
-  { id: 'kelime', title: 'Kelime', emoji: '📚' },
-];
-
 const MainGoalStep: React.FC<MainGoalStepProps> = ({ data, onUpdate }) => {
+  const { t } = useTranslation();
+  
+  const mainGoals = [
+    { id: 'konusma', title: t('onboarding.mainGoalStep.options.konusma'), emoji: '🗣️' },
+    { id: 'yazma', title: t('onboarding.mainGoalStep.options.yazma'), emoji: '✍️' },
+    { id: 'dinleme', title: t('onboarding.mainGoalStep.options.dinleme'), emoji: '👂' },
+    { id: 'okuma', title: t('onboarding.mainGoalStep.options.okuma'), emoji: '📖' },
+    { id: 'gramer', title: t('onboarding.mainGoalStep.options.gramer'), emoji: '📝' },
+    { id: 'kelime', title: t('onboarding.mainGoalStep.options.kelime'), emoji: '📚' },
+  ];
+
   const handleSelect = (goal: string) => {
     onUpdate('mainGoal', goal);
   };
@@ -33,7 +36,7 @@ const MainGoalStep: React.FC<MainGoalStepProps> = ({ data, onUpdate }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <ReusableText
-          text="Ana hedefiniz nedir?"
+          text={t('onboarding.mainGoalStep.title')}
           family="bold"
           size={24}
           color={Colors.black}
@@ -41,7 +44,7 @@ const MainGoalStep: React.FC<MainGoalStepProps> = ({ data, onUpdate }) => {
           style={styles.title}
         />
         <ReusableText
-          text="En az 1 hedef seçin"
+          text={t('onboarding.mainGoalStep.subtitle')}
           family="regular"
           size={16}
           color={Colors.gray}

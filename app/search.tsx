@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from "@/hooks/useThemeColor";
 import ReusableText from '@/components/ui/ReusableText';
@@ -15,6 +16,7 @@ import { useSelector } from 'react-redux';
 const Search = () => {
   const router = useRouter();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState<AICategory[]>([]);
@@ -100,7 +102,7 @@ const Search = () => {
         </TouchableOpacity>
         
         <ReusableText 
-          text="Arama"
+          text={t('search.title')}
           family="bold"
           size={20}
           color={Colors.text}
@@ -115,7 +117,7 @@ const Search = () => {
           <Ionicons name="search" size={20} color={Colors.gray} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="AI asistanları ara..."
+            placeholder={t('search.placeholder')}
             placeholderTextColor={Colors.gray}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -135,14 +137,14 @@ const Search = () => {
           <View style={styles.emptyState}>
             <Ionicons name="search" size={64} color={Colors.gray} />
             <ReusableText 
-              text="AI asistanları ara"
+              text={t('search.emptyState.title')}
               family="medium"
               size={FontSizes.medium}
               color={Colors.gray}
               style={styles.emptyText}
             />
             <ReusableText 
-              text="İhtiyaçlarınız için mükemmel AI asistanını bulun"
+              text={t('search.emptyState.description')}
               family="regular"
               size={FontSizes.small}
               color={Colors.gray}
@@ -153,14 +155,14 @@ const Search = () => {
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={64} color={Colors.gray} />
             <ReusableText 
-              text="Sonuç bulunamadı"
+              text={t('search.noResults.title')}
               family="medium"
               size={FontSizes.medium}
               color={Colors.gray}
               style={styles.emptyText}
             />
             <ReusableText 
-              text={`"${searchQuery}" için AI asistanı bulunamadı`}
+              text={t('search.noResults.description', { query: searchQuery })}
               family="regular"
               size={FontSizes.small}
               color={Colors.gray}
@@ -170,7 +172,7 @@ const Search = () => {
         ) : (
           <View style={styles.resultsContainer}>
             <ReusableText 
-              text={`${filteredItems.length} sonuç bulundu`}
+              text={t('search.resultsCount', { count: filteredItems.length })}
               family="medium"
               size={FontSizes.small}
               color={Colors.gray}

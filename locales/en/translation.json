@@ -55,6 +55,7 @@
       "password": "Password",
       "forgotPassword": "Forgot Password?",
       "loginButton": "Log In",
+      "loggingIn": "Logging in...",
       "noAccount": "Don't have an account? ",
       "register": "Register",
       "success": "Login successful",
@@ -68,6 +69,7 @@
       "password": "Password",
       "confirmPassword": "Confirm Password",
       "registerButton": "Register",
+      "registering": "Creating account...",
       "haveAccount": "Already have an account, ",
       "login": "Log In",
       "success": "Registration successful",
@@ -77,6 +79,7 @@
       "title": "Verification Code",
       "description": "Please enter the verification code sent to your email address.",
       "verifyButton": "Verify",
+      "verifying": "Verifying...",
       "noCode": "Didn't receive the verification code? ",
       "resend": "Resend",
       "success": "Verification successful",
@@ -108,7 +111,9 @@
     "confirm": "Confirm",
     "save": "Save",
     "cancel": "Cancel",
-    "error": "An error occurred"
+    "error": "Error",
+    "success": "Success",
+    "errorOccurred": "An error occurred"
   },
   "profile": {
     "email": "E-mail",
@@ -146,6 +151,7 @@
       "policies": "Policies",
       "faq": "FAQ",
       "help": "Help",
+      "favoriteAI": "Favorite AI",
       "deleteAccount": "Delete Account",
       "deleteAccountTitle": "Delete Account",
       "deleteAccountMessage": "Are you sure you want to delete your account? This action cannot be undone.",
@@ -153,6 +159,21 @@
       "deleteAccountProcessing": "Account deletion request has been received. Please contact support for assistance.",
       "logout": "Log Out",
       "login": "Log In"
+    },
+    "user": "User",
+    "language": {
+      "english": "English",
+      "turkish": "Turkish"
+    },
+    "favoriteAIs": {
+      "title": "My Favorite AIs",
+      "emptyTitle": "You don't have any favorite AIs yet",
+      "emptyDescription": "Add AIs to your favorites to access them easily",
+      "removeTitle": "Remove from Favorites",
+      "removeMessage": "Are you sure you want to remove this AI from your favorites?",
+      "remove": "Remove",
+      "loadError": "Error loading favorites:",
+      "removeError": "Error removing favorite:"
     },
     "faq": {
       "title": "Frequently Asked Questions",
@@ -230,6 +251,10 @@
       "update": "Save Changes",
       "updating": "Updating...",
       "updateSuccess": "Update successful",
+      "updateError": "Update failed",
+      "noChangesMade": "No changes made",
+      "uploading": "Uploading...",
+      "change": "Change",
       "enterDataToUpdate": "Please enter the information you want to update",
       "profilePictureSelected": "Profile picture selected"
     },
@@ -243,6 +268,7 @@
   },
   "validation": {
     "passwordMinLength": "Password must be at least 6 characters long",
+    "passwordMinLength8": "Password must be at least 8 characters long",
     "passwordRequired": "Password is required",
     "passwordsNotMatch": "Passwords do not match",
     "confirmPasswordRequired": "Password confirmation is required",
@@ -250,8 +276,163 @@
     "districtRequired": "District is required",
     "provinceRequired": "Province is required",
     "nameMinLength": "Name must be at least 2 characters long",
+    "nameRequired": "Name and surname are required",
     "surnameMinLength": "Surname must be at least 2 characters long",
     "invalidEmail": "Please enter a valid e-mail address",
-    "phoneNumberOnlyDigits": "Phone number must contain only digits"
+    "emailRequired": "Required field",
+    "invalidCharacters": "Contains invalid characters",
+    "fieldRequired": "Required field",
+    "codeLength": "Code must be 4 digits",
+    "codeRequired": "Code is required",
+    "phoneNumberOnlyDigits": "Phone number must contain only digits",
+    "complianceRequired": "You must accept the User Agreement and Privacy Policy."
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "steps": {
+      "interest": "Interest",
+      "mainGoal": "Main Goal",
+      "reason": "Reason",
+      "favorites": "Favorites"
+    },
+    "interestStep": {
+      "title": "What are you interested in?",
+      "subtitle": "Select at least 1 option",
+      "options": {
+        "dil-ogrenmek": "Learning Language",
+        "sohbet": "Chat"
+      }
+    },
+    "mainGoalStep": {
+      "title": "What is your main goal?",
+      "subtitle": "Select at least 1 goal",
+      "options": {
+        "konusma": "Speaking",
+        "yazma": "Writing",
+        "dinleme": "Listening",
+        "okuma": "Reading",
+        "gramer": "Grammar",
+        "kelime": "Vocabulary"
+      }
+    },
+    "reasonStep": {
+      "title": "Why are you learning?",
+      "subtitle": "Select at least 1 reason",
+      "options": {
+        "is": "Work",
+        "seyahat": "Travel",
+        "okul": "School",
+        "aile": "Family",
+        "arkadas": "Friends",
+        "hobi": "Hobby"
+      }
+    },
+    "favoriteStep": {
+      "title": "What are your favorite things?",
+      "subtitle": "You can select multiple",
+      "options": {
+        "muzik": "Music",
+        "film": "Movies",
+        "kitap": "Books",
+        "spor": "Sports",
+        "sanat": "Art",
+        "teknoloji": "Technology",
+        "yemek": "Food",
+        "seyahat": "Travel",
+        "oyun": "Games",
+        "dogal": "Nature",
+        "moda": "Fashion",
+        "bilim": "Science"
+      }
+    }
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search AI assistants...",
+    "emptyState": {
+      "title": "Search AI assistants",
+      "description": "Find the perfect AI assistant for your needs"
+    },
+    "noResults": {
+      "title": "No results found",
+      "description": "No AI assistant found for \"{{query}}\""
+    },
+    "resultsCount": "{{count}} results found"
+  },
+  "home": {
+    "header": {
+      "welcomePart1": "How can I help",
+      "welcomePart2": "you, {{name}}",
+      "user": "User"
+    },
+    "categories": {
+      "liveChat": "Live Chat",
+      "courseSessions": "Course Sessions",
+      "contact": "Contact"
+    },
+    "filters": {
+      "all": "All",
+      "education": "Education",
+      "work": "Business",
+      "lifestyle": "Lifestyle",
+      "family": "Family",
+      "relationships": "Relationships"
+    },
+    "favoriteError": "Favorite operation error:"
+  },
+  "list": {
+    "favoriteError": "Favorite operation error:"
+  },
+  "tabs": {
+    "courseCode": {
+      "title": "Enter Course Code",
+      "placeholder": "Enter course code (e.g., KMY43465)",
+      "enterCode": "Please enter the course code",
+      "updateSuccess": "Course code updated successfully",
+      "updateError": "Code could not be updated"
+    }
+  },
+  "chatbot": {
+    "conversations": "Conversations",
+    "bot": "Bot",
+    "typing": "Typing...",
+    "online": "Online",
+    "loading": "Loading...",
+    "connecting": "Connecting...",
+    "newConversation": "Start New Conversation",
+    "pastConversations": "Past Conversations",
+    "chat": "Chat",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "welcomeMessage": "Hello! How can I help you?",
+    "writeMessage": "Write a message...",
+    "guestSupport": "Guest Support",
+    "user": "User",
+    "error": {
+      "userNotFound": "User information not found",
+      "userIdNotFound": "User ID could not be retrieved",
+      "visitorNotCreated": "Visitor could not be created",
+      "conversationNotCreated": "Conversation could not be created",
+      "initializationError": "An error occurred during initialization",
+      "pleaseWait": "Please wait, connecting...",
+      "messageNotSent": "Message could not be sent",
+      "messageSendError": "An error occurred while sending the message",
+      "invalidConversationId": "Invalid conversation ID",
+      "conversationLoadError": "An error occurred while loading the conversation"
+    }
+  },
+  "ai": {
+    "notFound": "AI not found",
+    "startButton": "Start Now",
+    "recording": {
+      "startError": "Recording could not be started"
+    },
+    "message": {
+      "sendError": "Message could not be sent"
+    },
+    "input": {
+      "placeholder": "Take notes..."
+    }
   }
 }

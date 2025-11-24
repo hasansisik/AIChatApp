@@ -25,16 +25,16 @@ export const forgotPasswordSchema = Yup.object({
   email: Yup.string().email("Geçerli bir e-posta sağlayın").required("Zorunlu alan"),
 });
 
-export const resetPasswordSchema = Yup.object({
+export const getResetPasswordSchema = (t: (key: string) => string) => Yup.object({
   passwordToken: Yup.number()
-    .required("Zorunlu alan")
-    .test('len', 'Kodunuz 4 hane olmalı', val => val?.toString().length === 4),
+    .required(t("validation.codeRequired"))
+    .test('len', t("validation.codeLength"), val => val?.toString().length === 4),
   newPassword: Yup.string()
-    .min(8, "Şifre en az 8 karakter olmalıdır")
-    .required("Zorunlu alan"),
+    .min(8, t("validation.passwordMinLength8"))
+    .required(t("validation.fieldRequired")),
   confirmPassword: Yup.string()
-    .oneOf([Yup.ref('newPassword'), undefined], 'Şifreler uyuşmalı')
-    .required('Zorunlu alan'),
+    .oneOf([Yup.ref('newPassword'), undefined], t("validation.passwordsNotMatch"))
+    .required(t("validation.fieldRequired")),
 });
 
 export const detailsProfileSchema = Yup.object({

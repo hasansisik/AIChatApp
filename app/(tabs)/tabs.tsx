@@ -6,6 +6,7 @@ import { StyleSheet, Image, View, Text, Modal, TextInput, TouchableOpacity, Aler
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
+import { useTranslation } from 'react-i18next';
 import Home from "@/app/(tabs)/home";
 import List from "@/app/(tabs)/list";
 import Profile from "./profile";
@@ -25,6 +26,7 @@ const ChatPlaceholder = () => {
 
 const TabNavigation = () => {
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -40,7 +42,7 @@ const TabNavigation = () => {
 
   const handleCodeSubmit = async () => {
     if (!courseCode.trim()) {
-      Alert.alert("Hata", "Lütfen kurs kodunu girin");
+      Alert.alert(t('common.error'), t('tabs.courseCode.enterCode'));
       return;
     }
 
@@ -51,12 +53,12 @@ const TabNavigation = () => {
         await dispatch<any>(loadUser());
         setCodeModalVisible(false);
         setCourseCode("");
-        Alert.alert("Başarılı", "Kurs kodu başarıyla güncellendi");
+        Alert.alert(t('common.success'), t('tabs.courseCode.updateSuccess'));
       } else {
-        Alert.alert("Hata", result.payload || "Kod güncellenemedi");
+        Alert.alert(t('common.error'), result.payload || t('tabs.courseCode.updateError'));
       }
     } catch (error) {
-      Alert.alert("Hata", "Bir hata oluştu");
+      Alert.alert(t('common.error'), t('common.errorOccurred'));
     } finally {
       setIsSubmitting(false);
     }
@@ -344,14 +346,14 @@ const TabNavigation = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ReusableText
-              text="Kurs Kodu Girin"
+              text={t('tabs.courseCode.title')}
               family="bold"
               size={FontSizes.large}
               color={Colors.black}
             />
             <TextInput
               style={styles.codeInput}
-              placeholder="Kurs kodunu girin (örn: KMY43465)"
+              placeholder={t('tabs.courseCode.placeholder')}
               placeholderTextColor={Colors.lightGray}
               value={courseCode}
               onChangeText={setCourseCode}
@@ -367,7 +369,7 @@ const TabNavigation = () => {
                 }}
               >
                 <ReusableText
-                  text="İptal"
+                  text={t('common.cancel')}
                   family="medium"
                   size={FontSizes.small}
                   color={Colors.black}
@@ -382,7 +384,7 @@ const TabNavigation = () => {
                   <ActivityIndicator color={Colors.white} />
                 ) : (
                   <ReusableText
-                    text="Kaydet"
+                    text={t('common.save')}
                     family="medium"
                     size={FontSizes.small}
                     color={Colors.white}

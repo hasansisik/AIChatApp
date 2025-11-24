@@ -56,9 +56,8 @@ const Verify: React.FC = () => {
           });
         }, 2000);
       } else if (verifyEmail.rejected.match(actionResult)) {
-        const NoticeMessage = actionResult.payload as string;
         setStatus("error");
-        setMessage(NoticeMessage);
+        setMessage((actionResult.payload as string) || t("auth.verify.error"));
       }
       setTimeout(() => setStatus(null), 5000);
     } finally {
@@ -115,7 +114,7 @@ const Verify: React.FC = () => {
           <HeightSpacer height={50} />
           {/* Login Button */}
           <ReusableButton
-            btnText={isLoading ? "Doğrulanıyor..." : t("auth.verify.verifyButton")}
+            btnText={isLoading ? t("auth.verify.verifying") : t("auth.verify.verifyButton")}
             width={Sizes.screenWidth - 40}
             height={55}
             borderRadius={Sizes.xxlarge}

@@ -146,7 +146,7 @@ const Profile = () => {
             </View>
 
             <ReusableText
-              text={`${user?.name || ''} ${user?.surname || ''}`.trim() || 'User'}
+              text={`${user?.name || ''} ${user?.surname || ''}`.trim() || t('profile.user')}
               family={"bold"}
               size={FontSizes.large}
               color={Colors.lightBlack}

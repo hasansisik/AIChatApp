@@ -16,7 +16,7 @@ import ReusableInput from "@/components/ui/ReusableInput";
 import ReusableButton from "@/components/ui/ReusableButton";
 import AppBar from "@/components/ui/AppBar";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { resetPasswordSchema } from "@/utils/validation"; 
+import { getResetPasswordSchema } from "@/utils/validation"; 
 import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { resetPassword } from "@/redux/actions/userActions";
@@ -49,7 +49,7 @@ const ResetPassword = () => {
       newPassword: "",
       confirmPassword: "",
     },
-    validationSchema: resetPasswordSchema,
+    validationSchema: getResetPasswordSchema(t),
     onSubmit: async (values) => {
       const actionResult = await dispatch(resetPassword(values) as any);
       if (resetPassword.fulfilled.match(actionResult)) {

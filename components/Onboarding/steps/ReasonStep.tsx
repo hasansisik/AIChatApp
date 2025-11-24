@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { Sizes } from '@/constants/Sizes';
@@ -16,16 +17,18 @@ interface ReasonStepProps {
   onUpdate: (key: string, value: any) => void;
 }
 
-const reasons = [
-  { id: 'is', title: 'İş', emoji: '💼' },
-  { id: 'seyahat', title: 'Seyahat', emoji: '✈️' },
-  { id: 'okul', title: 'Okul', emoji: '🎓' },
-  { id: 'aile', title: 'Aile', emoji: '👨‍👩‍👧‍👦' },
-  { id: 'arkadas', title: 'Arkadaş', emoji: '👥' },
-  { id: 'hobi', title: 'Hobi', emoji: '🎨' },
-];
-
 const ReasonStep: React.FC<ReasonStepProps> = ({ data, onUpdate }) => {
+  const { t } = useTranslation();
+  
+  const reasons = [
+    { id: 'is', title: t('onboarding.reasonStep.options.is'), emoji: '💼' },
+    { id: 'seyahat', title: t('onboarding.reasonStep.options.seyahat'), emoji: '✈️' },
+    { id: 'okul', title: t('onboarding.reasonStep.options.okul'), emoji: '🎓' },
+    { id: 'aile', title: t('onboarding.reasonStep.options.aile'), emoji: '👨‍👩‍👧‍👦' },
+    { id: 'arkadas', title: t('onboarding.reasonStep.options.arkadas'), emoji: '👥' },
+    { id: 'hobi', title: t('onboarding.reasonStep.options.hobi'), emoji: '🎨' },
+  ];
+
   const handleSelect = (reason: string) => {
     onUpdate('reason', reason);
   };
@@ -34,7 +37,7 @@ const ReasonStep: React.FC<ReasonStepProps> = ({ data, onUpdate }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <ReusableText
-          text="Neden öğreniyorsunuz?"
+          text={t('onboarding.reasonStep.title')}
           family="bold"
           size={24}
           color={Colors.black}
@@ -42,7 +45,7 @@ const ReasonStep: React.FC<ReasonStepProps> = ({ data, onUpdate }) => {
           style={styles.title}
         />
         <ReusableText
-          text="En az 1 neden seçin"
+          text={t('onboarding.reasonStep.subtitle')}
           family="regular"
           size={16}
           color={Colors.gray}

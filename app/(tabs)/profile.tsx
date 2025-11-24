@@ -166,7 +166,7 @@ const Profile: React.FC = () => {
             {/* Favori AI'lar */}
             {user && (
               <ProfileCard
-                title="Favori AI"
+                title={t("profile.tabs.favoriteAI")}
                 icon={"heart"}
                 onPress={() => router.push("/(profile)/favorite-ais")}
               />

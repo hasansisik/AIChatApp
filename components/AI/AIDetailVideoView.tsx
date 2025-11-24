@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
@@ -57,6 +58,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   onGoBack,
   conversationId,
 }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useDispatch();
   const textInputRef = useRef<TextInput>(null);
@@ -153,7 +155,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       if (started) {
         setIsRecording(true);
       } else {
-        Alert.alert('Hata', 'Kayıt başlatılamadı');
+        Alert.alert(t('common.error'), t('ai.recording.startError'));
       }
       return;
     }
@@ -188,11 +190,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         setIsKeyboardVisible(false);
         console.log('✅ Text mesajı gönderildi');
       } else {
-        Alert.alert('Hata', 'Mesaj gönderilemedi');
+        Alert.alert(t('common.error'), t('ai.message.sendError'));
       }
     } catch (error) {
       console.error('❌ Text mesajı gönderilirken hata:', error);
-      Alert.alert('Hata', 'Mesaj gönderilemedi');
+      Alert.alert(t('common.error'), t('ai.message.sendError'));
     } finally {
       setIsProcessing(false);
     }
@@ -861,7 +863,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           <TextInput
             ref={textInputRef}
             style={styles.keyboardInput}
-            placeholder="Not alın..."
+            placeholder={t('ai.input.placeholder')}
             placeholderTextColor="rgba(11, 11, 11, 0.5)"
             multiline
             scrollEnabled={false}

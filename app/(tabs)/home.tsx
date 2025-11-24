@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
 import { useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Colors } from "@/hooks/useThemeColor";
 import Header from '@/components/Home/Header';
 import Categories from '@/components/Home/Categories';
@@ -17,15 +18,16 @@ const Home = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
   const [chatBotVisible, setChatBotVisible] = useState(false);
 
   const handleCategoryPress = (category: string) => {
-    if (category === 'Canlı Sohbet') {
+    if (category === t('home.categories.liveChat')) {
       navigation.navigate('List' as never);
-    } else if (category === 'Kurs Seansları') {
+    } else if (category === t('home.categories.courseSessions')) {
       navigation.navigate('Edu' as never);
-    } else if (category === 'İletişim') {
+    } else if (category === t('home.categories.contact')) {
       setChatBotVisible(true);
     }
   };
@@ -70,7 +72,7 @@ const Home = () => {
       // Sayfa yenilenmesini önlemek için hiçbir şey yapmıyoruz
       // Redux state güncellendiğinde component otomatik olarak yeniden render olacak
     } catch (error) {
-      console.error('Favori işlemi hatası:', error);
+      console.error(t('home.favoriteError'), error);
     }
   };
 

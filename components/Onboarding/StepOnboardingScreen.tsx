@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { updateOnboardingData } from '@/redux/actions/userActions';
@@ -31,6 +32,7 @@ interface OnboardingData {
 
 const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete }) => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
@@ -41,10 +43,10 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
   });
 
   const steps = [
-    { id: 0, title: 'İlgi Alanı', component: InterestStep },
-    { id: 1, title: 'Ana Hedef', component: MainGoalStep },
-    { id: 2, title: 'Neden', component: ReasonStep },
-    { id: 3, title: 'Favoriler', component: FavoriteStep },
+    { id: 0, title: t('onboarding.steps.interest'), component: InterestStep },
+    { id: 1, title: t('onboarding.steps.mainGoal'), component: MainGoalStep },
+    { id: 2, title: t('onboarding.steps.reason'), component: ReasonStep },
+    { id: 3, title: t('onboarding.steps.favorites'), component: FavoriteStep },
   ];
 
   const totalSteps = steps.length;
@@ -152,7 +154,7 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
         
         <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
           <ReusableText
-            text="Atla"
+            text={t('onboarding.skip')}
             family="medium"
             size={16}
             color={Colors.gray}

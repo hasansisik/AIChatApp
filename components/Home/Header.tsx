@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Colors, useTheme } from '@/hooks/useThemeColor';
 import ReusableText from '@/components/ui/ReusableText';
 
@@ -13,6 +14,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
+  const { t } = useTranslation();
   const { isDark } = useTheme();
   const router = useRouter();
   const { user } = useSelector((state: any) => state.user);
@@ -72,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
       {/* Welcome Text */}
       <View style={styles.textContainer}>
         <ReusableText 
-          text="Size nasıl yardımcı"
+          text={t('home.header.welcomePart1')}
           family="medium"
           size={24}
           color={Colors.text}
@@ -80,7 +82,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
           style={styles.welcomeText}
         />
         <ReusableText 
-          text={`olabilirim, ${user?.name || 'Kullanıcı'}`}
+          text={t('home.header.welcomePart2', { name: user?.name || t('home.header.user') })}
           family="bold"
           size={24}
           color={Colors.text}

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { Sizes } from '@/constants/Sizes';
@@ -17,12 +18,14 @@ interface InterestStepProps {
   onUpdate: (key: string, value: any) => void;
 }
 
-const interests = [
-  { id: 'dil-ogrenmek', title: 'Dil Öğrenmek', emoji: '📚' },
-  { id: 'sohbet', title: 'Sohbet', emoji: '💬' },
-];
-
 const InterestStep: React.FC<InterestStepProps> = ({ data, onUpdate }) => {
+  const { t } = useTranslation();
+  
+  const interests = [
+    { id: 'dil-ogrenmek', title: t('onboarding.interestStep.options.dil-ogrenmek'), emoji: '📚' },
+    { id: 'sohbet', title: t('onboarding.interestStep.options.sohbet'), emoji: '💬' },
+  ];
+
   const handleSelect = (interest: string) => {
     onUpdate('interest', interest);
   };
@@ -31,7 +34,7 @@ const InterestStep: React.FC<InterestStepProps> = ({ data, onUpdate }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <ReusableText
-          text="İlgilendiğiniz şey nedir?"
+          text={t('onboarding.interestStep.title')}
           family="bold"
           size={24}
           color={Colors.black}
@@ -39,7 +42,7 @@ const InterestStep: React.FC<InterestStepProps> = ({ data, onUpdate }) => {
           style={styles.title}
         />
         <ReusableText
-          text="En az 1 seçenek seçin"
+          text={t('onboarding.interestStep.subtitle')}
           family="regular"
           size={16}
           color={Colors.gray}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { MaterialIcons } from '@expo/vector-icons';
 import ReusableText from './ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
@@ -18,6 +19,7 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
   opacity,
   onStartPress,
 }) => {
+  const { t } = useTranslation();
   if (!isVisible) return null;
 
   return (
@@ -51,7 +53,7 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
         activeOpacity={0.8}
       >
         <ReusableText
-          text="Hemen Başla"
+          text={t('ai.startButton')}
           family="medium"
           size={16}
           color={Colors.lightWhite}

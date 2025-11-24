@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/hooks/useThemeColor';
 import ReusableText from '@/components/ui/ReusableText';
@@ -23,6 +24,7 @@ import { startConversation } from '@/redux/actions/aiActions';
 const FavoriteAIs: React.FC = () => {
   const router = useRouter();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
   const [favoriteAIs, setFavoriteAIs] = useState<AICategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ const FavoriteAIs: React.FC = () => {
         setFavoriteAIs(favorites);
       }
     } catch (error) {
-      console.error('Favoriler yüklenirken hata:', error);
+      console.error(t('profile.favoriteAIs.loadError'), error);
     } finally {
       setLoading(false);
     }
@@ -49,15 +51,15 @@ const FavoriteAIs: React.FC = () => {
 
   const handleRemoveFavorite = (aiId: string) => {
     Alert.alert(
-      'Favoriden Çıkar',
-      'Bu AI\'yı favorilerden çıkarmak istediğinize emin misiniz?',
+      t('profile.favoriteAIs.removeTitle'),
+      t('profile.favoriteAIs.removeMessage'),
       [
         {
-          text: 'İptal',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Çıkar',
+          text: t('profile.favoriteAIs.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -66,7 +68,7 @@ const FavoriteAIs: React.FC = () => {
                 setFavoriteAIs(prev => prev.filter(ai => ai.id !== aiId));
               }
             } catch (error) {
-              console.error('Favori çıkarılırken hata:', error);
+              console.error(t('profile.favoriteAIs.removeError'), error);
             }
           },
         },
@@ -143,7 +145,7 @@ const FavoriteAIs: React.FC = () => {
       />
       <View style={styles.header}>
         <ReusableText
-          text="Favori AI'larım"
+          text={t('profile.favoriteAIs.title')}
           family="bold"
           size={FontSizes.large}
           color={Colors.black}
@@ -153,14 +155,14 @@ const FavoriteAIs: React.FC = () => {
         <View style={styles.emptyContainer}>
           <Ionicons name="star-outline" size={64} color={Colors.gray} />
           <ReusableText
-            text="Henüz favori AI'nız yok"
+            text={t('profile.favoriteAIs.emptyTitle')}
             family="medium"
             size={FontSizes.medium}
             color={Colors.gray}
             style={styles.emptyText}
           />
           <ReusableText
-            text="AI'ları favorilerinize ekleyerek kolayca erişebilirsiniz"
+            text={t('profile.favoriteAIs.emptyDescription')}
             family="regular"
             size={FontSizes.small}
             color={Colors.gray}

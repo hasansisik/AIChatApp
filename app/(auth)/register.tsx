@@ -217,7 +217,7 @@ const Register = () => {
               />
               <HeightSpacer height={20} />
               <ReusableButton
-                btnText={formik.isSubmitting ? "Kayıt oluşturuluyor..." : t("auth.register.registerButton")}
+                btnText={formik.isSubmitting ? t("auth.register.registering") : t("auth.register.registerButton")}
                 width={Sizes.screenWidth - 42}
                 height={55}
                 borderRadius={Sizes.xxlarge}

@@ -206,7 +206,7 @@ const Login: React.FC<LoginProps> = () => {
               <HeightSpacer height={20} />
               {/* Login Button */}
               <ReusableButton
-                btnText={formik.isSubmitting ? "Giriş yapılıyor..." : t("auth.login.loginButton")}
+                btnText={formik.isSubmitting ? t("auth.login.loggingIn") : t("auth.login.loginButton")}
                 width={Sizes.screenWidth - 40}
                 height={55}
                 borderRadius={Sizes.xxlarge}

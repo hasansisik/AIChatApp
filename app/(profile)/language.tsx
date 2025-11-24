@@ -16,22 +16,22 @@ interface Language {
   flag: any;
 }
 
-const languages: Language[] = [
-  {
-    code: 'en',
-    name: 'English',
-    flag: require('@/assets/images/main/en.png')
-  },
-  {
-    code: 'tr',
-    name: 'Türkçe',
-    flag: require('@/assets/images/main/tr.png')
-  },
-];
-
 const LanguageScreen = () => {
   const router = useRouter();
   const { i18n, t } = useTranslation();
+
+  const languages: Language[] = [
+    {
+      code: 'en',
+      name: t('profile.language.english'),
+      flag: require('@/assets/images/main/en.png')
+    },
+    {
+      code: 'tr',
+      name: t('profile.language.turkish'),
+      flag: require('@/assets/images/main/tr.png')
+    }
+  ];
 
   const handleLanguageChange = async (languageCode: string) => {
     try {

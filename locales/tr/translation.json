@@ -56,6 +56,7 @@
       "password": "Şifre",
       "forgotPassword": "Şifremi Unuttum ?",
       "loginButton": "Giriş Yap",
+      "loggingIn": "Giriş yapılıyor...",
       "noAccount": "Hesabınız yok mu ? ",
       "register": "Kayıt Olun",
       "success": "Giriş başarılı",
@@ -69,6 +70,7 @@
       "password": "Şifre",
       "confirmPassword": "Şifre Tekrar",
       "registerButton": "Kayıt Ol",
+      "registering": "Kayıt oluşturuluyor...",
       "haveAccount": "Zaten bir hesabım var , ",
       "login": "Giriş Yap",
       "success": "Kayıt başarılı",
@@ -78,6 +80,7 @@
       "title": "Doğrulama Kodu",
       "description": "Mail adresinize gönderilen doğrulama kodunu giriniz.",
       "verifyButton": "Doğrulama Yap",
+      "verifying": "Doğrulanıyor...",
       "noCode": "Doğrulama Kodu Gelmedi mi ? ",
       "resend": "Tekrar Gönder",
       "success": "Doğrulama başarılı",
@@ -109,7 +112,9 @@
     "confirm": "Onayla",
     "save": "Kaydet",
     "cancel": "İptal",
-    "error": "Bir hata oluştu"
+    "error": "Hata",
+    "success": "Başarılı",
+    "errorOccurred": "Bir hata oluştu"
   },
   "profile": {
     "email": "E-posta",
@@ -147,6 +152,7 @@
       "policies": "Politikalar",
       "faq": "SSS",
       "help": "Yardım",
+      "favoriteAI": "Favori AI",
       "deleteAccount": "Hesabı Sil",
       "deleteAccountTitle": "Hesabı Sil",
       "deleteAccountMessage": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -154,6 +160,21 @@
       "deleteAccountProcessing": "Hesap silme talebiniz alınmıştır. Yardım için destek ekibiyle iletişime geçiniz.",
       "logout": "Çıkış Yap",
       "login": "Giriş Yap"
+    },
+    "user": "Kullanıcı",
+    "language": {
+      "english": "English",
+      "turkish": "Türkçe"
+    },
+    "favoriteAIs": {
+      "title": "Favori AI'larım",
+      "emptyTitle": "Henüz favori AI'nız yok",
+      "emptyDescription": "AI'ları favorilerinize ekleyerek kolayca erişebilirsiniz",
+      "removeTitle": "Favoriden Çıkar",
+      "removeMessage": "Bu AI'yı favorilerden çıkarmak istediğinize emin misiniz?",
+      "remove": "Çıkar",
+      "loadError": "Favoriler yüklenirken hata:",
+      "removeError": "Favori çıkarılırken hata:"
     },
     "faq": {
       "title": "Sıkça Sorulan Sorular",
@@ -231,6 +252,10 @@
       "update": "Değişiklikleri Kaydet",
       "updating": "Güncelleniyor...",
       "updateSuccess": "Güncelleme başarılı",
+      "updateError": "Güncelleme başarısız",
+      "noChangesMade": "Değişiklik yapılmadı",
+      "uploading": "Yükleniyor...",
+      "change": "Değiştir",
       "enterDataToUpdate": "Lütfen güncellemek istediğiniz bilgileri girin",
       "profilePictureSelected": "Profil resmi seçildi"
     },
@@ -244,6 +269,7 @@
   },
   "validation": {
     "passwordMinLength": "Şifre en az 6 karakter olmalıdır",
+    "passwordMinLength8": "Şifre en az 8 karakter olmalıdır",
     "passwordRequired": "Şifre gereklidir",
     "passwordsNotMatch": "Şifreler eşleşmiyor",
     "confirmPasswordRequired": "Şifre tekrarı gereklidir",
@@ -251,8 +277,163 @@
     "districtRequired": "İlçe alanı zorunludur",
     "provinceRequired": "İl alanı zorunludur",
     "nameMinLength": "İsim en az 2 karakter olmalıdır",
+    "nameRequired": "İsim soyisim zorunlu alan",
     "surnameMinLength": "Soyisim en az 2 karakter olmalıdır",
     "invalidEmail": "Geçerli bir e-posta adresi giriniz",
-    "phoneNumberOnlyDigits": "Telefon numarası sadece rakamlardan oluşmalıdır"
+    "emailRequired": "Zorunlu alan",
+    "invalidCharacters": "Geçersiz karakter içeriyor",
+    "fieldRequired": "Zorunlu alan",
+    "codeLength": "Kodunuz 4 hane olmalı",
+    "codeRequired": "Kod gereklidir",
+    "phoneNumberOnlyDigits": "Telefon numarası sadece rakamlardan oluşmalıdır",
+    "complianceRequired": "Kullanıcı Sözleşmesi ve Gizlilik Politikasını onaylamanız gerekmektedir."
+  },
+  "onboarding": {
+    "skip": "Atla",
+    "steps": {
+      "interest": "İlgi Alanı",
+      "mainGoal": "Ana Hedef",
+      "reason": "Neden",
+      "favorites": "Favoriler"
+    },
+    "interestStep": {
+      "title": "İlgilendiğiniz şey nedir?",
+      "subtitle": "En az 1 seçenek seçin",
+      "options": {
+        "dil-ogrenmek": "Dil Öğrenmek",
+        "sohbet": "Sohbet"
+      }
+    },
+    "mainGoalStep": {
+      "title": "Ana hedefiniz nedir?",
+      "subtitle": "En az 1 hedef seçin",
+      "options": {
+        "konusma": "Konuşma",
+        "yazma": "Yazma",
+        "dinleme": "Dinleme",
+        "okuma": "Okuma",
+        "gramer": "Gramer",
+        "kelime": "Kelime"
+      }
+    },
+    "reasonStep": {
+      "title": "Neden öğreniyorsunuz?",
+      "subtitle": "En az 1 neden seçin",
+      "options": {
+        "is": "İş",
+        "seyahat": "Seyahat",
+        "okul": "Okul",
+        "aile": "Aile",
+        "arkadas": "Arkadaş",
+        "hobi": "Hobi"
+      }
+    },
+    "favoriteStep": {
+      "title": "En sevdiğiniz şeyler nelerdir?",
+      "subtitle": "Birden fazla seçebilirsiniz",
+      "options": {
+        "muzik": "Müzik",
+        "film": "Film",
+        "kitap": "Kitap",
+        "spor": "Spor",
+        "sanat": "Sanat",
+        "teknoloji": "Teknoloji",
+        "yemek": "Yemek",
+        "seyahat": "Seyahat",
+        "oyun": "Oyun",
+        "dogal": "Doğa",
+        "moda": "Moda",
+        "bilim": "Bilim"
+      }
+    }
+  },
+  "search": {
+    "title": "Arama",
+    "placeholder": "AI asistanları ara...",
+    "emptyState": {
+      "title": "AI asistanları ara",
+      "description": "İhtiyaçlarınız için mükemmel AI asistanını bulun"
+    },
+    "noResults": {
+      "title": "Sonuç bulunamadı",
+      "description": "\"{{query}}\" için AI asistanı bulunamadı"
+    },
+    "resultsCount": "{{count}} sonuç bulundu"
+  },
+  "home": {
+    "header": {
+      "welcomePart1": "Size nasıl yardımcı",
+      "welcomePart2": "olabilirim, {{name}}",
+      "user": "Kullanıcı"
+    },
+    "categories": {
+      "liveChat": "Canlı Sohbet",
+      "courseSessions": "Kurs Seansları",
+      "contact": "İletişim"
+    },
+    "filters": {
+      "all": "Tümü",
+      "education": "Eğitim",
+      "work": "İş",
+      "lifestyle": "Yaşam Tarzı",
+      "family": "Aile",
+      "relationships": "İlişkiler"
+    },
+    "favoriteError": "Favori işlemi hatası:"
+  },
+  "list": {
+    "favoriteError": "Favori işlemi hatası:"
+  },
+  "tabs": {
+    "courseCode": {
+      "title": "Kurs Kodu Girin",
+      "placeholder": "Kurs kodunu girin (örn: KMY43465)",
+      "enterCode": "Lütfen kurs kodunu girin",
+      "updateSuccess": "Kurs kodu başarıyla güncellendi",
+      "updateError": "Kod güncellenemedi"
+    }
+  },
+  "chatbot": {
+    "conversations": "Sohbetler",
+    "bot": "Bot",
+    "typing": "Yazıyor...",
+    "online": "İnternet üzerinden",
+    "loading": "Yükleniyor...",
+    "connecting": "Bağlanıyor...",
+    "newConversation": "Yeni Sohbet Başlat",
+    "pastConversations": "Geçmiş Sohbetler",
+    "chat": "Sohbet",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "daysAgo": "{{count}} gün önce",
+    "welcomeMessage": "Merhaba! Size nasıl yardımcı olabilirim?",
+    "writeMessage": "Bir mesaj yaz...",
+    "guestSupport": "Misafir Desteği",
+    "user": "Kullanıcı",
+    "error": {
+      "userNotFound": "Kullanıcı bilgileri bulunamadı",
+      "userIdNotFound": "Kullanıcı ID alınamadı",
+      "visitorNotCreated": "Ziyaretçi oluşturulamadı",
+      "conversationNotCreated": "Konuşma oluşturulamadı",
+      "initializationError": "Başlatma sırasında hata oluştu",
+      "pleaseWait": "Lütfen bekleyin, bağlantı kuruluyor...",
+      "messageNotSent": "Mesaj gönderilemedi",
+      "messageSendError": "Mesaj gönderilirken hata oluştu",
+      "invalidConversationId": "Geçersiz konuşma ID",
+      "conversationLoadError": "Konuşma yüklenirken hata oluştu"
+    }
+  },
+  "ai": {
+    "notFound": "AI bulunamadı",
+    "startButton": "Hemen Başla",
+    "recording": {
+      "startError": "Kayıt başlatılamadı"
+    },
+    "message": {
+      "sendError": "Mesaj gönderilemedi"
+    },
+    "input": {
+      "placeholder": "Not alın..."
+    }
   }
 }

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { Sizes } from '@/constants/Sizes';
@@ -16,22 +17,24 @@ interface FavoriteStepProps {
   onUpdate: (key: string, value: any) => void;
 }
 
-const favorites = [
-  { id: 'muzik', title: 'Müzik', emoji: '🎵' },
-  { id: 'film', title: 'Film', emoji: '🎬' },
-  { id: 'kitap', title: 'Kitap', emoji: '📚' },
-  { id: 'spor', title: 'Spor', emoji: '⚽' },
-  { id: 'sanat', title: 'Sanat', emoji: '🎨' },
-  { id: 'teknoloji', title: 'Teknoloji', emoji: '💻' },
-  { id: 'yemek', title: 'Yemek', emoji: '🍕' },
-  { id: 'seyahat', title: 'Seyahat', emoji: '✈️' },
-  { id: 'oyun', title: 'Oyun', emoji: '🎮' },
-  { id: 'dogal', title: 'Doğa', emoji: '🌿' },
-  { id: 'moda', title: 'Moda', emoji: '👗' },
-  { id: 'bilim', title: 'Bilim', emoji: '🔬' },
-];
-
 const FavoriteStep: React.FC<FavoriteStepProps> = ({ data, onUpdate }) => {
+  const { t } = useTranslation();
+  
+  const favorites = [
+    { id: 'muzik', title: t('onboarding.favoriteStep.options.muzik'), emoji: '🎵' },
+    { id: 'film', title: t('onboarding.favoriteStep.options.film'), emoji: '🎬' },
+    { id: 'kitap', title: t('onboarding.favoriteStep.options.kitap'), emoji: '📚' },
+    { id: 'spor', title: t('onboarding.favoriteStep.options.spor'), emoji: '⚽' },
+    { id: 'sanat', title: t('onboarding.favoriteStep.options.sanat'), emoji: '🎨' },
+    { id: 'teknoloji', title: t('onboarding.favoriteStep.options.teknoloji'), emoji: '💻' },
+    { id: 'yemek', title: t('onboarding.favoriteStep.options.yemek'), emoji: '🍕' },
+    { id: 'seyahat', title: t('onboarding.favoriteStep.options.seyahat'), emoji: '✈️' },
+    { id: 'oyun', title: t('onboarding.favoriteStep.options.oyun'), emoji: '🎮' },
+    { id: 'dogal', title: t('onboarding.favoriteStep.options.dogal'), emoji: '🌿' },
+    { id: 'moda', title: t('onboarding.favoriteStep.options.moda'), emoji: '👗' },
+    { id: 'bilim', title: t('onboarding.favoriteStep.options.bilim'), emoji: '🔬' },
+  ];
+
   const handleToggle = (favoriteId: string) => {
     const currentFavorites = data.favorites || [];
     const isSelected = currentFavorites.includes(favoriteId);
@@ -51,7 +54,7 @@ const FavoriteStep: React.FC<FavoriteStepProps> = ({ data, onUpdate }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <ReusableText
-          text="En sevdiğiniz şeyler nelerdir?"
+          text={t('onboarding.favoriteStep.title')}
           family="bold"
           size={24}
           color={Colors.black}
@@ -59,7 +62,7 @@ const FavoriteStep: React.FC<FavoriteStepProps> = ({ data, onUpdate }) => {
           style={styles.title}
         />
         <ReusableText
-          text="Birden fazla seçebilirsiniz"
+          text={t('onboarding.favoriteStep.subtitle')}
           family="regular"
           size={16}
           color={Colors.gray}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { CategoryFilter } from '@/data/AICategories';
@@ -15,6 +16,20 @@ const CategoryFilterComponent: React.FC<CategoryFilterProps> = ({
   selectedFilter,
   onFilterPress,
 }) => {
+  const { t } = useTranslation();
+  
+  const getFilterName = (filterType: string): string => {
+    const filterKeyMap: { [key: string]: string } = {
+      'all': 'home.filters.all',
+      'education': 'home.filters.education',
+      'work': 'home.filters.work',
+      'lifestyle': 'home.filters.lifestyle',
+      'family': 'home.filters.family',
+      'relationships': 'home.filters.relationships',
+    };
+    return t(filterKeyMap[filterType] || filterType);
+  };
+  
   const renderFilterItem = ({ item }: { item: CategoryFilter }) => {
     const isSelected = selectedFilter === item.type;
     
@@ -28,7 +43,7 @@ const CategoryFilterComponent: React.FC<CategoryFilterProps> = ({
         activeOpacity={0.7}
       >
         <ReusableText
-          text={item.name}
+          text={getFilterName(item.type)}
           family={isSelected ? "bold" : "medium"}
           size={14}
           color={isSelected ? Colors.lightWhite : Colors.black}

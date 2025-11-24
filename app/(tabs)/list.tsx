@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Colors } from "@/hooks/useThemeColor";
 import HeaderList from '@/components/Home/HeaderList';
 import HorizontalList from '@/components/Home/HorizontalList';
@@ -14,6 +15,7 @@ import { useSelector } from 'react-redux';
 const List = () => {
   const router = useRouter();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
 
   const handleItemPress = async (item: AICategory) => {
@@ -56,7 +58,7 @@ const List = () => {
       // Sayfa yenilenmesini önlemek için hiçbir şey yapmıyoruz
       // Redux state güncellendiğinde component otomatik olarak yeniden render olacak
     } catch (error) {
-      console.error('Favori işlemi hatası:', error);
+      console.error(t('list.favoriteError'), error);
     }
   };
 
