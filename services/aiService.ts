@@ -206,8 +206,23 @@ class AIService {
 
     if (this.socketReady) {
       await this.socketReady;
-      // Socket bağlandıktan sonra voice config'i gönder (eğer voice set edilmişse)
-      // onopen içinde zaten gönderiliyor, burada tekrar göndermeye gerek yok
+      // Socket bağlandıktan sonra OPEN state'ine geçmesini bekle
+      // WebSocket bağlantısı kurulduktan sonra OPEN state'ine geçmesi biraz zaman alabilir
+      let retries = 0;
+      const maxRetries = 10;
+      while (retries < maxRetries && (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN)) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        retries++;
+      }
+      
+      if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+        // Socket bağlandıktan sonra voice config'i gönder (eğer voice set edilmişse)
+        if (this.currentVoice && !this.voiceConfigSent) {
+          this.sendVoiceConfig();
+        }
+      } else {
+        console.warn('⚠️ Socket bağlantısı OPEN state\'ine geçemedi');
+      }
     }
   }
 
@@ -331,26 +346,38 @@ class AIService {
       }
       try {
         await this.rotateRecording(false);
-        this.scheduleChunkDispatch();
+        // Streaming devam ediyorsa bir sonraki chunk'ı planla
+        if (this.isStreaming) {
+          this.scheduleChunkDispatch();
+        }
       } catch (error) {
-        console.error('Chunk gönderilirken hata:', error);
-        this.notifyStatus('Ses gönderilemedi');
-        await this.stopLiveTranscription();
+        console.warn('⚠️ Chunk gönderilirken hata:', error);
+        // Hata olsa bile devam et, bir sonraki chunk'ta tekrar dene
+        if (this.isStreaming) {
+          this.scheduleChunkDispatch();
+        }
       }
     }, delay);
   }
 
-  private async rotateRecording(isFinal: boolean) {
+  private async rotateRecording(isFinal: boolean, shouldSendAudio: boolean = true) {
     const audioUri = await this.stopRecordingInstance();
     if (!audioUri) {
       return;
     }
 
-    // Send to STT for transcription
-    await this.sendBinaryAudio(audioUri);
+    // Send to STT for transcription (only if shouldSendAudio is true)
+    if (shouldSendAudio) {
+      try {
+        await this.sendBinaryAudio(audioUri);
+      } catch (error) {
+        console.warn('⚠️ Ses gönderilemedi (STT):', error);
+        // Hata olsa bile devam et, dosyayı sil
+      }
+    }
     
-    // If this is the final recording, notify lipsync handlers
-    if (isFinal) {
+    // If this is the final recording, notify lipsync handlers (only if shouldSendAudio is true)
+    if (isFinal && shouldSendAudio) {
       // Copy the file before deleting (for lipsync)
       const lipsyncAudioUri = `${FileSystem.cacheDirectory}lipsync_${Date.now()}.m4a`;
       try {
@@ -367,16 +394,43 @@ class AIService {
       }
       
       if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
-        this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
+        try {
+          this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
+        } catch (error) {
+          console.warn('⚠️ speech_end mesajı gönderilemedi:', error);
+        }
+      }
+    } else if (isFinal && !shouldSendAudio) {
+      // Pause durumunda: Sadece kaydı durdur, gönderme, STT session'ını iptal et
+      console.log('⏸️ Kayıt pause edildi, ses gönderilmiyor');
+      if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+        try {
+          // STT'ye pause sinyali gönder (STT timeout'unu önlemek için)
+          this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
+        } catch (error) {
+          console.warn('⚠️ speech_pause mesajı gönderilemedi:', error);
+        }
       }
     }
     
-    await FileSystem.deleteAsync(audioUri, { idempotent: true });
+    // Dosyayı sil
+    try {
+      await FileSystem.deleteAsync(audioUri, { idempotent: true });
+    } catch (error) {
+      console.warn('⚠️ Dosya silinemedi:', error);
+    }
 
-    if (!isFinal) {
-      const restarted = await this.startRecordingInstance();
-      if (!restarted) {
-        throw new Error('Yeni kayıt başlatılamadı');
+    // Eğer final değilse ve streaming devam ediyorsa, yeni kayıt başlat
+    if (!isFinal && this.isStreaming) {
+      try {
+        const restarted = await this.startRecordingInstance();
+        if (!restarted) {
+          console.warn('⚠️ Yeni kayıt başlatılamadı');
+          // Hata olsa bile devam et, bir sonraki chunk'ta tekrar dene
+        }
+      } catch (error) {
+        console.warn('⚠️ Kayıt başlatma hatası:', error);
+        // Hata olsa bile devam et
       }
     }
   }
@@ -405,24 +459,39 @@ class AIService {
     }
     
     // Socket'i bağla (voice query parameter olarak gönderilecek)
-    await this.ensureSocket();
+    try {
+      await this.ensureSocket();
+    } catch (error) {
+      console.warn('⚠️ Socket bağlantısı sırasında hata:', error);
+      // Hata olsa bile devam et, socket bağlantısı sonra kurulabilir
+    }
     
-    // Socket bağlandıktan sonra ek olarak config mesajı da gönder (fallback)
-    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
-      // Config mesajını da gönder (query parameter yeterli olmayabilir)
-      const configMessage = JSON.stringify({
-        type: 'config',
-        voice: this.currentVoice
-      });
-      this.sttSocket.send(configMessage);
-      this.voiceConfigSent = true;
-      console.log(`📤 Voice config mesajı gönderildi (fallback): ${this.currentVoice}`);
-      
-      // Config mesajının server'a ulaşması için kısa bir bekleme
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // Socket'in OPEN state'ine geçtiğinden emin ol
+    // Eğer socket bağlı değilse, hata verme, sadece log'la
+    if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
+      console.warn('⚠️ Socket henüz bağlı değil, voice config gönderilemedi (kayıt başlatılıyor)');
+      // Hata verme, kayıt başlatılmaya devam et
+      // Socket bağlandığında config mesajı gönderilecek
     } else {
-      console.error('❌ Socket bağlı değil, voice config gönderilemedi');
-      return false;
+      // Socket bağlandıktan sonra ek olarak config mesajı da gönder (fallback)
+      // Query parameter zaten gönderildi ama ek güvenlik için config mesajı da gönder
+      if (!this.voiceConfigSent) {
+        try {
+          const configMessage = JSON.stringify({
+            type: 'config',
+            voice: this.currentVoice
+          });
+          this.sttSocket.send(configMessage);
+          this.voiceConfigSent = true;
+          console.log(`📤 Voice config mesajı gönderildi (fallback): ${this.currentVoice}`);
+          
+          // Config mesajının server'a ulaşması için kısa bir bekleme
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.warn('⚠️ Config mesajı gönderilemedi:', error);
+          // Hata olsa bile devam et
+        }
+      }
     }
 
     const started = await this.startRecordingInstance();
@@ -435,7 +504,7 @@ class AIService {
     return true;
   }
 
-  async stopLiveTranscription(): Promise<void> {
+  async stopLiveTranscription(shouldSendAudio: boolean = true): Promise<void> {
     if (!this.isStreaming && !this.recording) {
       return;
     }
@@ -444,9 +513,29 @@ class AIService {
     this.clearChunkTimer();
 
     if (this.recording) {
-      await this.rotateRecording(true);
+      try {
+        await this.rotateRecording(true, shouldSendAudio);
+      } catch (error) {
+        console.warn('⚠️ Kayıt durdurma hatası:', error);
+        // Hata olsa bile kaydı durdur
+        try {
+          await this.stopRecordingInstance();
+        } catch (e) {
+          // Ignore
+        }
+      }
     } else if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
-      this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
+      try {
+        if (shouldSendAudio) {
+          // Normal stop: speech_end gönder
+          this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
+        } else {
+          // Pause: speech_pause gönder (STT timeout'unu önlemek için)
+          this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
+        }
+      } catch (error) {
+        console.warn('⚠️ Socket mesajı gönderilemedi:', error);
+      }
     }
   }
 

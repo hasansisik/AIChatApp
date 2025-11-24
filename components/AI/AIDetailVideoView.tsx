@@ -153,17 +153,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       return;
     }
 
-    setIsProcessing(true);
+    // Pause durumu: Sadece kaydı durdur, ses gönderme
+    // Kullanıcı tekrar basarsa kayıt devam edecek
     try {
-      // Stop recording - this will trigger the recordingForLipsync handler
-      // which will send the audio to the server for processing
-      await aiService.stopLiveTranscription();
+      await aiService.stopLiveTranscription(false); // shouldSendAudio = false (pause)
       setIsRecording(false);
-      // Note: isProcessing will be set to false in the recordingForLipsync handler
-      // after the audio is successfully sent to the server (or on error)
+      setIsProcessing(false);
+      console.log('⏸️ Kayıt pause edildi, ses gönderilmedi');
     } catch (error) {
       console.error('Kayıt durdurma hatası:', error);
-      Alert.alert('Hata', 'Ses gönderilemedi');
       setIsProcessing(false);
       setIsRecording(false);
     }
@@ -779,8 +777,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 styles.circleButton,
                 isRecording && styles.recordingButton,
                 isProcessing && styles.processingButton,
+                !isRecording && !isProcessing && styles.pausedButton,
               ]}
               onPress={handleMicrophonePress}
+              activeOpacity={0.7}
             >
               {isRecording ? (
                 <Ionicons name="stop" size={28} color="white" />
@@ -825,10 +825,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             placeholder="Not alın..."
             placeholderTextColor="rgba(11, 11, 11, 0.5)"
             multiline
+            scrollEnabled={false}
             value={conversationText}
             onChangeText={setConversationText}
             onSubmitEditing={handleSendText}
-            blurOnSubmit={false}
           />
           <TouchableOpacity
             style={[
@@ -962,6 +962,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 165, 0, 0.6)',
     borderColor: 'rgba(255, 165, 0, 0.8)',
   },
+  pausedButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    opacity: 1, // Pause durumunda da tam görünür olsun
+  },
   keyboardInputContainer: {
     position: 'absolute',
     bottom: 0,
@@ -979,6 +984,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
+    paddingBottom: 25,
   },
   keyboardInput: {
     flex: 1,
@@ -988,7 +994,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: 'black',
     fontSize: 16,
-    maxHeight: 100,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
