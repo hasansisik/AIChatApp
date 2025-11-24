@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
@@ -17,6 +18,7 @@ const { width } = Dimensions.get('window');
 const itemWidth = (width - 48) / 2; // 48 = padding (16*2) + gap (16)
 
 const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress }) => {
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
   const isFavorite = user?.favoriteAIs?.includes(item.id) || false;
   const [isFavoriteProcessing, setIsFavoriteProcessing] = useState(false);
@@ -64,7 +66,7 @@ const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress }) => {
       {/* Category Overlay */}
       <View style={styles.categoryOverlay}>
         <ReusableText
-          text={item.category}
+          text={item.category ? t(item.category, { defaultValue: item.category }) : item.category}
           family="medium"
           size={10}
           color={Colors.lightWhite}

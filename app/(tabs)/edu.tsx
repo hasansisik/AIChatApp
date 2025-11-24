@@ -13,6 +13,7 @@ import {
   Alert,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from 'react-i18next';
 import { Colors } from "@/hooks/useThemeColor";
 import { getSessions, updateCourseCode } from "@/redux/actions/eduActions";
 import { loadUser } from "@/redux/actions/userActions";
@@ -21,6 +22,7 @@ import { FontSizes } from "@/constants/Fonts";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const Edu = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { user } = useSelector((state: any) => state.user);
   const { sessions, loading, error, code } = useSelector((state: any) => state.edu);
@@ -45,7 +47,7 @@ const Edu = () => {
 
   const handleCodeSubmit = async () => {
     if (!courseCode.trim()) {
-      Alert.alert("Hata", "Lütfen kurs kodunu girin");
+      Alert.alert(t('common.error'), t('edu.code.enterCode'));
       return;
     }
 
@@ -56,16 +58,16 @@ const Edu = () => {
         await dispatch<any>(loadUser());
         setCodeModalVisible(false);
         setCourseCode("");
-        Alert.alert("Başarılı", "Kurs kodu başarıyla güncellendi");
+        Alert.alert(t('common.success'), t('edu.code.updateSuccess'));
         // Refresh sessions with new code
         if (courseCode.trim()) {
           await dispatch<any>(getSessions({ code: courseCode.trim().toUpperCase() }));
         }
       } else {
-        Alert.alert("Hata", result.payload || "Kod güncellenemedi");
+        Alert.alert(t('common.error'), result.payload || t('edu.code.updateError'));
       }
     } catch (error) {
-      Alert.alert("Hata", "Bir hata oluştu");
+      Alert.alert(t('common.error'), t('common.errorOccurred'));
     } finally {
       setIsSubmitting(false);
     }
@@ -81,13 +83,13 @@ const Edu = () => {
             color={Colors.lightGray}
           />
           <ReusableText
-            text="Kurs kodu bulunamadı"
+            text={t('edu.empty.codeNotFound')}
             family="medium"
             size={FontSizes.medium}
             color={Colors.black}
           />
           <ReusableText
-            text="Lütfen kurs kodunuzu girin"
+            text={t('edu.empty.enterCode')}
             family="regular"
             size={FontSizes.small}
             color={Colors.description}
@@ -109,7 +111,7 @@ const Edu = () => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.primary} />
             <ReusableText
-              text="Seanslar yükleniyor..."
+              text={t('edu.loading')}
               family="regular"
               size={FontSizes.small}
               color={Colors.description}
@@ -137,7 +139,7 @@ const Edu = () => {
               color={Colors.lightGray}
             />
             <ReusableText
-              text="Henüz seans bulunmuyor"
+              text={t('edu.empty.noSessions')}
               family="medium"
               size={FontSizes.medium}
               color={Colors.black}
@@ -147,7 +149,7 @@ const Edu = () => {
           <View style={styles.sessionsContainer}>
             <View style={styles.header}>
               <ReusableText
-                text="Kurs Seansları"
+                text={t('edu.title')}
                 family="bold"
                 size={FontSizes.large}
                 color={Colors.black}
@@ -222,7 +224,7 @@ const Edu = () => {
                       color={Colors.description}
                     />
                     <ReusableText
-                      text={`Başlangıç: ${session.startDate}`}
+                      text={t('edu.session.startDate', { date: session.startDate })}
                       family="regular"
                       size={FontSizes.small}
                       color={Colors.description}
@@ -245,14 +247,14 @@ const Edu = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ReusableText
-              text="Kurs Kodu Değiştir"
+              text={t('edu.code.changeTitle')}
               family="bold"
               size={FontSizes.large}
               color={Colors.black}
             />
             <TextInput
               style={styles.codeInput}
-              placeholder="Kurs kodunu girin (örn: KMY43465)"
+              placeholder={t('tabs.courseCode.placeholder')}
               placeholderTextColor={Colors.lightGray}
               value={courseCode}
               onChangeText={setCourseCode}
@@ -268,7 +270,7 @@ const Edu = () => {
                 }}
               >
                 <ReusableText
-                  text="İptal"
+                  text={t('common.cancel')}
                   family="medium"
                   size={FontSizes.small}
                   color={Colors.black}
@@ -283,7 +285,7 @@ const Edu = () => {
                   <ActivityIndicator color={Colors.white} />
                 ) : (
                   <ReusableText
-                    text="Kaydet"
+                    text={t('common.save')}
                     family="medium"
                     size={FontSizes.small}
                     color={Colors.white}

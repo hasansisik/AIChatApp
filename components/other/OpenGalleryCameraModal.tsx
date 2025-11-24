@@ -1,5 +1,6 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import { useTranslation } from 'react-i18next';
 import Modal from "react-native-modal";
 import OpenGalleryCamera from "@/components/other/OpenGalleryCamera";
 import ReusableButton from "@/components/ui/ReusableButton";
@@ -16,11 +17,12 @@ const OpenGalleryCameraModal: React.FC<OpenGalleryCameraModalProps> = ({
   onClose,
   onUploadComplete,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal isVisible={isVisible} onBackdropPress={onClose}>
       <View style={styles.modalContainer}>
         <ReusableButton
-          btnText={"Vazgeç"}
+          btnText={t('common.cancel')}
           height={48}
           width={150}
           borderRadius={25}

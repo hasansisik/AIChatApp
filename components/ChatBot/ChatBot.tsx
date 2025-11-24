@@ -846,7 +846,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           {!showConversationList && (
           <View style={styles.footer}>
             <ReusableText
-              text="dialogfusion"
+              text={t('chatbot.branding')}
               family="regular"
               size={FontSizes.xSmall}
               color={Colors.description}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
@@ -17,6 +18,7 @@ const { width } = Dimensions.get('window');
 const itemWidth = (width - 48) / 3; // 3 columns with padding
 
 const GridItem: React.FC<GridItemProps> = ({ item, onPress, onFavoritePress }) => {
+  const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
   const isFavorite = user?.favoriteAIs?.includes(item.id) || false;
   const [isFavoriteProcessing, setIsFavoriteProcessing] = useState(false);
@@ -64,7 +66,7 @@ const GridItem: React.FC<GridItemProps> = ({ item, onPress, onFavoritePress }) =
       {/* Category Overlay */}
       <View style={styles.categoryOverlay}>
         <ReusableText
-          text={item.category}
+          text={t(item.category)}
           family="medium"
           size={8}
           color={Colors.lightWhite}

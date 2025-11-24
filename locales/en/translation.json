@@ -409,6 +409,7 @@
     "writeMessage": "Write a message...",
     "guestSupport": "Guest Support",
     "user": "User",
+    "branding": "dialogfusion",
     "error": {
       "userNotFound": "User information not found",
       "userIdNotFound": "User ID could not be retrieved",
@@ -433,6 +434,40 @@
     },
     "input": {
       "placeholder": "Take notes..."
+    },
+    "categories": {
+      "lifestyle": "Lifestyle",
+      "education": "Education",
+      "work": "Business"
+    },
+    "descriptions": {
+      "emma": "I help with lifestyle and daily life topics.",
+      "alexander": "I guide in education and learning topics.",
+      "sophia": "I provide support in education and academic topics.",
+      "james": "I help with lifestyle and personal development topics.",
+      "isabella": "I provide professional support in business and career topics.",
+      "michael": "I provide expert support in science and education topics."
     }
+  },
+  "edu": {
+    "title": "Course Sessions",
+    "loading": "Loading sessions...",
+    "empty": {
+      "codeNotFound": "Course code not found",
+      "enterCode": "Please enter your course code",
+      "noSessions": "No sessions found yet"
+    },
+    "code": {
+      "changeTitle": "Change Course Code",
+      "enterCode": "Please enter the course code",
+      "updateSuccess": "Course code updated successfully",
+      "updateError": "Code could not be updated"
+    },
+    "session": {
+      "startDate": "Start: {{date}}"
+    }
+  },
+  "notFound": {
+    "title": "Oops!"
   }
 }

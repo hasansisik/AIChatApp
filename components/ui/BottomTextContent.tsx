@@ -25,7 +25,7 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
   return (
     <Animated.View style={[styles.bottomTextContainer, { opacity }]}>
       <ReusableText
-        text={item.category}
+        text={t(item.category)}
         family="bold"
         size={18}
         color={Colors.lightWhite}
@@ -39,7 +39,7 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
         style={styles.nameText}
       />
       <ReusableText
-        text={item.description}
+        text={t(item.description)}
         family="regular"
         size={14}
         color={Colors.lightWhite}

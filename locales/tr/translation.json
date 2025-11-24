@@ -410,6 +410,7 @@
     "writeMessage": "Bir mesaj yaz...",
     "guestSupport": "Misafir Desteği",
     "user": "Kullanıcı",
+    "branding": "dialogfusion",
     "error": {
       "userNotFound": "Kullanıcı bilgileri bulunamadı",
       "userIdNotFound": "Kullanıcı ID alınamadı",
@@ -434,6 +435,40 @@
     },
     "input": {
       "placeholder": "Not alın..."
+    },
+    "categories": {
+      "lifestyle": "Yaşam Tarzı",
+      "education": "Eğitim",
+      "work": "İş"
+    },
+    "descriptions": {
+      "emma": "Yaşam tarzı ve günlük hayat konularında yardımcı olurum.",
+      "alexander": "Eğitim ve öğrenme konularında rehberlik ederim.",
+      "sophia": "Eğitim ve akademik konularda destek sağlarım.",
+      "james": "Yaşam tarzı ve kişisel gelişim konularında yardımcı olurum.",
+      "isabella": "İş ve kariyer konularında profesyonel destek sunarım.",
+      "michael": "Bilim ve eğitim konularında uzman desteği veririm."
     }
+  },
+  "edu": {
+    "title": "Kurs Seansları",
+    "loading": "Seanslar yükleniyor...",
+    "empty": {
+      "codeNotFound": "Kurs kodu bulunamadı",
+      "enterCode": "Lütfen kurs kodunuzu girin",
+      "noSessions": "Henüz seans bulunmuyor"
+    },
+    "code": {
+      "changeTitle": "Kurs Kodu Değiştir",
+      "enterCode": "Lütfen kurs kodunu girin",
+      "updateSuccess": "Kurs kodu başarıyla güncellendi",
+      "updateError": "Kod güncellenemedi"
+    },
+    "session": {
+      "startDate": "Başlangıç: {{date}}"
+    }
+  },
+  "notFound": {
+    "title": "Oops!"
   }
 }

@@ -111,14 +111,14 @@ const FavoriteAIs: React.FC = () => {
           color={Colors.black}
         />
         <ReusableText
-          text={item.description}
+          text={t(item.description)}
           family="regular"
           size={FontSizes.small}
           color={Colors.description}
           style={styles.description}
         />
         <ReusableText
-          text={item.category}
+          text={t(item.category)}
           family="regular"
           size={FontSizes.xSmall}
           color={Colors.gray}
