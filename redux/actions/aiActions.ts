@@ -20,9 +20,19 @@ interface StartConversationResponse {
   status: string;
 }
 
+type AudioUploadInput =
+  | string
+  | {
+      uri?: string;
+      blob?: Blob;
+      mimeType?: string;
+      name?: string;
+    }
+  | any;
+
 interface SendAudioPayload {
   conversation_id: string;
-  audio: any; // File or URI
+  audio: AudioUploadInput;
 }
 
 interface SendAudioResponse {
@@ -215,6 +225,12 @@ export const sendAudio = createAsyncThunk(
           type: mimeType,
           name: `audio${extension}`,
         } as any);
+      } else if (audio && typeof audio === "object" && audio.blob) {
+        formData.append(
+          "audio",
+          audio.blob,
+          audio.name || `audio.${audio.mimeType?.includes("wav") ? "wav" : "mp3"}`
+        );
       } else {
         formData.append("audio", audio);
       }
@@ -273,6 +289,12 @@ export const sendAudio = createAsyncThunk(
                 type: mimeType,
                 name: `audio${extension}`,
               } as any);
+            } else if (audio && typeof audio === "object" && audio.blob) {
+              formData.append(
+                "audio",
+                audio.blob,
+                audio.name || `audio.${audio.mimeType?.includes("wav") ? "wav" : "mp3"}`
+              );
             } else {
               formData.append("audio", audio);
             }

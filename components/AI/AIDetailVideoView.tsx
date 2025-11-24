@@ -168,7 +168,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       setIsProcessing(false);
       console.log('⏸️ Kayıt pause edildi, ses gönderilmedi');
     } catch (error) {
-      console.error('Kayıt durdurma hatası:', error);
       setIsProcessing(false);
       setIsRecording(false);
     }

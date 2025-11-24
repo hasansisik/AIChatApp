@@ -2,8 +2,8 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const STT_WS_URL = 'ws://localhost:5001/ws/stt';
-const CHUNK_INTERVAL_MS = 220;
-const FIRST_CHUNK_DELAY_MS = 120;
+const CHUNK_INTERVAL_MS = 140;
+const FIRST_CHUNK_DELAY_MS = 60;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
@@ -261,7 +261,7 @@ class AIService {
       });
 
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        Audio.RecordingOptionsPresets.MEDIUM_QUALITY
       );
 
       this.recording = recording;
@@ -285,7 +285,6 @@ class AIService {
       this.recording = null;
       return uri;
     } catch (error) {
-      console.error('Kayıt durdurma hatası:', error);
       return null;
     }
   }
@@ -530,7 +529,6 @@ class AIService {
       try {
         await this.rotateRecording(true, shouldSendAudio);
       } catch (error) {
-        console.warn('⚠️ Kayıt durdurma hatası:', error);
         // Hata olsa bile kaydı durdur
         try {
           await this.stopRecordingInstance();
@@ -597,10 +595,7 @@ class AIService {
       await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
         encoding: FileSystem.EncodingType.Base64
       });
-      // Notify handlers about the TTS audio file (for sending to conversation)
-      // Local playback disabled - audio will come from stream
       this.ttsAudioHandlers.forEach(handler => handler(fileUri));
-      // Clean up file after a delay (handlers should have sent it by then)
       setTimeout(() => {
         FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
       }, 5000);
