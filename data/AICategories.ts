@@ -35,7 +35,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: false,
     description: 'Yaşam tarzı ve günlük hayat konularında yardımcı olurum.',
     avatar_id: 1,
-    voice: 'fable', // Kadın sesi
+    voice: 'alloy', // Kadın sesi
   },
   {
     id: '2',
@@ -46,7 +46,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: true,
     description: 'Eğitim ve öğrenme konularında rehberlik ederim.',
     avatar_id: 2,
-    voice: 'alloy', // Erkek sesi
+    voice: 'ash', // Erkek sesi
   },
   {
     id: '3',
@@ -57,7 +57,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: false,
     description: 'Eğitim ve akademik konularda destek sağlarım.',
     avatar_id: 3,
-    voice: 'nova', // Kadın sesi
+    voice: 'ash', // Kadın sesi
   },
   {
     id: '4',
@@ -68,7 +68,7 @@ export const aiCategories: AICategory[] = [
     isFavorite: true,
     description: 'Yaşam tarzı ve kişisel gelişim konularında yardımcı olurum.',
     avatar_id: 4,
-    voice: 'echo', // Erkek sesi
+    voice: 'onyx', // Erkek sesi
   },
   {
     id: '5',

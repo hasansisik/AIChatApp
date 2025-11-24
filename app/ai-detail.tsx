@@ -103,6 +103,13 @@ const AIDetailPage = () => {
     // Modal açılmıyor, sadece icon değişiyor
   };
 
+  // Set voice when component mounts or item changes
+  useEffect(() => {
+    if (item && item.voice) {
+      aiService.setVoice(item.voice);
+    }
+  }, [item]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

@@ -21,7 +21,8 @@ class AIService {
   private chunkTimer: ReturnType<typeof setTimeout> | null = null;
   private isStreaming = false;
   private isStartingRecording = false;
-  private currentVoice: string = 'alloy';
+  private currentVoice: string | null = null;
+  private voiceConfigSent = false;
 
   onTranscription(handler: TranscriptionHandler) {
     this.transcriptionHandlers.add(handler);
@@ -65,17 +66,38 @@ class AIService {
 
   setVoice(voice: string) {
     if (voice && voice.trim().length > 0) {
-      this.currentVoice = voice.trim();
-      this.sendVoiceConfig();
+      const newVoice = voice.trim();
+      // Eğer voice değiştiyse, config'i tekrar gönder
+      if (this.currentVoice !== newVoice) {
+        this.currentVoice = newVoice;
+        this.voiceConfigSent = false; // Yeni voice için config'i tekrar gönder
+        console.log(`🎙️ Voice set edildi: ${this.currentVoice}`);
+        this.sendVoiceConfig();
+      }
+    } else {
+      console.warn('⚠️ Voice bilgisi boş veya geçersiz');
     }
   }
 
   private sendVoiceConfig() {
-    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
-      this.sttSocket.send(JSON.stringify({
+    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && this.currentVoice && !this.voiceConfigSent) {
+      const configMessage = JSON.stringify({
         type: 'config',
         voice: this.currentVoice
-      }));
+      });
+      this.sttSocket.send(configMessage);
+      this.voiceConfigSent = true;
+      console.log(`📤 Voice config mesajı gönderildi: ${this.currentVoice}`);
+    } else {
+      if (!this.sttSocket) {
+        // Socket henüz oluşturulmamış, sessizce bekle
+      } else if (this.sttSocket.readyState !== WebSocket.OPEN) {
+        // Socket henüz açık değil, sessizce bekle
+      } else if (!this.currentVoice) {
+        console.log('⚠️ Voice henüz set edilmemiş, voice config gönderilemedi');
+      } else if (this.voiceConfigSent) {
+        // Config zaten gönderilmiş, tekrar gönderme
+      }
     }
   }
 
@@ -86,12 +108,25 @@ class AIService {
 
     this.socketReady = new Promise((resolve, reject) => {
       try {
-        this.sttSocket = new WebSocket(STT_WS_URL);
+        // Voice bilgisini query parameter olarak ekle
+        const voiceParam = this.currentVoice ? `?voice=${encodeURIComponent(this.currentVoice)}` : '';
+        const wsUrl = `${STT_WS_URL}${voiceParam}`;
+        console.log(`🔌 WebSocket bağlantısı kuruluyor: ${wsUrl}`);
+        this.sttSocket = new WebSocket(wsUrl);
         this.sttSocket.binaryType = 'arraybuffer';
 
         this.sttSocket.onopen = () => {
           this.notifyStatus('WebSocket bağlandı');
-          this.sendVoiceConfig();
+          // Voice config'i hemen gönder (eğer voice set edilmişse)
+          // Küçük bir delay ekleyerek mesajın gönderildiğinden emin ol
+          setTimeout(() => {
+            if (this.currentVoice) {
+              this.voiceConfigSent = false; // Socket yeniden bağlandı, config'i tekrar gönder
+              this.sendVoiceConfig();
+            } else {
+              console.warn('⚠️ WebSocket bağlandı ama voice henüz set edilmemiş');
+            }
+          }, 50); // 50ms delay ile mesajın gönderildiğinden emin ol
           resolve();
         };
 
@@ -138,6 +173,7 @@ class AIService {
           this.notifyStatus('WebSocket kapandı');
           this.sttSocket = null;
           this.socketReady = null;
+          this.voiceConfigSent = false; // Socket kapandı, config'i tekrar göndermek için flag'i sıfırla
         };
       } catch (error) {
         this.notifyStatus('WebSocket oluşturulamadı');
@@ -157,6 +193,10 @@ class AIService {
 
   private async ensureSocket() {
     if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+      // Socket zaten açıksa, voice config'i gönder (eğer voice set edilmişse ama henüz gönderilmemişse)
+      if (this.currentVoice && !this.voiceConfigSent) {
+        this.sendVoiceConfig();
+      }
       return;
     }
 
@@ -166,6 +206,8 @@ class AIService {
 
     if (this.socketReady) {
       await this.socketReady;
+      // Socket bağlandıktan sonra voice config'i gönder (eğer voice set edilmişse)
+      // onopen içinde zaten gönderiliyor, burada tekrar göndermeye gerek yok
     }
   }
 
@@ -339,16 +381,49 @@ class AIService {
     }
   }
 
-  async startLiveTranscription(voice?: string): Promise<boolean> {
+  async startLiveTranscription(voice: string): Promise<boolean> {
     if (this.isStreaming) {
       return false;
     }
 
-    if (voice) {
-      this.setVoice(voice);
+    if (!voice || !voice.trim()) {
+      console.error('❌ Voice bilgisi gerekli');
+      return false;
     }
 
+    // Voice'u set et
+    this.currentVoice = voice.trim();
+    console.log(`🎙️ Voice set edildi: ${this.currentVoice}`);
+    
+    // Eğer socket zaten açıksa ve voice değiştiyse, yeniden bağlan
+    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+      // Voice değiştiyse socket'i kapat ve yeniden bağlan
+      if (this.currentVoice) {
+        console.log('🔄 Voice değişti, socket yeniden bağlanıyor...');
+        this.disconnectSttSocket();
+      }
+    }
+    
+    // Socket'i bağla (voice query parameter olarak gönderilecek)
     await this.ensureSocket();
+    
+    // Socket bağlandıktan sonra ek olarak config mesajı da gönder (fallback)
+    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+      // Config mesajını da gönder (query parameter yeterli olmayabilir)
+      const configMessage = JSON.stringify({
+        type: 'config',
+        voice: this.currentVoice
+      });
+      this.sttSocket.send(configMessage);
+      this.voiceConfigSent = true;
+      console.log(`📤 Voice config mesajı gönderildi (fallback): ${this.currentVoice}`);
+      
+      // Config mesajının server'a ulaşması için kısa bir bekleme
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } else {
+      console.error('❌ Socket bağlı değil, voice config gönderilemedi');
+      return false;
+    }
 
     const started = await this.startRecordingInstance();
     if (!started) {
