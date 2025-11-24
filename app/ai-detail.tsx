@@ -201,6 +201,7 @@ const AIDetailPage = () => {
             setIsProcessing={setIsProcessing}
             selectedDetectionMethod={selectedDetectionMethod}
             onGoBack={handleGoBack}
+            conversationId={aiState.conversation.conversation_id}
           />
         </Animated.View>
       ) : (

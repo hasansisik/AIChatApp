@@ -146,7 +146,43 @@ export const startConversation = createAsyncThunk(
   }
 );
 
-// 3. Send Audio
+// 3. End Conversation
+export const endConversation = createAsyncThunk(
+  "ai/endConversation",
+  async (conversation_id: string, thunkAPI) => {
+    try {
+      let token = await AsyncStorage.getItem("aiToken");
+      
+      if (!token) {
+        const tokenResult = await thunkAPI.dispatch(getToken());
+        if (getToken.fulfilled.match(tokenResult)) {
+          token = tokenResult.payload.access_token;
+        } else {
+          return thunkAPI.rejectWithValue("Failed to get authentication token");
+        }
+      }
+
+      await axios.delete(
+        `${aiServer}conversation/${conversation_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("✅ [aiActions] endConversation: Konuşma kapatıldı:", conversation_id);
+      return { conversation_id };
+    } catch (error: any) {
+      console.error("❌ [aiActions] endConversation: Hata:", error.response?.data?.message || error.message);
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message || "Failed to end conversation"
+      );
+    }
+  }
+);
+
+// 4. Send Audio
 export const sendAudio = createAsyncThunk(
   "ai/sendAudio",
   async ({ conversation_id, audio }: SendAudioPayload, thunkAPI) => {

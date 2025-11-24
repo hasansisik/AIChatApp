@@ -15,10 +15,12 @@ import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useDispatch } from 'react-redux';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
+import { endConversation } from '@/redux/actions/aiActions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -36,6 +38,7 @@ interface AIDetailVideoViewProps {
   setIsProcessing: (processing: boolean) => void;
   selectedDetectionMethod: string;
   onGoBack: () => void;
+  conversationId: string;
 }
 
 const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
@@ -52,8 +55,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   setIsProcessing,
   selectedDetectionMethod,
   onGoBack,
+  conversationId,
 }) => {
   const router = useRouter();
+  const dispatch = useDispatch();
   const textInputRef = useRef<TextInput>(null);
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
@@ -812,7 +817,25 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               style={[styles.circleButton, styles.redCircleButton]}
               onPress={async () => {
                 try {
+                  // WebSocket'i kapat
                   await aiService.cleanup();
+                  
+                  // Stream conversation'ı kapat
+                  if (conversationId) {
+                    try {
+                      const result = await dispatch(endConversation(conversationId) as any);
+                      if (endConversation.fulfilled.match(result)) {
+                        console.log('✅ Conversation kapatıldı');
+                      } else {
+                        console.warn('⚠️ Conversation kapatılamadı:', result);
+                      }
+                    } catch (error) {
+                      console.warn('⚠️ Conversation kapatılamadı:', error);
+                      // Hata olsa bile devam et
+                    }
+                  }
+                } catch (error) {
+                  console.error('❌ Cleanup hatası:', error);
                 } finally {
                   router.push('/(tabs)/tabs');
                 }

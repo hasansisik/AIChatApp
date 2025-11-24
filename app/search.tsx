@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from "@/hooks/useThemeColor";
 import ReusableText from '@/components/ui/ReusableText';
 import { AICategory, aiCategories } from '@/data/AICategories';
 import AIItem from '@/components/Home/AIItem';
 import { FontSizes } from '@/constants/Fonts';
+import { startConversation } from '@/redux/actions/aiActions';
 
 const Search = () => {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState<AICategory[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -29,8 +32,24 @@ const Search = () => {
     }
   }, [searchQuery]);
 
-  const handleItemPress = (item: AICategory) => {
-    router.push(`/ai-detail?id=${item.id}`);
+  const handleItemPress = async (item: AICategory) => {
+    try {
+      // Start conversation with avatar_id
+      const result = await dispatch(startConversation({ avatar_id: item.avatar_id }) as any);
+      
+      if (startConversation.fulfilled.match(result)) {
+        // Navigate to AI detail page with conversation data
+        router.push(`/ai-detail?id=${item.id}`);
+      } else {
+        console.error('Failed to start conversation:', result.payload);
+        // Still navigate even if conversation fails
+        router.push(`/ai-detail?id=${item.id}`);
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      // Still navigate even if conversation fails
+      router.push(`/ai-detail?id=${item.id}`);
+    }
   };
 
   const handleFavoritePress = (item: AICategory) => {
