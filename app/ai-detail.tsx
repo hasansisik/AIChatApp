@@ -41,8 +41,9 @@ const AIDetailPage = () => {
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
   
-  // Get websocket_stream_url from Redux state
+  // Get websocket_stream_url & conversation_id from Redux state
   const webStreamUrl = aiState.conversation.websocket_stream_url;
+  const conversationId = aiState.conversation.conversation_id;
 
   if (!item) {
     return (
@@ -105,10 +106,10 @@ const AIDetailPage = () => {
 
   // Set voice when component mounts or item changes
   useEffect(() => {
-    if (item && item.voice) {
-      aiService.setVoice(item.voice);
+    if (item?.voice) {
+      aiService.prewarmConnection(item.voice);
     }
-  }, [item]);
+  }, [item?.voice]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -119,13 +120,11 @@ const AIDetailPage = () => {
 
   // Listen for TTS audio and send to conversation
   useEffect(() => {
-    const handleTTSAudio = async (audioUri: string) => {
-      const conversationId = aiState.conversation.conversation_id;
-      if (!conversationId) {
-        console.warn('⚠️ [ai-detail] TTS audio alındı ama conversation_id yok');
-        return;
-      }
+    if (!conversationId) {
+      return;
+    }
 
+    const handleTTSAudio = async (audioUri: string) => {
       try {
         await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
         console.log('✅ [ai-detail] TTS audio conversation\'a gönderildi');
@@ -143,17 +142,15 @@ const AIDetailPage = () => {
     return () => {
       aiService.offTTSAudio(handleTTSAudio);
     };
-  }, [dispatch, aiState.conversation.conversation_id]);
+  }, [dispatch, conversationId]);
 
   // Listen for recording completion and send to conversation for lipsync
   useEffect(() => {
-    const handleRecordingForLipsync = async (audioUri: string) => {
-      const conversationId = aiState.conversation.conversation_id;
-      if (!conversationId) {
-        console.warn('⚠️ [ai-detail] Recording alındı ama conversation_id yok');
-        return;
-      }
+    if (!conversationId) {
+      return;
+    }
 
+    const handleRecordingForLipsync = async (audioUri: string) => {
       try {
         console.log('🎤 [ai-detail] Recording conversation\'a gönderiliyor...');
         setIsProcessing(true);
@@ -179,7 +176,7 @@ const AIDetailPage = () => {
     return () => {
       aiService.offRecordingForLipsync(handleRecordingForLipsync);
     };
-  }, [dispatch, aiState.conversation.conversation_id]);
+  }, [dispatch, conversationId]);
 
   return (
     <View style={styles.container}>

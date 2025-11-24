@@ -79,6 +79,20 @@ class AIService {
     }
   }
 
+  async prewarmConnection(voice: string) {
+    if (!voice || !voice.trim()) {
+      console.warn('⚠️ prewarmConnection: Voice bilgisi boş');
+      return;
+    }
+
+    this.setVoice(voice);
+    try {
+      await this.ensureSocket();
+    } catch (error) {
+      console.warn('⚠️ prewarmConnection: Socket hazır değil:', error);
+    }
+  }
+
   private sendVoiceConfig() {
     if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && this.currentVoice && !this.voiceConfigSent) {
       const configMessage = JSON.stringify({
