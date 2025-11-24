@@ -167,14 +167,30 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   };
 
-  const handleSendText = () => {
+  const handleSendText = async () => {
     const textToSend = conversationText.trim();
     if (!textToSend) {
       setIsKeyboardVisible(true);
       return;
     }
-    setConversationText('');
-    setIsKeyboardVisible(false);
+
+    // Text mesajını STT yapmadan direkt LLM'e gönder
+    setIsProcessing(true);
+    try {
+      const sent = await aiService.sendTextMessage(textToSend);
+      if (sent) {
+        setConversationText('');
+        setIsKeyboardVisible(false);
+        console.log('✅ Text mesajı gönderildi');
+      } else {
+        Alert.alert('Hata', 'Mesaj gönderilemedi');
+      }
+    } catch (error) {
+      console.error('❌ Text mesajı gönderilirken hata:', error);
+      Alert.alert('Hata', 'Mesaj gönderilemedi');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const htmlContent = `

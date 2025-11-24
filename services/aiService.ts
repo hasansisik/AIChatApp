@@ -539,6 +539,38 @@ class AIService {
     }
   }
 
+  async sendTextMessage(text: string): Promise<boolean> {
+    if (!text || !text.trim()) {
+      return false;
+    }
+
+    // Mevcut socket'i kullan, yeni bağlantı kurma
+    if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
+      // Socket yoksa veya açık değilse, bağlan
+      await this.ensureSocket();
+      
+      if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
+        console.warn('⚠️ Socket bağlı değil, text mesajı gönderilemedi');
+        return false;
+      }
+    }
+
+    try {
+      // Text mesajını server'a gönder (string olarak)
+      const message = JSON.stringify({
+        type: 'text_message',
+        text: text.trim()
+      });
+      console.log(`📤 Text mesajı gönderiliyor (socket state: ${this.sttSocket.readyState}, ${message.length} bytes): ${text.trim().substring(0, 50)}...`);
+      this.sttSocket.send(message);
+      console.log(`✅ Text mesajı gönderildi: ${text.trim().substring(0, 50)}...`);
+      return true;
+    } catch (error) {
+      console.error('❌ Text mesajı gönderilemedi:', error);
+      return false;
+    }
+  }
+
   async cleanup(): Promise<void> {
     await this.stopLiveTranscription();
     this.disconnectSttSocket();
