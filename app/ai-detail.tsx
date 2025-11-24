@@ -118,31 +118,8 @@ const AIDetailPage = () => {
     };
   }, []);
 
-  // Listen for TTS audio and send to conversation
-  useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-
-    const handleTTSAudio = async (audioUri: string) => {
-      try {
-        await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
-        console.log('✅ [ai-detail] TTS audio conversation\'a gönderildi');
-      } catch (error: any) {
-        // 409 Conflict is normal when audio is already being processed - silently ignore
-        if (error?.response?.status === 409 || error?.message?.includes('409')) {
-          console.log('ℹ️ [ai-detail] TTS audio zaten işleniyor - normal durum');
-        } else {
-          console.error('❌ [ai-detail] TTS audio gönderilemedi:', error);
-        }
-      }
-    };
-
-    aiService.onTTSAudio(handleTTSAudio);
-    return () => {
-      aiService.offTTSAudio(handleTTSAudio);
-    };
-  }, [dispatch, conversationId]);
+  // TTS audio artık AIDetailVideoView içinde hem oynatılıyor hem conversation'a gönderiliyor
+  // Bu handler'ı kaldırdık çünkü duplicate gönderim oluyordu
 
   // Listen for recording completion and send to conversation for lipsync
   useEffect(() => {

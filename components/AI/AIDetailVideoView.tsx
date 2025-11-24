@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,11 +17,12 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import { Audio } from 'expo-av';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { endConversation } from '@/redux/actions/aiActions';
+import { endConversation, sendAudio } from '@/redux/actions/aiActions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -65,6 +66,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
+  
+  // TTS Audio Playback
+  const [ttsSound, setTtsSound] = useState<Audio.Sound | null>(null);
+  const [isTTSPlaying, setIsTTSPlaying] = useState(false);
+  const [ttsPlaybackStatus, setTtsPlaybackStatus] = useState<{
+    isPlaying: boolean;
+    positionMillis: number;
+    durationMillis: number;
+  } | null>(null);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -196,6 +206,107 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       Alert.alert(t('common.error'), t('ai.message.sendError'));
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // TTS Audio Playback Handler - Hem oynat hem conversation'a gönder
+  useEffect(() => {
+    if (!conversationId) {
+      return;
+    }
+
+    const handleTTSAudio = async (audioUri: string) => {
+      try {
+        console.log('🔊 TTS audio alındı, oynatılıyor ve conversation\'a gönderiliyor:', audioUri);
+        
+        // Önceki ses varsa durdur
+        if (ttsSound) {
+          try {
+            await ttsSound.unloadAsync();
+          } catch (e) {
+            // Ignore
+          }
+        }
+
+        // Yeni ses dosyasını yükle ve oynat
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: audioUri },
+          { shouldPlay: true, isLooping: false }
+        );
+
+        setTtsSound(sound);
+        setIsTTSPlaying(true);
+
+        // Playback status'u dinle
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded) {
+            setTtsPlaybackStatus({
+              isPlaying: status.isPlaying,
+              positionMillis: status.positionMillis || 0,
+              durationMillis: status.durationMillis || 0,
+            });
+            
+            if (status.didJustFinish) {
+              setIsTTSPlaying(false);
+              sound.unloadAsync().catch(() => {});
+              setTtsSound(null);
+              setTtsPlaybackStatus(null);
+            }
+          }
+        });
+
+        // Aynı zamanda conversation'a gönder (lipsync için)
+        try {
+          await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
+          console.log('✅ TTS audio conversation\'a gönderildi');
+        } catch (error: any) {
+          // 409 Conflict is normal when audio is already being processed - silently ignore
+          if (error?.response?.status === 409 || error?.message?.includes('409')) {
+            console.log('ℹ️ TTS audio zaten işleniyor - normal durum');
+          } else {
+            console.error('❌ TTS audio conversation\'a gönderilemedi:', error);
+          }
+        }
+      } catch (error) {
+        console.error('❌ TTS audio oynatılamadı:', error);
+        setIsTTSPlaying(false);
+      }
+    };
+
+    aiService.onTTSAudio(handleTTSAudio);
+    return () => {
+      aiService.offTTSAudio(handleTTSAudio);
+    };
+  }, [ttsSound, conversationId, dispatch]);
+
+  // Cleanup TTS sound on unmount
+  useEffect(() => {
+    return () => {
+      if (ttsSound) {
+        ttsSound.unloadAsync().catch(() => {});
+      }
+    };
+  }, [ttsSound]);
+
+  // TTS Playback Control
+  const handleTTSPlayPause = async () => {
+    if (!ttsSound) {
+      return;
+    }
+
+    try {
+      const status = await ttsSound.getStatusAsync();
+      if (status.isLoaded) {
+        if (status.isPlaying) {
+          await ttsSound.pauseAsync();
+          setIsTTSPlaying(false);
+        } else {
+          await ttsSound.playAsync();
+          setIsTTSPlaying(true);
+        }
+      }
+    } catch (error) {
+      console.error('❌ TTS playback kontrolü hatası:', error);
     }
   };
 
@@ -487,8 +598,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               ws.onopen = function() {
                 console.log('✅ WebSocket connected');
                 streamStartTime = Date.now();
-                // Initialize AudioContext when WebSocket connects
-                initAudioContext();
+                // AudioContext artık kullanılmıyor - TTS audio zaten oynatılıyor
+                // initAudioContext(); // DEVRE DIŞI
                 // React Native'e mesaj gönder
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'ws_status',
@@ -629,7 +740,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 }
                 
               } else if (type === 1) {
-                // Audio chunk (PCM16) - Stream'den gelen ses chunk'larını oynat
+                // Audio chunk (PCM16) - Stream'den gelen ses chunk'ları (oynatılmıyor, sadece log)
+                // Audio playback devre dışı - TTS audio zaten oynatılıyor
                 const sampleRate = view.getUint32(1, false);
                 const channels = view.getUint8(5);
                 const pcmData = buffer.slice(6);
@@ -637,13 +749,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 audioChunkCount++;
                 totalAudioBytes += pcmData.byteLength;
                 
-                // Play audio chunk
-                playAudioChunk(pcmData, sampleRate, channels);
+                // Audio chunk'ları oynatma - TTS audio zaten oynatılıyor
+                // playAudioChunk(pcmData, sampleRate, channels); // DEVRE DIŞI
                 
                 if (!firstAudioChunkTime) {
                   firstAudioChunkTime = Date.now();
                   firstAudioChunkReceived = true;
-                  console.log('✅ First audio chunk received and playing');
+                  console.log('✅ First audio chunk received (not playing - TTS audio is playing instead)');
                   // React Native'e ilk audio chunk geldiğini bildir
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'first_audio_chunk',
@@ -671,7 +783,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                   // Daha konservatif tahmin: elapsed time'ın 1.2-1.5 katı (boşluklar için buffer)
                   const streamDurationEstimate = elapsed * 1.3; // Gerçek geçen sürenin 1.3 katı (boşluklar için)
                   
-                  console.log('🔇 Audio chunks received:', audioChunkCount, 'Total bytes:', totalAudioBytes, 'Elapsed:', elapsed.toFixed(2) + 's', 'Est. duration:', estimatedDuration.toFixed(2) + 's', 'Stream est:', streamDurationEstimate.toFixed(2) + 's');
+                  console.log('🔇 Audio chunks received (not playing):', audioChunkCount, 'Total bytes:', totalAudioBytes, 'Elapsed:', elapsed.toFixed(2) + 's', 'Est. duration:', estimatedDuration.toFixed(2) + 's', 'Stream est:', streamDurationEstimate.toFixed(2) + 's');
                   
                   // React Native'e audio chunk bilgilerini gönder (elapsed time'ı stream süresi olarak kullan)
                   window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -776,15 +888,17 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             />
           </View>
 
-          <View style={styles.liveChatContainer}>
-            <View style={styles.liveIndicator} />
-            <ReusableText
-              text={t('ai.liveChat')}
-              family="medium"
-              size={16}
-              color={Colors.lightWhite}
-              style={styles.liveChatText}
-            />
+          <View style={styles.headerRightContainer}>
+            <View style={styles.liveChatContainer}>
+              <View style={styles.liveIndicator} />
+              <ReusableText
+                text={t('ai.liveChat')}
+                family="medium"
+                size={16}
+                color={Colors.lightWhite}
+                style={styles.liveChatText}
+              />
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -933,6 +1047,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 20,
+  },
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  ttsPlaybackButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   liveChatContainer: {
     flexDirection: 'row',
