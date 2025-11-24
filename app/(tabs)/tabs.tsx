@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Colors, useTheme } from "@/hooks/useThemeColor";
-import { StyleSheet, Image, View, Text, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { StyleSheet, Image, View, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from "react-redux";
-import { useRouter } from "expo-router";
 import { useTranslation } from 'react-i18next';
+import { useAuth } from "@/hooks/useAuth";
 import Home from "@/app/(tabs)/home";
 import List from "@/app/(tabs)/list";
 import Profile from "./profile";
@@ -16,6 +16,7 @@ import { loadUser } from "@/redux/actions/userActions";
 import ReusableText from "@/components/ui/ReusableText";
 import { FontSizes } from "@/constants/Fonts";
 import ChatBot from "@/components/ChatBot/ChatBot";
+import OnboardingDemo from "@/app/onboarding-demo";
 
 const Tab = createBottomTabNavigator();
 
@@ -28,17 +29,30 @@ const TabNavigation = () => {
   const { isDark } = useTheme();
   const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
+  const { loading: authLoading, isOnboardingCompleted } = useAuth();
   const dispatch = useDispatch();
-  const router = useRouter();
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [courseCode, setCourseCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [chatBotVisible, setChatBotVisible] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   useEffect(() => {
     // Check if user has courseCode when Edu tab is accessed
     // This will be handled in the Edu component itself
   }, [user]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+    setShowOnboarding(!isOnboardingCompleted);
+  }, [authLoading, isOnboardingCompleted]);
+
+  const handleOnboardingComplete = async () => {
+    setShowOnboarding(false);
+    await dispatch<any>(loadUser());
+  };
 
   const handleCodeSubmit = async () => {
     if (!courseCode.trim()) {
@@ -149,6 +163,15 @@ const TabNavigation = () => {
       backgroundColor: Colors.primary,
     },
   });
+  if (showOnboarding) {
+    return (
+      <OnboardingDemo
+        visible={showOnboarding}
+        onComplete={handleOnboardingComplete}
+      />
+    );
+  }
+
   return (
     <>
     <Tab.Navigator

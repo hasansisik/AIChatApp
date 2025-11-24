@@ -62,12 +62,12 @@ const Login: React.FC<LoginProps> = () => {
         setIsKeyboardVisible(true);
         Animated.timing(inputAnimation, {
           toValue: 50,
-          duration: 500,
+          duration: 250,
           useNativeDriver: true,
         }).start();
         Animated.timing(textAnimation, {
           toValue: 0,
-          duration: 500,
+          duration: 250,
           useNativeDriver: true,
         }).start();
       }
@@ -78,12 +78,12 @@ const Login: React.FC<LoginProps> = () => {
         setIsKeyboardVisible(false);
         Animated.timing(inputAnimation, {
           toValue: 0,
-          duration: 500,
+          duration: 250,
           useNativeDriver: true,
         }).start();
         Animated.timing(textAnimation, {
           toValue: 1,
-          duration: 500,
+          duration: 250,
           useNativeDriver: true,
         }).start();
       }
@@ -169,14 +169,28 @@ const Login: React.FC<LoginProps> = () => {
           >
             <View>
               {/* Text */}
-              <ReusableText
-                text={t("auth.login.title")}
-                family={"bold"}
-                size={FontSizes.xLarge}
-                color={Colors.black}
-                align={"center"}
-              />
-              <HeightSpacer height={20} />
+              <Animated.View
+                style={{
+                  opacity: textAnimation,
+                  transform: [
+                    {
+                      translateY: textAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-20, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <ReusableText
+                  text={t("auth.login.title")}
+                  family={"bold"}
+                  size={FontSizes.xLarge}
+                  color={Colors.black}
+                  align={"center"}
+                />
+                <HeightSpacer height={20} />
+              </Animated.View>
               {/* Email Input */}
               <ReusableInput
                 label={t("auth.login.email")}

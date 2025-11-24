@@ -1,20 +1,28 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import StepOnboardingScreen from '@/components/Onboarding/StepOnboardingScreen';
-import TabNavigation from './(tabs)/tabs';
 
-const OnboardingDemo = () => {
-  const [showOnboarding, setShowOnboarding] = useState(true);
+interface OnboardingDemoProps {
+  visible: boolean;
+  onComplete: () => void;
+}
 
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-  };
-
-  if (showOnboarding) {
-    return <StepOnboardingScreen onComplete={handleOnboardingComplete} />;
+const OnboardingDemo: React.FC<OnboardingDemoProps> = ({ visible, onComplete }) => {
+  if (!visible) {
+    return null;
   }
 
-  return <TabNavigation />;
+  return (
+    <View style={styles.container}>
+      <StepOnboardingScreen onComplete={onComplete} />
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
 
 export default OnboardingDemo;
