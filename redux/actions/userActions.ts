@@ -351,3 +351,89 @@ export const updateOnboardingData = createAsyncThunk(
     }
   }
 );
+
+// Add Favorite AI
+export const addFavoriteAI = createAsyncThunk(
+  "user/addFavoriteAI",
+  async (aiId: string, thunkAPI) => {
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) {
+        return thunkAPI.rejectWithValue("Token bulunamadı");
+      }
+
+      const { data } = await axios.post(
+        `${server}/auth/favorite-ai/add`,
+        { aiId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return data.favoriteAIs;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Favori eklenemedi"
+      );
+    }
+  }
+);
+
+// Remove Favorite AI
+export const removeFavoriteAI = createAsyncThunk(
+  "user/removeFavoriteAI",
+  async (aiId: string, thunkAPI) => {
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) {
+        return thunkAPI.rejectWithValue("Token bulunamadı");
+      }
+
+      const { data } = await axios.post(
+        `${server}/auth/favorite-ai/remove`,
+        { aiId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return data.favoriteAIs;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Favori çıkarılamadı"
+      );
+    }
+  }
+);
+
+// Get Favorite AIs
+export const getFavoriteAIs = createAsyncThunk(
+  "user/getFavoriteAIs",
+  async (_, thunkAPI) => {
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) {
+        return thunkAPI.rejectWithValue("Token bulunamadı");
+      }
+
+      const { data } = await axios.get(
+        `${server}/auth/favorite-ai`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return data.favoriteAIs || [];
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Favoriler alınamadı"
+      );
+    }
+  }
+);

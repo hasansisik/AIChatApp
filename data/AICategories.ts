@@ -4,7 +4,6 @@ export interface AICategory {
   category: string;
   categoryType: string;
   image: string;
-  isFavorite: boolean;
   description: string;
   avatar_id: number;
   voice: string; // OpenAI TTS voice name
@@ -32,7 +31,6 @@ export const aiCategories: AICategory[] = [
     category: 'Yaşam Tarzı',
     categoryType: 'lifestyle',
     image: require('@/assets/images/ai/ai-women1.png'),
-    isFavorite: false,
     description: 'Yaşam tarzı ve günlük hayat konularında yardımcı olurum.',
     avatar_id: 1,
     voice: 'alloy', // Kadın sesi
@@ -43,7 +41,6 @@ export const aiCategories: AICategory[] = [
     category: 'Eğitim',
     categoryType: 'education',
     image: require('@/assets/images/ai/ai-men1.png'),
-    isFavorite: true,
     description: 'Eğitim ve öğrenme konularında rehberlik ederim.',
     avatar_id: 2,
     voice: 'ash', // Erkek sesi
@@ -54,7 +51,6 @@ export const aiCategories: AICategory[] = [
     category: 'Eğitim',
     categoryType: 'education',
     image: require('@/assets/images/ai/ai-women2.png'),
-    isFavorite: false,
     description: 'Eğitim ve akademik konularda destek sağlarım.',
     avatar_id: 3,
     voice: 'ash', // Kadın sesi
@@ -65,7 +61,6 @@ export const aiCategories: AICategory[] = [
     category: 'Yaşam Tarzı',
     categoryType: 'lifestyle',
     image: require('@/assets/images/ai/ai-men2.png'),
-    isFavorite: true,
     description: 'Yaşam tarzı ve kişisel gelişim konularında yardımcı olurum.',
     avatar_id: 4,
     voice: 'onyx', // Erkek sesi
@@ -76,7 +71,6 @@ export const aiCategories: AICategory[] = [
     category: 'İş',
     categoryType: 'work',
     image: require('@/assets/images/ai/ai-women3.png'),
-    isFavorite: false,
     description: 'İş ve kariyer konularında profesyonel destek sunarım.',
     avatar_id: 5,
     voice: 'shimmer', // Kadın sesi
@@ -87,7 +81,6 @@ export const aiCategories: AICategory[] = [
     category: 'Eğitim',
     categoryType: 'education',
     image: require('@/assets/images/ai/ai-men3.png'),
-    isFavorite: false,
     description: 'Bilim ve eğitim konularında uzman desteği veririm.',
     avatar_id: 6,
     voice: 'onyx', // Erkek sesi

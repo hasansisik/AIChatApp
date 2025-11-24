@@ -7,15 +7,12 @@ import {
   Modal,
   StatusBar,
   ScrollView,
-  ActivityIndicator,
-  Share,
-  Clipboard,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "expo-router";
-import { editProfile, loadUser, logout } from "@/redux/actions/userActions";
+import { editProfile, loadUser, logout, getFavoriteAIs, removeFavoriteAI } from "@/redux/actions/userActions";
 import AppBar from "@/components/ui/AppBar";
 import { Colors } from "@/hooks/useThemeColor";
 import ReusableText from "@/components/ui/ReusableText";
@@ -37,10 +34,25 @@ const Profile: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const toastRef = useRef<any>(null);
+  const favoritesLoadedRef = useRef(false);
 
   useEffect(() => {
     dispatch<any>(loadUser());
   }, [dispatch]);
+
+  useEffect(() => {
+    // User yüklendiğinde favorileri yükle (sadece bir kez)
+    if (user && user._id) {
+      // Eğer favoriteAIs yoksa veya daha önce yüklenmemişse yükle
+      if (!favoritesLoadedRef.current) {
+        favoritesLoadedRef.current = true;
+        dispatch<any>(getFavoriteAIs());
+      }
+    } else {
+      // User yoksa flag'i resetle
+      favoritesLoadedRef.current = false;
+    }
+  }, [dispatch, user?._id]);
 
   useEffect(() => {
     if (status && message) {
@@ -151,6 +163,14 @@ const Profile: React.FC = () => {
                 color={Colors.black}
               />
             </View>
+            {/* Favori AI'lar */}
+            {user && (
+              <ProfileCard
+                title="Favori AI"
+                icon={"heart"}
+                onPress={() => router.push("/(profile)/favorite-ais")}
+              />
+            )}
             {/* Menu3 */}
             <ProfileCard
               title={t("profile.tabs.language")}

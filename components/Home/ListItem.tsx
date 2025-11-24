@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
@@ -16,14 +17,28 @@ const { width } = Dimensions.get('window');
 const itemWidth = width * 0.7; // 70% of screen width for horizontal scroll
 
 const ListItem: React.FC<ListItemProps> = ({ item, onPress, onFavoritePress }) => {
+  const { user } = useSelector((state: any) => state.user);
+  const isFavorite = user?.favoriteAIs?.includes(item.id) || false;
+  const [isFavoriteProcessing, setIsFavoriteProcessing] = useState(false);
+
   const handleFavoritePress = () => {
+    if (isFavoriteProcessing) return;
+    setIsFavoriteProcessing(true);
     onFavoritePress?.(item);
+    // Reset after a short delay to allow Redux state to update
+    setTimeout(() => setIsFavoriteProcessing(false), 100);
+  };
+
+  const handleItemPress = () => {
+    // Eğer favorite button'a tıklanmışsa, item press'i engelle
+    if (isFavoriteProcessing) return;
+    onPress?.(item);
   };
 
   return (
     <TouchableOpacity
       style={[styles.container, { width: itemWidth }]}
-      onPress={() => onPress?.(item)}
+      onPress={handleItemPress}
       activeOpacity={0.9}
     >
       {/* Full Background Image */}
@@ -40,9 +55,9 @@ const ListItem: React.FC<ListItemProps> = ({ item, onPress, onFavoritePress }) =
         activeOpacity={0.7}
       >
         <Ionicons
-          name={item.isFavorite ? "heart" : "heart-outline"}
+          name={isFavorite ? "heart" : "heart-outline"}
           size={20}
-          color={item.isFavorite ? Colors.error : Colors.lightWhite}
+          color={isFavorite ? Colors.error : Colors.lightWhite}
         />
       </TouchableOpacity>
 

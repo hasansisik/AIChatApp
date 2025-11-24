@@ -6,21 +6,12 @@ import { AICategory, aiCategories, categoryFilters } from '@/data/AICategories';
 
 interface AIListingProps {
   onItemPress?: (item: AICategory) => void;
+  onFavoritePress?: (item: AICategory) => void;
 }
 
-const AIListing: React.FC<AIListingProps> = ({ onItemPress }) => {
+const AIListing: React.FC<AIListingProps> = ({ onItemPress, onFavoritePress }) => {
   const [items, setItems] = useState<AICategory[]>(aiCategories);
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
-
-  const handleFavoritePress = (item: AICategory) => {
-    setItems(prevItems =>
-      prevItems.map(prevItem =>
-        prevItem.id === item.id
-          ? { ...prevItem, isFavorite: !prevItem.isFavorite }
-          : prevItem
-      )
-    );
-  };
 
   const handleFilterPress = (filterType: string) => {
     setSelectedFilter(filterType);
@@ -49,7 +40,7 @@ const AIListing: React.FC<AIListingProps> = ({ onItemPress }) => {
               key={item.id}
               item={item}
               onPress={onItemPress}
-              onFavoritePress={handleFavoritePress}
+              onFavoritePress={onFavoritePress}
             />
           ))}
         </View>

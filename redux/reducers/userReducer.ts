@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { register, login, loadUser, logout, verifyEmail, againEmail, forgotPassword, resetPassword, editProfile, verifyPassword, checkInitialAuth, updateOnboardingData } from "../actions/userActions";
+import { register, login, loadUser, logout, verifyEmail, againEmail, forgotPassword, resetPassword, editProfile, verifyPassword, checkInitialAuth, updateOnboardingData, addFavoriteAI, removeFavoriteAI, getFavoriteAIs } from "../actions/userActions";
 
 interface UserState {
     items: any[];
@@ -184,6 +184,48 @@ export const userReducer = createReducer(initialState, (builder) => {
             }
         })
         .addCase(updateOnboardingData.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload as string | null;
+        })
+        // Add Favorite AI
+        .addCase(addFavoriteAI.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(addFavoriteAI.fulfilled, (state, action) => {
+            state.loading = false;
+            if (state.user) {
+                state.user.favoriteAIs = action.payload;
+            }
+        })
+        .addCase(addFavoriteAI.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload as string | null;
+        })
+        // Remove Favorite AI
+        .addCase(removeFavoriteAI.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(removeFavoriteAI.fulfilled, (state, action) => {
+            state.loading = false;
+            if (state.user) {
+                state.user.favoriteAIs = action.payload;
+            }
+        })
+        .addCase(removeFavoriteAI.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload as string | null;
+        })
+        // Get Favorite AIs
+        .addCase(getFavoriteAIs.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(getFavoriteAIs.fulfilled, (state, action) => {
+            state.loading = false;
+            if (state.user) {
+                state.user.favoriteAIs = action.payload;
+            }
+        })
+        .addCase(getFavoriteAIs.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string | null;
         })

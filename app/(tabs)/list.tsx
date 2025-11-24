@@ -8,10 +8,13 @@ import HorizontalList from '@/components/Home/HorizontalList';
 import GridList from '@/components/Home/GridList';
 import { AICategory } from '@/data/AICategories';
 import { startConversation } from '@/redux/actions/aiActions';
+import { addFavoriteAI, removeFavoriteAI } from '@/redux/actions/userActions';
+import { useSelector } from 'react-redux';
 
 const List = () => {
   const router = useRouter();
   const dispatch = useDispatch();
+  const { user } = useSelector((state: any) => state.user);
 
   const handleItemPress = async (item: AICategory) => {
     try {
@@ -33,9 +36,28 @@ const List = () => {
     }
   };
 
-  const handleFavoritePress = (item: AICategory) => {
-    // Handle favorite press
-    console.log('Favorite pressed:', item);
+  const handleFavoritePress = async (item: AICategory) => {
+    if (!user) {
+      // Kullanıcı giriş yapmamışsa login sayfasına yönlendir
+      router.push('/(auth)/login');
+      return;
+    }
+
+    const isFavorite = user?.favoriteAIs?.includes(item.id) || false;
+
+    try {
+      if (isFavorite) {
+        // Favoriden çıkar
+        await dispatch(removeFavoriteAI(item.id) as any);
+      } else {
+        // Favoriye ekle
+        await dispatch(addFavoriteAI(item.id) as any);
+      }
+      // Sayfa yenilenmesini önlemek için hiçbir şey yapmıyoruz
+      // Redux state güncellendiğinde component otomatik olarak yeniden render olacak
+    } catch (error) {
+      console.error('Favori işlemi hatası:', error);
+    }
   };
 
 

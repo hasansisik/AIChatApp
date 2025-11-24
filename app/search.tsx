@@ -9,10 +9,13 @@ import { AICategory, aiCategories } from '@/data/AICategories';
 import AIItem from '@/components/Home/AIItem';
 import { FontSizes } from '@/constants/Fonts';
 import { startConversation } from '@/redux/actions/aiActions';
+import { addFavoriteAI, removeFavoriteAI } from '@/redux/actions/userActions';
+import { useSelector } from 'react-redux';
 
 const Search = () => {
   const router = useRouter();
   const dispatch = useDispatch();
+  const { user } = useSelector((state: any) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState<AICategory[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -52,9 +55,28 @@ const Search = () => {
     }
   };
 
-  const handleFavoritePress = (item: AICategory) => {
-    // Handle favorite functionality
-    console.log('Favorite pressed:', item);
+  const handleFavoritePress = async (item: AICategory) => {
+    if (!user) {
+      // Kullanıcı giriş yapmamışsa login sayfasına yönlendir
+      router.push('/(auth)/login');
+      return;
+    }
+
+    const isFavorite = user?.favoriteAIs?.includes(item.id) || false;
+
+    try {
+      if (isFavorite) {
+        // Favoriden çıkar
+        await dispatch(removeFavoriteAI(item.id) as any);
+      } else {
+        // Favoriye ekle
+        await dispatch(addFavoriteAI(item.id) as any);
+      }
+      // Sayfa yenilenmesini önlemek için hiçbir şey yapmıyoruz
+      // Redux state güncellendiğinde component otomatik olarak yeniden render olacak
+    } catch (error) {
+      console.error('Favori işlemi hatası:', error);
+    }
   };
 
 
