@@ -206,11 +206,37 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
     if (!isRecording) {
       setIsProcessing(true);
-      const started = await aiService.startLiveTranscription(item.voice);
-      setIsProcessing(false);
-      if (started) {
-        setIsRecording(true);
-      } else {
+      
+      // Android'de klavye açıksa önce kapat ve bekle
+      if (Platform.OS === 'android' && isKeyboardVisible) {
+        console.log('🔄 Android: Klavye kapatılıyor...');
+        Keyboard.dismiss();
+        setIsKeyboardVisible(false);
+        setKeyboardHeight(0);
+        
+        // Klavyenin tamamen kapanması için bekle
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+      
+      // iOS'ta da klavye açıksa kapat
+      if (Platform.OS === 'ios' && isKeyboardVisible) {
+        Keyboard.dismiss();
+        setIsKeyboardVisible(false);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      try {
+        const started = await aiService.startLiveTranscription(item.voice);
+        setIsProcessing(false);
+        if (started) {
+          setIsRecording(true);
+          console.log('✅ Ses kaydı başlatıldı');
+        } else {
+          Alert.alert(t('common.error'), t('ai.recording.startError'));
+        }
+      } catch (error) {
+        console.error('❌ Ses kaydı başlatılamadı:', error);
+        setIsProcessing(false);
         Alert.alert(t('common.error'), t('ai.recording.startError'));
       }
       return;

@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
-const STT_WS_URL = 'ws://16.171.161.33:5001/ws/stt';
+const STT_WS_URL = 'ws://localhost:5001/ws/stt';
 const CHUNK_INTERVAL_MS = 140;
 const FIRST_CHUNK_DELAY_MS = 60;
 
@@ -242,31 +242,58 @@ class AIService {
 
   private async startRecordingInstance(): Promise<boolean> {
     if (this.isStartingRecording) {
+      console.log('⚠️ Kayıt zaten başlatılıyor, bekleniyor...');
       return false;
     }
 
     try {
       this.isStartingRecording = true;
+      console.log('🎙️ Kayıt başlatılıyor...');
 
       const permission = await Audio.requestPermissionsAsync();
       if (permission.status !== 'granted') {
+        console.error('❌ Mikrofon izni reddedildi');
         throw new Error('Mikrofon izni reddedildi');
       }
 
+      // Önce mevcut audio session'ı temizle (Android için önemli)
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: false,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: false,
+        });
+      } catch (e) {
+        console.log('⚠️ Audio mode reset atlanamadı:', e);
+      }
+
+      // Kısa bir bekleme (Android'de audio focus değişimi için)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Audio mode'u kayıt için ayarla
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
+        staysActiveInBackground: false,
       });
+
+      console.log('✅ Audio mode ayarlandı');
+
+      // Kısa bir bekleme daha (Android stability için)
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.MEDIUM_QUALITY
       );
 
       this.recording = recording;
+      console.log('✅ Kayıt başarıyla başlatıldı');
       return true;
     } catch (error) {
+      console.error('❌ Kayıt başlatılamadı:', error);
       return false;
     } finally {
       this.isStartingRecording = false;
