@@ -1,7 +1,22 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { server } from '@/config';
 
-const STT_WS_URL = 'ws://localhost:5001/ws/stt';
+// server değişkeninden WebSocket URL'ini dinamik olarak türet
+// server: "http://192.168.1.104:5001/v1" -> "ws://192.168.1.104:5001/ws/stt"
+const getSTTWebSocketURL = (): string => {
+  try {
+    const serverUrl = new URL(server);
+    const host = serverUrl.hostname;
+    const port = serverUrl.port || '5001';
+    console.log(`🔌 STT WebSocket URL: ws://${host}:${port}/ws/stt`);
+    return `ws://${host}:${port}/ws/stt`;
+  } catch (error) {
+    console.warn('⚠️ Server URL parse edilemedi, fallback kullanılıyor:', error);
+    return 'ws://localhost:5001/ws/stt';
+  }
+};
+
 const CHUNK_INTERVAL_MS = 140;
 const FIRST_CHUNK_DELAY_MS = 60;
 
@@ -124,7 +139,8 @@ class AIService {
       try {
         // Voice bilgisini query parameter olarak ekle
         const voiceParam = this.currentVoice ? `?voice=${encodeURIComponent(this.currentVoice)}` : '';
-        const wsUrl = `${STT_WS_URL}${voiceParam}`;
+        const sttBaseUrl = getSTTWebSocketURL();
+        const wsUrl = `${sttBaseUrl}${voiceParam}`;
         console.log(`🔌 WebSocket bağlantısı kuruluyor: ${wsUrl}`);
         this.sttSocket = new WebSocket(wsUrl);
         this.sttSocket.binaryType = 'arraybuffer';
