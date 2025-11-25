@@ -5,11 +5,13 @@ import {
   Dimensions,
   Image,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Animated,
   TextInput,
   Alert,
   Platform,
   Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,19 +67,51 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
+      // Klavye kapalıysa aç
       isManuallyOpeningKeyboardRef.current = true;
-      setIsKeyboardVisible(true);
-      setTimeout(() => {
-        textInputRef.current?.focus();
+      
+      // Android için: Önce tahmini bir klavye yüksekliği ayarla ki input görünsün
+      if (Platform.OS === 'android') {
+        setKeyboardHeight(300);
+        setIsKeyboardVisible(true);
+        
+        // Android'de render tamamlandıktan sonra focus yap
+        // requestAnimationFrame + setTimeout kombinasyonu daha güvenilir
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (textInputRef.current) {
+              textInputRef.current.focus();
+            }
+            setTimeout(() => {
+              isManuallyOpeningKeyboardRef.current = false;
+            }, 300);
+          }, 100);
+        });
+      } else {
+        // iOS için mevcut mantık
+        setIsKeyboardVisible(true);
         setTimeout(() => {
-          isManuallyOpeningKeyboardRef.current = false;
-        }, 300);
-      }, 150);
+          textInputRef.current?.focus();
+          setTimeout(() => {
+            isManuallyOpeningKeyboardRef.current = false;
+          }, 300);
+        }, 50);
+      }
     } else {
-      textInputRef.current?.focus();
+      // Klavye açıksa kapat
+      dismissKeyboard();
+    }
+  };
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+    setIsKeyboardVisible(false);
+    if (Platform.OS === 'android') {
+      setKeyboardHeight(0);
     }
   };
 
@@ -99,18 +133,33 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         const height = event.endCoordinates.height;
         const inputAreaHeight = 80;
         const totalOffset = height + inputAreaHeight;
+        
+        // Android için klavye yüksekliğini state'e kaydet
+        if (Platform.OS === 'android') {
+          // screenY: klavyenin başladığı Y pozisyonu (ekranın üstünden)
+          const screenY = event.endCoordinates.screenY || 0;
+          const calculatedHeight = screenHeight - screenY;
+          // Fallback ve minimum değer kontrolü + ekstra 10px güvenlik marjı
+          const baseHeight = calculatedHeight > 100 ? calculatedHeight : (height > 100 ? height : 280);
+          const finalHeight = baseHeight + 10; // Navigation bar için ekstra offset
+          console.log('📱 Android keyboard - screenY:', screenY, 'screenHeight:', screenHeight, 'height:', height, 'final:', finalHeight);
+          setKeyboardHeight(finalHeight);
+        }
 
         Animated.timing(bottomAreaTranslateY, {
           toValue: -totalOffset,
-          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
+          duration: Platform.OS === 'ios' ? event.duration || 250 : 200,
           useNativeDriver: true,
         }).start();
 
-        Animated.timing(inputAreaTranslateY, {
-          toValue: -height,
-          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
-          useNativeDriver: true,
-        }).start();
+        // iOS için transform kullan
+        if (Platform.OS === 'ios') {
+          Animated.timing(inputAreaTranslateY, {
+            toValue: -height,
+            duration: event.duration || 250,
+            useNativeDriver: true,
+          }).start();
+        }
       }
     );
 
@@ -122,18 +171,25 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         }
 
         setIsKeyboardVisible(false);
+        
+        // Android için klavye yüksekliğini sıfırla
+        if (Platform.OS === 'android') {
+          setKeyboardHeight(0);
+        }
 
         Animated.timing(bottomAreaTranslateY, {
           toValue: 0,
-          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
+          duration: Platform.OS === 'ios' ? event.duration || 250 : 200,
           useNativeDriver: true,
         }).start();
 
-        Animated.timing(inputAreaTranslateY, {
-          toValue: 0,
-          duration: Platform.OS === 'ios' ? event.duration || 250 : 250,
-          useNativeDriver: true,
-        }).start();
+        if (Platform.OS === 'ios') {
+          Animated.timing(inputAreaTranslateY, {
+            toValue: 0,
+            duration: event.duration || 250,
+            useNativeDriver: true,
+          }).start();
+        }
       }
     );
 
@@ -674,7 +730,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <ReusableText
               text={item.title}
               family="bold"
-              size={20}
+              size={15}
               color={Colors.lightWhite}
               style={styles.nameText}
             />
@@ -761,41 +817,89 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         </View>
       </Animated.View>
 
-      <Animated.View
-        style={[
-          styles.keyboardInputContainer,
-          {
-            transform: [{ translateY: inputAreaTranslateY }],
-            opacity: isKeyboardVisible ? 1 : 0,
-          },
-        ]}
-        pointerEvents={isKeyboardVisible ? 'auto' : 'none'}
-      >
-        <View style={styles.keyboardInputWrapper}>
-          <TextInput
-            ref={textInputRef}
-            style={styles.keyboardInput}
-            placeholder={t('ai.input.placeholder')}
-            placeholderTextColor="rgba(11, 11, 11, 0.5)"
-            multiline
-            scrollEnabled={false}
-            value={conversationText}
-            onChangeText={setConversationText}
-            onSubmitEditing={handleSendText}
-          />
-          <TouchableOpacity
+      {/* Keyboard Dismiss Overlay - boş alana tıklayınca klavye kapansın */}
+      {isKeyboardVisible && (
+        <TouchableWithoutFeedback onPress={dismissKeyboard}>
+          <View style={styles.keyboardDismissOverlay} />
+        </TouchableWithoutFeedback>
+      )}
+
+      {/* Keyboard Input Area */}
+      {Platform.OS === 'android' ? (
+        // Android: Sabit pozisyonlu View kullan - sadece keyboard height > 0 iken göster
+        isKeyboardVisible && keyboardHeight > 0 && (
+          <View
             style={[
-              styles.sendButton,
-              !conversationText.trim() && styles.sendButtonDisabled
+              styles.keyboardAvoidingContainer,
+              { bottom: keyboardHeight }
             ]}
-            onPress={handleSendText}
-            disabled={!conversationText.trim() || isProcessing}
-            activeOpacity={0.7}
           >
-            <Ionicons name="send" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+            <View style={styles.keyboardInputWrapper}>
+              <TextInput
+                ref={textInputRef}
+                style={styles.keyboardInput}
+                placeholder={t('ai.input.placeholder')}
+                placeholderTextColor="rgba(11, 11, 11, 0.5)"
+                multiline
+                scrollEnabled={false}
+                value={conversationText}
+                onChangeText={setConversationText}
+                onSubmitEditing={handleSendText}
+                autoFocus={true}
+                showSoftInputOnFocus={true}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  !conversationText.trim() && styles.sendButtonDisabled
+                ]}
+                onPress={handleSendText}
+                disabled={!conversationText.trim() || isProcessing}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="send" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )
+      ) : (
+        // iOS: Animated.View kullan
+        <Animated.View
+          style={[
+            styles.keyboardInputContainer,
+            {
+              transform: [{ translateY: inputAreaTranslateY }],
+              opacity: isKeyboardVisible ? 1 : 0,
+            },
+          ]}
+          pointerEvents={isKeyboardVisible ? 'auto' : 'none'}
+        >
+          <View style={styles.keyboardInputWrapper}>
+            <TextInput
+              ref={textInputRef}
+              style={styles.keyboardInput}
+              placeholder={t('ai.input.placeholder')}
+              placeholderTextColor="rgba(11, 11, 11, 0.5)"
+              multiline
+              scrollEnabled={false}
+              value={conversationText}
+              onChangeText={setConversationText}
+              onSubmitEditing={handleSendText}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                !conversationText.trim() && styles.sendButtonDisabled
+              ]}
+              onPress={handleSendText}
+              disabled={!conversationText.trim() || isProcessing}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="send" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -889,10 +993,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'android' ? 80 : 60,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
+  },
+  keyboardDismissOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 9998, // bottomArea'nın altında ama diğerlerinin üstünde
   },
   bottomAreaContent: {
     alignItems: 'center',
@@ -937,10 +1050,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.2)',
+
     zIndex: 10000,
+  },
+  keyboardAvoidingContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    width: '100%',
+    zIndex: 10000,
+    elevation: 10, // Android için elevation ekle
   },
   keyboardInputWrapper: {
     flexDirection: 'row',
@@ -948,7 +1067,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
-    paddingBottom: 25,
+    paddingBottom: Platform.OS === 'android' ? 16 : 25,
   },
   keyboardInput: {
     flex: 1,

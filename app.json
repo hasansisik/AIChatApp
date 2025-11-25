@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIChat",
     "slug": "AIChat",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -18,9 +18,12 @@
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "package": "com.birimajans.AIChat"
+      "package": "com.birimajans.AIChat",
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",
@@ -42,7 +45,15 @@
       "expo-web-browser",
       "expo-video",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
