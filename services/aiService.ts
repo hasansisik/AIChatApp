@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
-const STT_WS_URL = 'ws://16.171.161.33:5001/ws/stt';
+const STT_WS_URL = 'ws://localhost:5001/ws/stt';
 const CHUNK_INTERVAL_MS = 140;
 const FIRST_CHUNK_DELAY_MS = 60;
 
