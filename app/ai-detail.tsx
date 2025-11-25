@@ -118,7 +118,7 @@ const AIDetailPage = () => {
     };
   }, []);
 
-  // Listen for TTS audio and send to conversation
+  // Listen for TTS audio and send to stream service
   useEffect(() => {
     if (!conversationId) {
       return;
@@ -126,8 +126,9 @@ const AIDetailPage = () => {
 
     const handleTTSAudio = async (audioUri: string) => {
       try {
+        // TTS audio'yu stream servisine gönder (video+audio stream için)
         await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
-        console.log('✅ [ai-detail] TTS audio conversation\'a gönderildi');
+        console.log('✅ [ai-detail] TTS audio stream servisine gönderildi');
       } catch (error: any) {
         // 409 Conflict is normal when audio is already being processed - silently ignore
         if (error?.response?.status === 409 || error?.message?.includes('409')) {

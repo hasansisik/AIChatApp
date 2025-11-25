@@ -267,50 +267,33 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           let firstFrameReceived = false;
           let firstAudioChunkReceived = false;
           
-          // Audio context for playing stream audio
+          // Simple audio context for playing stream audio
           let audioContext = null;
-          let audioBufferQueue = [];
-          let nextPlayTime = 0;
           let currentSampleRate = 16000;
           let currentChannels = 1;
-          let isPlaying = false;
-          let lastChunkEnd = null; // For crossfade
-          let lastChunkReceivedTime = null; // Track chunk arrival times
-          let expectedChunkInterval = 0.1; // Expected interval between chunks (100ms)
+          let nextPlayTime = 0;
           
           function initAudioContext(sampleRate, channels) {
-            // If context exists but sample rate changed, close and recreate
-            if (audioContext && (audioContext.sampleRate !== sampleRate || currentChannels !== channels)) {
-              try {
-                audioContext.close();
-              } catch (e) {}
-              audioContext = null;
-              audioBufferQueue = [];
-              lastChunkEnd = null;
-            }
-            
             if (!audioContext) {
               try {
-                // Create AudioContext with the correct sample rate
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({
                   sampleRate: sampleRate
                 });
                 currentSampleRate = sampleRate;
                 currentChannels = channels;
-                nextPlayTime = audioContext.currentTime + 0.1; // Small buffer
+                nextPlayTime = audioContext.currentTime + 0.1;
                 console.log('✅ AudioContext initialized with sample rate:', sampleRate, 'channels:', channels);
                 
-                // Resume AudioContext if suspended (required on some browsers)
                 if (audioContext.state === 'suspended') {
                   audioContext.resume().then(() => {
                     console.log('✅ AudioContext resumed');
+                    nextPlayTime = audioContext.currentTime + 0.1;
                   }).catch((error) => {
                     console.error('❌ AudioContext resume hatası:', error);
                   });
                 }
               } catch (error) {
                 console.error('❌ AudioContext oluşturulamadı:', error);
-                // Fallback to default sample rate
                 try {
                   audioContext = new (window.AudioContext || window.webkitAudioContext)();
                   currentSampleRate = audioContext.sampleRate;
@@ -320,59 +303,25 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                   console.error('❌ Fallback AudioContext oluşturulamadı:', e);
                 }
               }
+            } else if (audioContext.sampleRate !== sampleRate || currentChannels !== channels) {
+              // Sample rate veya channel değiştiyse yeniden oluştur
+              try {
+                audioContext.close();
+              } catch (e) {}
+              audioContext = null;
+              initAudioContext(sampleRate, channels);
             }
             return audioContext;
           }
           
-          function createSilenceBuffer(duration, sampleRate, channels) {
-            // Create a silence buffer to fill gaps
-            const frameCount = Math.floor(duration * sampleRate);
-            const silenceBuffer = audioContext.createBuffer(channels, frameCount, sampleRate);
-            
-            // Buffers are already zero-initialized, but we can explicitly set to 0
-            for (let ch = 0; ch < channels; ch++) {
-              const channelData = silenceBuffer.getChannelData(ch);
-              // Already zero, but ensure it's silent
-              channelData.fill(0);
-            }
-            
-            return silenceBuffer;
-          }
-          
-          function processAudioQueue() {
-            if (isPlaying || audioBufferQueue.length === 0 || !audioContext) {
-              return;
-            }
-            
-            isPlaying = true;
-            const { buffer, playAt, isSilence } = audioBufferQueue.shift();
-            
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            
-            source.onended = () => {
-              isPlaying = false;
-              // Process next chunk in queue
-              if (audioBufferQueue.length > 0) {
-                processAudioQueue();
-              }
-            };
-            
-            const actualPlayTime = Math.max(playAt, audioContext.currentTime);
-            source.start(actualPlayTime);
-            
-            // Update next play time
-            nextPlayTime = actualPlayTime + buffer.duration;
-          }
-          
           async function playAudioChunk(pcmData, sampleRate, channels) {
-            // Initialize or update AudioContext if needed
+            // Initialize AudioContext if needed
             if (!audioContext || audioContext.sampleRate !== sampleRate || currentChannels !== channels) {
               initAudioContext(sampleRate, channels);
             }
             
             if (!audioContext) {
+              console.warn('⚠️ AudioContext yok, audio oynatılamıyor');
               return;
             }
             
@@ -388,117 +337,23 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             }
             
             try {
-              const currentTime = Date.now();
-              
-              // Check for gaps between chunks and fill with silence
-              if (lastChunkReceivedTime !== null) {
-                const timeSinceLastChunk = (currentTime - lastChunkReceivedTime) / 1000; // Convert to seconds
-                const currentAudioTime = audioContext.currentTime;
-                const timeUntilNextPlay = nextPlayTime - currentAudioTime;
-                
-                // If there's a significant gap (more than 50ms), fill it with silence
-                // But only if the gap is larger than what we've already scheduled
-                if (timeSinceLastChunk > expectedChunkInterval * 1.5 && timeUntilNextPlay < timeSinceLastChunk - expectedChunkInterval) {
-                  const gapDuration = Math.max(0, timeSinceLastChunk - expectedChunkInterval);
-                  // Limit gap filling to reasonable duration (max 500ms to avoid long silences)
-                  const fillDuration = Math.min(gapDuration, 0.5);
-                  
-                  if (fillDuration > 0.01) { // Only fill gaps > 10ms
-                    const silenceBuffer = createSilenceBuffer(fillDuration, sampleRate, channels);
-                    const silencePlayAt = Math.max(nextPlayTime, currentAudioTime);
-                    audioBufferQueue.push({ 
-                      buffer: silenceBuffer, 
-                      playAt: silencePlayAt,
-                      isSilence: true 
-                    });
-                    nextPlayTime = silencePlayAt + silenceBuffer.duration;
-                    
-                    // Update expected interval based on actual timing
-                    expectedChunkInterval = timeSinceLastChunk;
-                  }
-                } else {
-                  // Update expected interval (moving average)
-                  expectedChunkInterval = expectedChunkInterval * 0.7 + timeSinceLastChunk * 0.3;
-                }
-              }
-              
-              lastChunkReceivedTime = currentTime;
-              
               // PCM16 to Float32Array conversion
               const samples = new Int16Array(pcmData);
               const frameCount = samples.length / channels;
               const float32Samples = new Float32Array(samples.length);
               
-              // Convert with proper normalization (use 32767.0 to match server)
+              // Convert with proper normalization
               for (let i = 0; i < samples.length; i++) {
-                // Normalize to [-1.0, 1.0] range with clipping protection
                 float32Samples[i] = Math.max(-1.0, Math.min(1.0, samples[i] / 32767.0));
               }
               
-              // Apply longer fade-in to prevent clicks (64 samples = ~4ms at 16kHz)
-              const fadeInSamples = Math.min(64, Math.floor(frameCount / 4));
-              if (fadeInSamples > 0) {
-                for (let i = 0; i < fadeInSamples && i < frameCount; i++) {
-                  const fadeFactor = i / fadeInSamples;
-                  // Smooth fade-in curve (ease-in)
-                  const smoothFade = fadeFactor * fadeFactor;
-                  for (let ch = 0; ch < channels; ch++) {
-                    float32Samples[i * channels + ch] *= smoothFade;
-                  }
-                }
-              }
-              
-              // Apply fade-out at the end to prevent clicks
-              const fadeOutSamples = Math.min(64, Math.floor(frameCount / 4));
-              if (fadeOutSamples > 0) {
-                const fadeOutStart = frameCount - fadeOutSamples;
-                for (let i = fadeOutStart; i < frameCount; i++) {
-                  const fadeProgress = (frameCount - i) / fadeOutSamples;
-                  // Smooth fade-out curve (ease-out)
-                  const smoothFade = fadeProgress * fadeProgress;
-                  for (let ch = 0; ch < channels; ch++) {
-                    float32Samples[i * channels + ch] *= smoothFade;
-                  }
-                }
-              }
-              
-              // Crossfade with previous chunk if available (to eliminate gaps)
-              if (lastChunkEnd && lastChunkEnd.length > 0) {
-                const crossfadeSamples = Math.min(32, Math.min(lastChunkEnd.length, fadeInSamples));
-                if (crossfadeSamples > 0) {
-                  for (let i = 0; i < crossfadeSamples; i++) {
-                    const fadeOut = 1 - (i / crossfadeSamples);
-                    const fadeIn = i / crossfadeSamples;
-                    for (let ch = 0; ch < channels; ch++) {
-                      const prevIdx = lastChunkEnd.length - crossfadeSamples + i;
-                      if (prevIdx >= 0 && prevIdx < lastChunkEnd.length) {
-                        float32Samples[i * channels + ch] = 
-                          (lastChunkEnd[prevIdx * channels + ch] * fadeOut) +
-                          (float32Samples[i * channels + ch] * fadeIn);
-                      }
-                    }
-                  }
-                }
-              }
-              
-              // Store end of chunk for next crossfade
-              const endSamples = Math.min(64, frameCount);
-              lastChunkEnd = new Float32Array(endSamples * channels);
-              for (let i = 0; i < endSamples; i++) {
-                for (let ch = 0; ch < channels; ch++) {
-                  lastChunkEnd[i * channels + ch] = float32Samples[(frameCount - endSamples + i) * channels + ch];
-                }
-              }
-              
-              // Create AudioBuffer with correct sample rate
+              // Create AudioBuffer
               const audioBuffer = audioContext.createBuffer(channels, frameCount, sampleRate);
               
               if (channels === 1) {
-                // Mono: direct copy
                 const channelData = audioBuffer.getChannelData(0);
                 channelData.set(float32Samples);
               } else {
-                // Stereo: deinterleave
                 const leftChannel = audioBuffer.getChannelData(0);
                 const rightChannel = audioBuffer.getChannelData(1);
                 for (let i = 0; i < frameCount; i++) {
@@ -507,27 +362,20 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 }
               }
               
-              // Calculate duration and schedule
-              const chunkDuration = audioBuffer.duration;
+              // Schedule playback for seamless audio
               const playAt = Math.max(nextPlayTime, audioContext.currentTime);
+              const source = audioContext.createBufferSource();
+              source.buffer = audioBuffer;
+              source.connect(audioContext.destination);
+              source.start(playAt);
               
-              // Add to queue
-              audioBufferQueue.push({ buffer: audioBuffer, playAt: playAt, isSilence: false });
+              console.log('▶️ Audio chunk playing:', 'Duration:', audioBuffer.duration.toFixed(3) + 's', 'Play at:', playAt.toFixed(3), 'Current time:', audioContext.currentTime.toFixed(3));
               
-              // Update next play time for seamless playback
-              nextPlayTime = playAt + chunkDuration;
-              
-              // Start processing queue if not already playing
-              if (!isPlaying) {
-                processAudioQueue();
-              }
+              // Update next play time
+              nextPlayTime = playAt + audioBuffer.duration;
               
             } catch (error) {
               console.error('❌ Audio oynatma hatası:', error);
-              // Reset on error
-              nextPlayTime = audioContext.currentTime + 0.1;
-              lastChunkEnd = null;
-              lastChunkReceivedTime = null;
             }
           }
           
@@ -541,12 +389,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               ws.onopen = function() {
                 console.log('✅ WebSocket connected');
                 streamStartTime = Date.now();
-                // Initialize AudioContext when WebSocket connects
-                initAudioContext();
-                // Reset audio timing variables
-                lastChunkReceivedTime = null;
-                expectedChunkInterval = 0.1;
-                nextPlayTime = 0;
+                // Initialize AudioContext with default values (will be updated when first audio chunk arrives)
+                initAudioContext(16000, 1);
                 // React Native'e mesaj gönder
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'ws_status',
@@ -694,6 +538,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 
                 audioChunkCount++;
                 totalAudioBytes += pcmData.byteLength;
+                
+                console.log('🔊 Audio chunk received:', audioChunkCount, 'Sample rate:', sampleRate, 'Channels:', channels, 'Size:', pcmData.byteLength, 'bytes');
                 
                 // Play audio chunk
                 playAudioChunk(pcmData, sampleRate, channels);
