@@ -2,7 +2,7 @@
   "expo": {
     "name": "AIChat",
     "slug": "AIChat",
-    "version": "1.0.3",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -45,15 +45,7 @@
       "expo-web-browser",
       "expo-video",
       "expo-audio",
-      "expo-asset",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

@@ -2,9 +2,6 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const STT_WS_URL = 'ws://16.171.161.33:5001/ws/stt';
-
-// Debug: Log WebSocket URL
-console.log('[AIService] STT WebSocket URL:', STT_WS_URL);
 const CHUNK_INTERVAL_MS = 140;
 const FIRST_CHUNK_DELAY_MS = 60;
 
@@ -181,15 +178,12 @@ class AIService {
           }
         };
 
-        this.sttSocket.onerror = (error: any) => {
-          console.error('❌ STT WebSocket Error:', error);
-          console.error('❌ WebSocket URL was:', wsUrl);
+        this.sttSocket.onerror = () => {
           this.notifyStatus('WebSocket hatası');
           reject(new Error('WebSocket error'));
         };
 
-        this.sttSocket.onclose = (event: any) => {
-          console.log('🔌 STT WebSocket Closed - Code:', event?.code, 'Reason:', event?.reason);
+        this.sttSocket.onclose = () => {
           this.notifyStatus('WebSocket kapandı');
           this.sttSocket = null;
           this.socketReady = null;
