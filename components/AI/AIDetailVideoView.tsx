@@ -275,6 +275,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           let currentChannels = 1;
           let isPlaying = false;
           let lastChunkEnd = null; // For crossfade
+          let lastChunkReceivedTime = null; // Track chunk arrival times
+          let expectedChunkInterval = 0.1; // Expected interval between chunks (100ms)
           
           function initAudioContext(sampleRate, channels) {
             // If context exists but sample rate changed, close and recreate
@@ -322,13 +324,28 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             return audioContext;
           }
           
+          function createSilenceBuffer(duration, sampleRate, channels) {
+            // Create a silence buffer to fill gaps
+            const frameCount = Math.floor(duration * sampleRate);
+            const silenceBuffer = audioContext.createBuffer(channels, frameCount, sampleRate);
+            
+            // Buffers are already zero-initialized, but we can explicitly set to 0
+            for (let ch = 0; ch < channels; ch++) {
+              const channelData = silenceBuffer.getChannelData(ch);
+              // Already zero, but ensure it's silent
+              channelData.fill(0);
+            }
+            
+            return silenceBuffer;
+          }
+          
           function processAudioQueue() {
             if (isPlaying || audioBufferQueue.length === 0 || !audioContext) {
               return;
             }
             
             isPlaying = true;
-            const { buffer, playAt } = audioBufferQueue.shift();
+            const { buffer, playAt, isSilence } = audioBufferQueue.shift();
             
             const source = audioContext.createBufferSource();
             source.buffer = buffer;
@@ -371,6 +388,42 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             }
             
             try {
+              const currentTime = Date.now();
+              
+              // Check for gaps between chunks and fill with silence
+              if (lastChunkReceivedTime !== null) {
+                const timeSinceLastChunk = (currentTime - lastChunkReceivedTime) / 1000; // Convert to seconds
+                const currentAudioTime = audioContext.currentTime;
+                const timeUntilNextPlay = nextPlayTime - currentAudioTime;
+                
+                // If there's a significant gap (more than 50ms), fill it with silence
+                // But only if the gap is larger than what we've already scheduled
+                if (timeSinceLastChunk > expectedChunkInterval * 1.5 && timeUntilNextPlay < timeSinceLastChunk - expectedChunkInterval) {
+                  const gapDuration = Math.max(0, timeSinceLastChunk - expectedChunkInterval);
+                  // Limit gap filling to reasonable duration (max 500ms to avoid long silences)
+                  const fillDuration = Math.min(gapDuration, 0.5);
+                  
+                  if (fillDuration > 0.01) { // Only fill gaps > 10ms
+                    const silenceBuffer = createSilenceBuffer(fillDuration, sampleRate, channels);
+                    const silencePlayAt = Math.max(nextPlayTime, currentAudioTime);
+                    audioBufferQueue.push({ 
+                      buffer: silenceBuffer, 
+                      playAt: silencePlayAt,
+                      isSilence: true 
+                    });
+                    nextPlayTime = silencePlayAt + silenceBuffer.duration;
+                    
+                    // Update expected interval based on actual timing
+                    expectedChunkInterval = timeSinceLastChunk;
+                  }
+                } else {
+                  // Update expected interval (moving average)
+                  expectedChunkInterval = expectedChunkInterval * 0.7 + timeSinceLastChunk * 0.3;
+                }
+              }
+              
+              lastChunkReceivedTime = currentTime;
+              
               // PCM16 to Float32Array conversion
               const samples = new Int16Array(pcmData);
               const frameCount = samples.length / channels;
@@ -459,7 +512,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               const playAt = Math.max(nextPlayTime, audioContext.currentTime);
               
               // Add to queue
-              audioBufferQueue.push({ buffer: audioBuffer, playAt: playAt });
+              audioBufferQueue.push({ buffer: audioBuffer, playAt: playAt, isSilence: false });
               
               // Update next play time for seamless playback
               nextPlayTime = playAt + chunkDuration;
@@ -474,6 +527,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               // Reset on error
               nextPlayTime = audioContext.currentTime + 0.1;
               lastChunkEnd = null;
+              lastChunkReceivedTime = null;
             }
           }
           
@@ -489,6 +543,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 streamStartTime = Date.now();
                 // Initialize AudioContext when WebSocket connects
                 initAudioContext();
+                // Reset audio timing variables
+                lastChunkReceivedTime = null;
+                expectedChunkInterval = 0.1;
+                nextPlayTime = 0;
                 // React Native'e mesaj gönder
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'ws_status',
