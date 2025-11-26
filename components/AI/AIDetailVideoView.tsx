@@ -68,7 +68,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
   const [keyboardHeight, setKeyboardHeight] = React.useState(0);
-  const autoStartedRef = React.useRef(false);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -115,38 +114,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       setKeyboardHeight(0);
     }
   };
-
-  // Otomatik recording başlatma
-  useEffect(() => {
-    const startAutoRecording = async () => {
-      if (autoStartedRef.current || isRecording || isProcessing) {
-        return;
-      }
-
-      autoStartedRef.current = true;
-      
-      // Küçük bir delay ile başlat (component tam mount olsun)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setIsProcessing(true);
-      
-      try {
-        const started = await aiService.startLiveTranscription(item.voice);
-        setIsProcessing(false);
-        if (started) {
-          setIsRecording(true);
-          console.log('✅ Otomatik ses kaydı başlatıldı');
-        } else {
-          console.warn('⚠️ Otomatik ses kaydı başlatılamadı');
-        }
-      } catch (error) {
-        console.error('❌ Otomatik ses kaydı başlatılamadı:', error);
-        setIsProcessing(false);
-      }
-    };
-
-    startAutoRecording();
-  }, []);
 
   useEffect(() => {
     if (isKeyboardVisible && textInputRef.current && !isManuallyOpeningKeyboardRef.current) {
@@ -238,7 +205,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
 
     if (!isRecording) {
-      // Resume: Kaydı tekrar başlat
       setIsProcessing(true);
       
       // Android'de klavye açıksa önce kapat ve bekle
@@ -247,6 +213,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         Keyboard.dismiss();
         setIsKeyboardVisible(false);
         setKeyboardHeight(0);
+        
+        // Klavyenin tamamen kapanması için bekle
         await new Promise(resolve => setTimeout(resolve, 400));
       }
       
@@ -262,21 +230,25 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         setIsProcessing(false);
         if (started) {
           setIsRecording(true);
-          console.log('▶️ Ses kaydı devam ediyor');
+          console.log('✅ Ses kaydı başlatıldı');
+        } else {
+          Alert.alert(t('common.error'), t('ai.recording.startError'));
         }
       } catch (error) {
         console.error('❌ Ses kaydı başlatılamadı:', error);
         setIsProcessing(false);
+        Alert.alert(t('common.error'), t('ai.recording.startError'));
       }
       return;
     }
 
-    // Pause: Sadece kaydı durdur, ses gönderme
+    // Pause durumu: Sadece kaydı durdur, ses gönderme
+    // Kullanıcı tekrar basarsa kayıt devam edecek
     try {
       await aiService.stopLiveTranscription(false); // shouldSendAudio = false (pause)
       setIsRecording(false);
       setIsProcessing(false);
-      console.log('⏸️ Kayıt pause edildi');
+      console.log('⏸️ Kayıt pause edildi, ses gönderilmedi');
     } catch (error) {
       setIsProcessing(false);
       setIsRecording(false);
@@ -828,11 +800,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               activeOpacity={0.7}
             >
               {isRecording ? (
-                <Ionicons name="pause" size={28} color="white" />
+                <Ionicons name="stop" size={28} color="white" />
               ) : isProcessing ? (
                 <Ionicons name="hourglass-outline" size={28} color="white" />
+              ) : selectedDetectionMethod === 'hand' ? (
+                <Ionicons name="hand-left-outline" size={28} color="white" />
               ) : (
-                <Ionicons name="play" size={28} color="white" />
+                <Ionicons name="mic-outline" size={28} color="white" />
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -1084,17 +1058,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 0, 0, 0.8)',
   },
   recordingButton: {
-    backgroundColor: 'rgba(76, 175, 80, 0.6)', // Yeşil - Recording
-    borderColor: 'rgba(76, 175, 80, 0.8)',
+    backgroundColor: 'rgba(255, 0, 0, 0.6)',
+    borderColor: 'rgba(255, 0, 0, 0.8)',
   },
   processingButton: {
-    backgroundColor: 'rgba(255, 165, 0, 0.6)', // Turuncu - Processing
+    backgroundColor: 'rgba(255, 165, 0, 0.6)',
     borderColor: 'rgba(255, 165, 0, 0.8)',
   },
   pausedButton: {
-    backgroundColor: 'rgba(255, 152, 0, 0.6)', // Turuncu - Paused
-    borderColor: 'rgba(255, 152, 0, 0.8)',
-    opacity: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    opacity: 1, // Pause durumunda da tam görünür olsun
   },
   keyboardInputContainer: {
     position: 'absolute',
