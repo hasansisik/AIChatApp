@@ -17,8 +17,10 @@ const getSTTWebSocketURL = (): string => {
   }
 };
 
-const CHUNK_INTERVAL_MS = 140;
-const FIRST_CHUNK_DELAY_MS = 60;
+// Chunk interval'i artırarak FFmpeg yükünü azalt
+// Daha uzun chunk'lar = daha az FFmpeg çağrısı = daha hızlı işleme
+const CHUNK_INTERVAL_MS = 500; // 140ms -> 500ms (daha az chunk, daha hızlı)
+const FIRST_CHUNK_DELAY_MS = 300; // 60ms -> 300ms (ilk chunk için daha uzun bekleme)
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;

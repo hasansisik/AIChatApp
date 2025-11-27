@@ -424,9 +424,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               const frameCount = samples.length / channels;
               const float32Samples = new Float32Array(samples.length);
               
-              // Convert with proper normalization
+              // Convert with proper normalization and 3x volume boost
+              // 3 katına çıkar ama clipping önle
+              const volumeBoost = 3.0;
               for (let i = 0; i < samples.length; i++) {
-                float32Samples[i] = Math.max(-1.0, Math.min(1.0, samples[i] / 32767.0));
+                const normalized = samples[i] / 32767.0;
+                const boosted = normalized * volumeBoost;
+                float32Samples[i] = Math.max(-1.0, Math.min(1.0, boosted));
               }
               
               // Create AudioBuffer
@@ -451,7 +455,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               source.connect(audioContext.destination);
               source.start(playAt);
               
-              console.log('▶️ Audio chunk playing:', 'Duration:', audioBuffer.duration.toFixed(3) + 's', 'Play at:', playAt.toFixed(3), 'Current time:', audioContext.currentTime.toFixed(3));
+              console.log('▶️ Audio chunk playing (3x volume):', 'Duration:', audioBuffer.duration.toFixed(3) + 's', 'Play at:', playAt.toFixed(3), 'Current time:', audioContext.currentTime.toFixed(3));
               
               // Update next play time
               nextPlayTime = playAt + audioBuffer.duration;
