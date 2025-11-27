@@ -744,7 +744,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       {/* Header */}
       <SafeAreaView style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.closeButton} onPress={onGoBack} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={onGoBack}
+            activeOpacity={0.7}
+          >
             <Ionicons name="close" size={24} color={Colors.lightWhite} />
           </TouchableOpacity>
 
@@ -759,8 +763,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
             <ReusableText
               text={item.title}
-              family="bold"
-              size={15}
+              family="regular"
+              size={20}
               color={Colors.lightWhite}
               style={styles.nameText}
             />
@@ -815,31 +819,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.circleButton, styles.redCircleButton]}
-              onPress={async () => {
-                try {
-                  // WebSocket'i kapat
-                  await aiService.cleanup();
-                  
-                  // Stream conversation'ı kapat
-                  if (conversationId) {
-                    try {
-                      const result = await dispatch(endConversation(conversationId) as any);
-                      if (endConversation.fulfilled.match(result)) {
-                        console.log('✅ Conversation kapatıldı');
-                      } else {
-                        console.warn('⚠️ Conversation kapatılamadı:', result);
-                      }
-                    } catch (error) {
-                      console.warn('⚠️ Conversation kapatılamadı:', error);
-                      // Hata olsa bile devam et
-                    }
-                  }
-                } catch (error) {
-                  console.error('❌ Cleanup hatası:', error);
-                } finally {
-                  router.push('/(tabs)/tabs');
-                }
-              }}
+              onPress={onGoBack}
+              activeOpacity={0.7}
             >
               <Ionicons name="call" size={28} color="white" />
             </TouchableOpacity>
@@ -968,7 +949,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 20,
   },
@@ -992,7 +973,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 20,
+    marginHorizontal: 10,
   },
   profileImageContainer: {
     width: 50,

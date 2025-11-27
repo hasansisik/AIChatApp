@@ -367,7 +367,7 @@
       "user": "Kullanıcı"
     },
     "categories": {
-      "liveChat": "Canlı Sohbet",
+      "liveChat": "Canlı",
       "courseSessions": "Kurs Seansları",
       "contact": "İletişim"
     },
@@ -427,7 +427,7 @@
   "ai": {
     "notFound": "AI bulunamadı",
     "startButton": "Hemen Başla",
-    "liveChat": "Canlı Sohbet",
+    "liveChat": "Canlı",
     "recording": {
       "startError": "Kayıt başlatılamadı"
     },

@@ -14,7 +14,7 @@ import ReusableText from '@/components/ui/ReusableText';
 import SelectionModal from '@/components/ui/SelectionModal';
 import { AICategory, aiCategories } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { sendAudio } from '@/redux/actions/aiActions';
+import { sendAudio, endConversation } from '@/redux/actions/aiActions';
 import AIDetailInitialView from '@/components/AI/AIDetailInitialView';
 import AIDetailVideoView from '@/components/AI/AIDetailVideoView';
 
@@ -53,8 +53,26 @@ const AIDetailPage = () => {
     );
   }
 
-  const handleGoBack = () => {
-    router.back();
+  const handleGoBack = async () => {
+    try {
+      // Recording'i durdur (eğer aktifse)
+      if (isRecording) {
+        await aiService.stopLiveTranscription(false);
+      }
+      
+      // Tüm servisleri temizle
+      await aiService.cleanup();
+      
+      // Stream conversation'ı kapat
+      if (conversationId) {
+        await dispatch(endConversation(conversationId) as any);
+      }
+    } catch (error) {
+      // Ignore
+    } finally {
+      setIsRecording(false);
+      router.push('/(tabs)/tabs');
+    }
   };
 
   const handleStartPress = () => {
