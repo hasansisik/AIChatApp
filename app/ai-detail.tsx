@@ -5,6 +5,7 @@ import {
   StatusBar,
   Dimensions,
   Animated,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -40,8 +41,8 @@ const AIDetailPage = () => {
   const overlayOpacity = useRef(new Animated.Value(1)).current;
   const videoOpacity = useRef(new Animated.Value(0)).current;
   
-  // Check coupon access
-  const { hasAccess, loading: accessLoading } = useCouponAccess();
+  // Check coupon access - hem purchase hem demo kontrolü
+  const { hasAccess, loading: accessLoading, isDemo, isPurchase, expiresAt } = useCouponAccess();
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
@@ -77,13 +78,19 @@ const AIDetailPage = () => {
       return; // Wait for access check to complete
     }
 
-    if (!hasAccess) {
-      // Show selection modal first
+    // Purchase kuponu varsa direkt erişim ver, demo kontrolü sadece demo için
+    if (!hasAccess && !isPurchase) {
+      // Sadece demo kullanıcıları için selection modal göster
+      if (isDemo) {
+        // Demo süresi dolmuş, zaten useEffect'te alert gösterilecek
+        return;
+      }
+      // Hiç erişim yok, show selection modal
       setCouponSelectionModalVisible(true);
       return;
     }
 
-    // User has access, proceed with animation
+    // User has access (purchase veya aktif demo), proceed with animation
     startVideoAnimation();
   };
 
@@ -168,6 +175,34 @@ const AIDetailPage = () => {
       startVideoAnimation();
     }
   }, [hasAccess, accessLoading, isGradientVisible, purchaseModalVisible, couponModalVisible]);
+
+  // Check demo expiration - demo süresi dolduğunda kontrol et
+  useEffect(() => {
+    if (!accessLoading && isDemo && expiresAt) {
+      const now = new Date();
+      const expiry = new Date(expiresAt);
+      
+      // Demo süresi doldu mu kontrol et
+      if (expiry <= now) {
+        Alert.alert(
+          t('demo.expired.title') || 'Demo Süresi Doldu',
+          t('demo.expired.message') || 'Demo süreniz doldu. Bizimle iletişime geçin.',
+          [
+            {
+              text: t('common.ok') || 'Tamam',
+              onPress: () => {
+                // Tüm servisleri temizle
+                aiService.cleanup().catch(() => {});
+                // Home'a yönlendir
+                router.push('/(tabs)/home');
+              }
+            }
+          ],
+          { cancelable: false }
+        );
+      }
+    }
+  }, [accessLoading, isDemo, expiresAt, router, t]);
 
   // Cleanup on unmount
   useEffect(() => {

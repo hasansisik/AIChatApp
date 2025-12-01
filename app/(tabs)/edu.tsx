@@ -38,22 +38,23 @@ const Edu = () => {
   const [couponModalVisible, setCouponModalVisible] = useState(false);
   const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
   
-  // Check coupon access
-  const { hasAccess, loading: accessLoading } = useCouponAccess();
+  // Check coupon access - sadece purchase kuponu kontrolü (demo edu için geçerli değil)
+  const { hasAccess, loading: accessLoading, isPurchase } = useCouponAccess();
 
   useEffect(() => {
-    if (user?.courseCode && hasAccess) {
+    // Sadece purchase kuponu varsa erişim ver
+    if (user?.courseCode && isPurchase) {
       dispatch<any>(getSessions({ code: user.courseCode }));
     }
-  }, [dispatch, user?.courseCode, hasAccess]);
+  }, [dispatch, user?.courseCode, isPurchase]);
 
-  // Check access separately to avoid infinite loops
+  // Check access separately to avoid infinite loops - sadece purchase kuponu kontrolü
   useEffect(() => {
-    if (!accessLoading && !hasAccess && user && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible) {
-      // User doesn't have access, show selection modal (only once)
+    if (!accessLoading && !isPurchase && user && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible) {
+      // User doesn't have purchase coupon, show selection modal (only once)
       setCouponSelectionModalVisible(true);
     }
-  }, [accessLoading, hasAccess, user?._id]);
+  }, [accessLoading, isPurchase, user?._id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -107,8 +108,8 @@ const Edu = () => {
     await dispatch<any>(loadUser());
   };
 
-  // Show access check message if no access
-  if (!accessLoading && !hasAccess && user) {
+  // Show access check message if no purchase coupon
+  if (!accessLoading && !isPurchase && user) {
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>

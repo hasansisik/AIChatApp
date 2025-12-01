@@ -500,6 +500,12 @@
       "noCoupon": "Hayır, Kupon Kodum Yok"
     }
   },
+  "demo": {
+    "expired": {
+      "title": "Demo Süresi Doldu",
+      "message": "Demo süreniz doldu. Bizimle iletişime geçin."
+    }
+  },
   "common": {
     "cancel": "İptal",
     "ok": "Tamam",

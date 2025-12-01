@@ -499,6 +499,12 @@
       "noCoupon": "No, I Don't Have a Coupon Code"
     }
   },
+  "demo": {
+    "expired": {
+      "title": "Demo Expired",
+      "message": "Your demo period has expired. Please contact us."
+    }
+  },
   "common": {
     "cancel": "Cancel",
     "ok": "OK",

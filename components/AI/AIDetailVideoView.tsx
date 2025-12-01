@@ -347,57 +347,73 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, [isDemo, expiresAt]);
 
   // TTS Audio listener - AI'dan gelen sesi oynat
-  useEffect(() => {
-    let sound: Audio.Sound | null = null;
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const isPlayingRef = useRef(false); // Çift oynatmayı önlemek için
+  const handlerRef = useRef<((audioUri: string) => Promise<void>) | null>(null);
 
-    const handleTTSAudio = async (audioUri: string) => {
-      try {
-        console.log('🔊 TTS audio oynatılıyor:', audioUri);
-        
-        // TTS başladığında video kaynağını değiştir
-        setIsTTSPlaying(true);
-        
-        // Önceki ses varsa durdur
-        if (sound) {
-          await sound.unloadAsync();
-          sound = null;
+  useEffect(() => {
+    // Handler'ı sadece bir kez oluştur ve ref'te sakla
+    if (!handlerRef.current) {
+      handlerRef.current = async (audioUri: string) => {
+        // Eğer zaten bir ses oynatılıyorsa, yeni sesi yok say
+        if (isPlayingRef.current) {
+          console.log('⚠️ TTS zaten oynatılıyor, yeni ses yok sayılıyor');
+          return;
         }
 
-        // Yeni ses dosyasını yükle ve oynat
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: audioUri },
-          { shouldPlay: true, volume: 1.0 }
-        );
-        
-        sound = newSound;
-
-        // Ses bittiğinde temizle ve metinleri kaldır
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            sound?.unloadAsync().catch(() => {});
-            sound = null;
-            console.log('✅ TTS audio oynatma tamamlandı, metinler temizleniyor');
-            // TTS bittiğinde metinleri temizle ve video kaynağını geri değiştir
-            setUserText('');
-            setAiText('');
-            setIsTTSPlaying(false);
+        try {
+          isPlayingRef.current = true;
+          console.log('🔊 TTS audio oynatılıyor:', audioUri);
+          
+          // TTS başladığında video kaynağını değiştir
+          setIsTTSPlaying(true);
+          
+          // Önceki ses varsa durdur
+          if (soundRef.current) {
+            await soundRef.current.unloadAsync();
+            soundRef.current = null;
           }
-        });
-      } catch (error) {
-        console.error('❌ TTS audio oynatılamadı:', error);
-        setIsTTSPlaying(false);
-      }
-    };
 
-    aiService.onTTSAudio(handleTTSAudio);
+          // Yeni ses dosyasını yükle ve oynat
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: audioUri },
+            { shouldPlay: true, volume: 1.0 }
+          );
+          
+          soundRef.current = newSound;
+
+          // Ses bittiğinde temizle ve metinleri kaldır
+          newSound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              soundRef.current?.unloadAsync().catch(() => {});
+              soundRef.current = null;
+              isPlayingRef.current = false; // Oynatma bitti, yeni ses kabul edilebilir
+              console.log('✅ TTS audio oynatma tamamlandı, metinler temizleniyor');
+              // TTS bittiğinde metinleri temizle ve video kaynağını geri değiştir
+              setUserText('');
+              setAiText('');
+              setIsTTSPlaying(false);
+            }
+          });
+        } catch (error) {
+          console.error('❌ TTS audio oynatılamadı:', error);
+          isPlayingRef.current = false;
+          setIsTTSPlaying(false);
+        }
+      };
+    }
+
+    const handler = handlerRef.current;
+    aiService.onTTSAudio(handler);
     
     return () => {
-      aiService.offTTSAudio(handleTTSAudio);
+      aiService.offTTSAudio(handler);
       // Cleanup
-      if (sound) {
-        sound.unloadAsync().catch(() => {});
-        sound = null;
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
       }
+      isPlayingRef.current = false;
     };
   }, []);
 
