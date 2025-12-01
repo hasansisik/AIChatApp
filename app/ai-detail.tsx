@@ -29,7 +29,7 @@ const AIDetailPage = () => {
   const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
   const { user } = useSelector((state: any) => state.user);
-  const { isDemoExpired, loading: couponLoading, demoStatus } = useSelector((state: any) => state.coupon);
+  const { isDemoExpired, loading: couponLoading } = useSelector((state: any) => state.coupon);
   const [isGradientVisible, setIsGradientVisible] = useState(true);
   const [isTextVisible, setIsTextVisible] = useState(true);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -48,51 +48,24 @@ const AIDetailPage = () => {
   const videoOpacity = useRef(new Animated.Value(0)).current;
   
   // Check coupon access - hem purchase hem demo kontrolü
-  const { hasAccess, loading: accessLoading, isDemo, isPurchase, expiresAt, demoTotalMinutes, demoMinutesUsed, remainingMinutes } = useCouponAccess();
-  const [demoTimeRemaining, setDemoTimeRemaining] = React.useState<number | null>(null); // Demo kalan süre (saniye)
+  const { hasAccess, loading: accessLoading, isDemo, isPurchase, minutesRemaining } = useCouponAccess();
   
   // Demo süresi kontrolü için Redux action dispatch et
   useEffect(() => {
     const checkDemo = async () => {
-      const result = await dispatch(checkDemoStatus() as any);
-      if (checkDemoStatus.fulfilled.match(result)) {
-        dispatch(checkDemoExpiration());
-      }
+      await dispatch(checkDemoStatus() as any);
     };
     
     checkDemo();
     
-    // Her saniye kontrol et
-    const interval = setInterval(() => {
-      dispatch(checkDemoExpiration());
-    }, 1000);
+    // Her dakika kontrol et (saniye yerine dakika)
+    const interval = setInterval(checkDemo, 60000);
     
     return () => clearInterval(interval);
   }, [dispatch]);
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
-  
-  // Demo timer - yeni sistem: remainingMinutes kullan (saniye cinsine çevir)
-  useEffect(() => {
-    if (!isDemo) {
-      setDemoTimeRemaining(null);
-      return;
-    }
-
-    // Yeni sistem: remainingMinutes kullan
-    if (remainingMinutes !== null && remainingMinutes !== undefined) {
-      setDemoTimeRemaining(Math.max(0, Math.floor(remainingMinutes * 60))); // Dakikayı saniyeye çevir
-    } else if (expiresAt) {
-      // Eski sistem (geriye dönük uyumluluk)
-      const now = new Date().getTime();
-      const expiry = expiresAt.getTime();
-      const remaining = Math.max(0, Math.floor((expiry - now) / 1000)); // Saniye cinsinden
-      setDemoTimeRemaining(remaining);
-    } else {
-      setDemoTimeRemaining(null);
-    }
-  }, [isDemo, remainingMinutes, expiresAt]);
 
   if (!item) {
     return (
@@ -125,15 +98,9 @@ const AIDetailPage = () => {
       return; // Wait for access check to complete
     }
 
-    // Demo süresi dolmuş mu kontrol et (hem Redux state'ten hem de local state'ten)
-    // expiresAt geçmişteyse demo süresi dolmuş demektir (hasDemo false olsa bile)
-    const expiresAtFromRedux = demoStatus?.expiresAt ? new Date(demoStatus.expiresAt) : null;
-    const isExpiredFromRedux = expiresAtFromRedux && expiresAtFromRedux <= new Date();
-    
+    // Demo süresi dolmuş mu kontrol et - minutesRemaining kullan
     const isDemoExpiredCheck = isDemoExpired || 
-                               isExpiredFromRedux ||
-                               (isDemo && demoTimeRemaining !== null && demoTimeRemaining <= 0) ||
-                               (isDemo && expiresAt && new Date(expiresAt) <= new Date());
+                               (isDemo && (minutesRemaining === null || minutesRemaining <= 0));
     
     if (isDemoExpiredCheck) {
       Alert.alert(
@@ -288,7 +255,7 @@ const AIDetailPage = () => {
             selectedDetectionMethod={selectedDetectionMethod}
             onGoBack={handleGoBack}
             isDemo={isDemo}
-            demoTimeRemaining={demoTimeRemaining}
+            demoMinutesRemaining={minutesRemaining}
           />
         </Animated.View>
       ) : (

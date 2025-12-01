@@ -5,7 +5,7 @@ interface CouponState {
   demoStatus: {
     hasDemo: boolean;
     hasPurchase: boolean;
-    expiresAt: string | null;
+    minutesRemaining: number | null;
   } | null;
   isDemoExpired: boolean;
   loading: boolean;
@@ -24,12 +24,9 @@ const couponSlice = createSlice({
   initialState,
   reducers: {
     checkDemoExpiration: (state) => {
-      if (state.demoStatus?.expiresAt) {
-        const expiresAt = new Date(state.demoStatus.expiresAt);
-        const now = new Date();
-        // expiresAt geçmişteyse demo süresi dolmuş demektir (hasDemo false olsa bile)
-        // Çünkü hasDemo sadece aktif demo için true, ama expiresAt geçmişteyse demo dolmuş demektir
-        state.isDemoExpired = expiresAt <= now;
+      if (state.demoStatus?.minutesRemaining !== null && state.demoStatus?.minutesRemaining !== undefined) {
+        // minutesRemaining <= 0 ise demo süresi dolmuş demektir
+        state.isDemoExpired = state.demoStatus.minutesRemaining <= 0;
       } else {
         state.isDemoExpired = false;
       }
@@ -49,13 +46,10 @@ const couponSlice = createSlice({
         state.loading = false;
         state.demoStatus = action.payload;
         
-        // Demo süresi dolmuş mu kontrol et
-        if (action.payload?.expiresAt) {
-          const expiresAt = new Date(action.payload.expiresAt);
-          const now = new Date();
-          // expiresAt geçmişteyse demo süresi dolmuş demektir (hasDemo false olsa bile)
-          // Çünkü hasDemo sadece aktif demo için true, ama expiresAt geçmişteyse demo dolmuş demektir
-          state.isDemoExpired = expiresAt <= now;
+        // Demo süresi dolmuş mu kontrol et - minutesRemaining kullan
+        if (action.payload?.minutesRemaining !== null && action.payload?.minutesRemaining !== undefined) {
+          // minutesRemaining <= 0 ise demo süresi dolmuş demektir
+          state.isDemoExpired = action.payload.minutesRemaining <= 0;
         } else {
           state.isDemoExpired = false;
         }

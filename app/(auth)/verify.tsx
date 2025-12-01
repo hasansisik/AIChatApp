@@ -1,6 +1,5 @@
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, TextInput } from "react-native";
 import React, { useState, useRef, useEffect } from "react";
-import OTPTextInput from "react-native-otp-textinput";
 import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppBar from "@/components/ui/AppBar";
@@ -24,6 +23,8 @@ const Verify: React.FC = () => {
   const { t } = useTranslation();
 
   const [verificationCode, setVerificationCode] = useState("");
+  const [otpInputs, setOtpInputs] = useState<string[]>(["", "", "", ""]);
+  const otpRefs = useRef<(TextInput | null)[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +39,31 @@ const Verify: React.FC = () => {
       });
     }
   }, [status, message]);
+
+  const handleOtpChange = (text: string, index: number) => {
+    // Sadece sayıları kabul et
+    const numericText = text.replace(/[^0-9]/g, '');
+    
+    const newOtpInputs = [...otpInputs];
+    newOtpInputs[index] = numericText.slice(0, 1); // Sadece 1 karakter
+    setOtpInputs(newOtpInputs);
+    
+    // OTP kodunu birleştir
+    const code = newOtpInputs.join('');
+    setVerificationCode(code);
+    
+    // Otomatik olarak bir sonraki input'a geç
+    if (numericText && index < 3) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyPress = (e: any, index: number) => {
+    // Geri tuşuna basıldığında önceki input'a geç
+    if (e.nativeEvent.key === 'Backspace' && !otpInputs[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
 
   const submitHandler = async () => {
     setIsLoading(true);
@@ -102,15 +128,24 @@ const Verify: React.FC = () => {
           </View>
           <HeightSpacer height={50} />
           {/* OTP Input */}
-          <OTPTextInput
-            handleTextChange={setVerificationCode}
-            inputCount={4}
-            keyboardType="numeric"
-            tintColor="#000000"
-            offTintColor="#BBBCBE"
-            textInputStyle={styles.textInputStyle}
-            containerStyle={styles.containerStyle}
-          />
+          <View style={styles.otpContainer}>
+            {otpInputs.map((value, index) => (
+              <TextInput
+                key={index}
+                ref={(ref) => (otpRefs.current[index] = ref)}
+                style={[
+                  styles.otpInput,
+                  value ? styles.otpInputFilled : null
+                ]}
+                value={value}
+                onChangeText={(text) => handleOtpChange(text, index)}
+                onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                keyboardType="numeric"
+                maxLength={1}
+                selectTextOnFocus
+              />
+            ))}
+          </View>
           <HeightSpacer height={50} />
           {/* Login Button */}
           <ReusableButton
@@ -181,10 +216,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  containerStyle: {
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginHorizontal: 30,
+    gap: 15,
   },
-  textInputStyle: {
+  otpInput: {
     height: 50,
     width: 50,
     borderWidth: 1,
@@ -192,7 +231,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    borderBottomWidth: 1
+    borderColor: '#BBBCBE',
+    backgroundColor: Colors.white,
+  },
+  otpInputFilled: {
+    borderColor: '#000000',
   },
   modalContainer: {
     flexDirection: "column",

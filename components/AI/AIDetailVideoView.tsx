@@ -19,12 +19,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Switch } from 'react-native';
+import { useDispatch } from 'react-redux';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { useDispatch } from 'react-redux';
-import { updateDemoUsage } from '@/redux/actions/couponActions';
+import { updateDemoMinutes } from '@/redux/actions/couponActions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -42,7 +42,7 @@ interface AIDetailVideoViewProps {
   selectedDetectionMethod: string;
   onGoBack: () => void;
   isDemo?: boolean;
-  demoTimeRemaining?: number | null;
+  demoMinutesRemaining?: number | null; // Minutes remaining (not seconds)
 }
 
 const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
@@ -59,7 +59,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   selectedDetectionMethod,
   onGoBack,
   isDemo = false,
-  demoTimeRemaining = null,
+  demoMinutesRemaining = null, // Minutes remaining (not seconds)
 }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
@@ -74,11 +74,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [aiText, setAiText] = React.useState(''); // AI'dan dönen metin
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr'); // STT dili
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false); // TTS çalıyor mu?
-  const [localDemoTimeRemaining, setLocalDemoTimeRemaining] = React.useState<number | null>(null); // Lokal demo süresi (saniye)
-  const startTimeRef = React.useRef<number | null>(null); // Component mount zamanı
-  const demoTotalMinutesRef = React.useRef<number | null>(null); // Toplam demo dakikası
-  const demoMinutesUsedRef = React.useRef<number>(0); // Kullanılan demo dakikası (backend'den gelen)
-  const lastUpdateTimeRef = React.useRef<number | null>(null); // Son backend güncelleme zamanı
+  const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(demoMinutesRemaining);
+  const lastUpdateTimeRef = React.useRef<number>(Date.now());
+  const updateIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -302,87 +300,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   }, []);
 
-  // Demo timer - yeni sistem: sadece bu component içinde geçen süreyi takip et
-  // demoTimeRemaining prop'u artık remainingMinutes'ı saniye cinsinden içeriyor
-  useEffect(() => {
-    if (!isDemo || demoTimeRemaining === null || demoTimeRemaining <= 0) {
-      startTimeRef.current = null;
-      demoTotalMinutesRef.current = null;
-      demoMinutesUsedRef.current = 0;
-      lastUpdateTimeRef.current = null;
-      setLocalDemoTimeRemaining(null);
-      return;
-    }
-
-    // İlk mount: başlangıç zamanını kaydet ve başlangıç süresini hesapla
-    if (startTimeRef.current === null) {
-      startTimeRef.current = Date.now();
-      lastUpdateTimeRef.current = Date.now();
-      // demoTimeRemaining saniye cinsinden, dakikaya çevir
-      const remainingMinutes = demoTimeRemaining / 60;
-      // Toplam dakikayı tahmin et (kullanılan dakika + kalan dakika)
-      // İlk başta kullanılan dakika 0 olduğu için, kalan dakika = toplam dakika
-      demoTotalMinutesRef.current = remainingMinutes;
-      demoMinutesUsedRef.current = 0;
-      setLocalDemoTimeRemaining(demoTimeRemaining);
-    } else {
-      // Prop değişti (admin ek süre verdi veya backend'den yeni değer geldi)
-      // Yeni kalan süreyi kullan, ama geçen süreyi de hesaba kat
-      const elapsedSinceStart = (Date.now() - startTimeRef.current) / 1000 / 60; // Dakika cinsinden
-      const newRemainingMinutes = demoTimeRemaining / 60; // Saniyeyi dakikaya çevir
-      
-      // Eğer yeni kalan süre eski kalan süreden fazlaysa, ek süre verilmiş demektir
-      const oldRemainingMinutes = demoTotalMinutesRef.current ? (demoTotalMinutesRef.current - demoMinutesUsedRef.current) : 0;
-      if (newRemainingMinutes > oldRemainingMinutes) {
-        // Ek süre verilmiş, toplam dakikayı güncelle
-        const extraMinutes = newRemainingMinutes - oldRemainingMinutes;
-        demoTotalMinutesRef.current = (demoTotalMinutesRef.current || 0) + extraMinutes;
-      }
-      
-      setLocalDemoTimeRemaining(demoTimeRemaining);
-    }
-  }, [isDemo, demoTimeRemaining]);
-
-  // Demo timer - her saniye güncelle ve backend'e gönder (sadece bu component içinde geçen süre)
-  useEffect(() => {
-    if (!isDemo || startTimeRef.current === null || demoTotalMinutesRef.current === null) {
-      return;
-    }
-
-    const updateTimer = async () => {
-      if (demoTotalMinutesRef.current === null) return;
-      
-      const elapsedSinceStart = (Date.now() - startTimeRef.current!) / 1000 / 60; // Dakika cinsinden
-      const totalUsedMinutes = demoMinutesUsedRef.current + elapsedSinceStart;
-      const remainingMinutes = Math.max(0, demoTotalMinutesRef.current - totalUsedMinutes);
-      const remainingSeconds = Math.floor(remainingMinutes * 60);
-      
-      setLocalDemoTimeRemaining(remainingSeconds);
-
-      // Her 30 saniyede bir backend'e kullanılan süreyi gönder
-      if (lastUpdateTimeRef.current && (Date.now() - lastUpdateTimeRef.current) >= 30000) {
-        try {
-          await dispatch(updateDemoUsage(totalUsedMinutes) as any);
-          // Backend'den gelen güncel değerleri güncelle
-          // (updateDemoUsage response'unda demoTotalMinutes ve demoMinutesUsed var)
-          lastUpdateTimeRef.current = Date.now();
-        } catch (error) {
-          console.error('Demo usage update failed:', error);
-        }
-      } else if (!lastUpdateTimeRef.current) {
-        lastUpdateTimeRef.current = Date.now();
-      }
-    };
-
-    // İlk güncelleme
-    updateTimer();
-
-    // Her saniye güncelle
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [isDemo, dispatch]);
-
   // STT transcription listener - kullanıcının konuştuğu metin
   useEffect(() => {
     const handleTranscription = (text: string) => {
@@ -411,6 +328,61 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, []);
 
+
+  // Demo minutes tracking - her saniye azalt ve backend'e gönder
+  useEffect(() => {
+    if (!isDemo || demoMinutesRemaining === null || demoMinutesRemaining <= 0) {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+      setCurrentDemoMinutes(null);
+      return;
+    }
+
+    // İlk değeri set et
+    setCurrentDemoMinutes(demoMinutesRemaining);
+    lastUpdateTimeRef.current = Date.now();
+
+    // Her saniye kontrol et ve azalt
+    updateIntervalRef.current = setInterval(() => {
+      setCurrentDemoMinutes((prev) => {
+        if (!prev || prev <= 0) {
+          return 0;
+        }
+        
+        // Her saniye 1/60 dakika azalt
+        const newMinutes = Math.max(0, prev - (1 / 60));
+        
+        // Her 10 saniyede bir backend'e gönder (daha sık güncelleme için)
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - lastUpdateTimeRef.current) / 1000);
+        
+        if (elapsedSeconds >= 10 || newMinutes === 0) {
+          // Backend'e gönder (dakika cinsinden)
+          dispatch(updateDemoMinutes(newMinutes) as any);
+          lastUpdateTimeRef.current = now;
+        }
+        
+        return newMinutes;
+      });
+    }, 1000); // Her saniye
+
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+    };
+  }, [isDemo, demoMinutesRemaining, dispatch]);
+
+  // Props değiştiğinde currentDemoMinutes'i güncelle
+  useEffect(() => {
+    if (demoMinutesRemaining !== null && demoMinutesRemaining !== currentDemoMinutes) {
+      setCurrentDemoMinutes(demoMinutesRemaining);
+      lastUpdateTimeRef.current = Date.now();
+    }
+  }, [demoMinutesRemaining]);
 
   // TTS Audio listener - AI'dan gelen sesi oynat
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -589,11 +561,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           </View>
           
           {/* Demo Timer - Header içinde, sağ üstte sabit */}
-          {isDemo && localDemoTimeRemaining !== null && localDemoTimeRemaining > 0 ? (
+          {isDemo && currentDemoMinutes !== null && currentDemoMinutes > 0 ? (
             <View style={styles.demoTimerHeader}>
               <View style={styles.demoTimerBubble}>
                 <ReusableText
-                  text={`Demo: ${Math.floor(localDemoTimeRemaining / 60)}:${String(localDemoTimeRemaining % 60).padStart(2, '0')}`}
+                  text={`Demo: ${Math.floor(currentDemoMinutes)}:${String(Math.floor((currentDemoMinutes % 1) * 60)).padStart(2, '0')}`}
                   family="medium"
                   size={14}
                   color={Colors.white}
@@ -833,7 +805,7 @@ const styles = StyleSheet.create({
   },
   demoTimerHeader: {
     position: 'absolute',
-    top: 60,
+    top: 10,
     right: 20,
     zIndex: 10,
   },
@@ -944,7 +916,7 @@ const styles = StyleSheet.create({
   },
   circleButton: {
     padding: 15,
-    borderRadius: 50,
+    borderRadius: 35,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',

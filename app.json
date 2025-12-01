@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -22,8 +22,7 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "package": "com.birimajans.AIChat",
-      "usesCleartextTraffic": true
+      "package": "com.birimajans.AIChat"
     },
     "web": {
       "bundler": "metro",
@@ -44,17 +43,13 @@
       "expo-localization",
       "expo-web-browser",
       "expo-video",
-      "expo-audio",
       "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "0fe58474-de46-47ba-be5e-1bd17cb34cd7"
-      }
+      "router": {}
     }
   }
 }

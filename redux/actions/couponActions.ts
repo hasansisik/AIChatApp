@@ -62,10 +62,10 @@ export const checkDemoStatus = createAsyncThunk(
   }
 );
 
-// Update Demo Usage Time (when user is in AIDetailVideoView)
-export const updateDemoUsage = createAsyncThunk(
-  "coupon/updateDemoUsage",
-  async (minutesUsed: number, thunkAPI) => {
+// Update Demo Minutes (Real-time usage tracking)
+export const updateDemoMinutes = createAsyncThunk(
+  "coupon/updateDemoMinutes",
+  async (minutesRemaining: number, thunkAPI) => {
     try {
       const token = await AsyncStorage.getItem("accessToken");
       
@@ -73,9 +73,9 @@ export const updateDemoUsage = createAsyncThunk(
         return thunkAPI.rejectWithValue("Oturum açmanız gerekiyor");
       }
 
-      const response = await axios.post(
-        `${server}/coupons/demo-usage`,
-        { minutesUsed },
+      const response = await axios.patch(
+        `${server}/coupons/update-demo-minutes`,
+        { minutesRemaining },
         {
           headers: {
             "Content-Type": "application/json",

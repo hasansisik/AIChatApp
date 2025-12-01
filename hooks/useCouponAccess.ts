@@ -6,10 +6,7 @@ interface CouponAccess {
   hasAccess: boolean;
   isDemo: boolean;
   isPurchase: boolean;
-  expiresAt: Date | null;
-  demoTotalMinutes: number | null;
-  demoMinutesUsed: number;
-  remainingMinutes: number;
+  minutesRemaining: number | null; // Minutes remaining (not Date)
   loading: boolean;
 }
 
@@ -46,16 +43,9 @@ export const useCouponAccess = (): CouponAccess => {
     return () => clearInterval(interval);
   }, [dispatch, user?._id]); // Re-check when user changes
 
-  // Yeni sistem: demoTotalMinutes ve demoMinutesUsed kullan
-  const demoTotalMinutes = demoStatus?.demoTotalMinutes || null;
-  const demoMinutesUsed = demoStatus?.demoMinutesUsed || 0;
-  const remainingMinutes = demoTotalMinutes ? (demoTotalMinutes - demoMinutesUsed) : 0;
-  const hasActiveDemo = remainingMinutes > 0;
-  
-  // Eski sistem kontrolü (geriye dönük uyumluluk)
-  const expiresAtDate = demoStatus?.expiresAt ? new Date(demoStatus.expiresAt) : null;
-  const now = new Date();
-  const hasActiveDemoOld = demoStatus?.hasDemo && expiresAtDate && expiresAtDate > now;
+  // Demo kontrolü: minutesRemaining > 0 ise aktif demo var
+  const minutesRemaining = demoStatus?.minutesRemaining ?? null;
+  const hasActiveDemo = minutesRemaining !== null && minutesRemaining > 0;
   
   // Purchase kontrolü: activeCouponCode, courseCode varsa veya demoStatus'ta hasPurchase true ise
   const hasActivePurchase = 
@@ -64,13 +54,10 @@ export const useCouponAccess = (): CouponAccess => {
     demoStatus?.hasPurchase === true;
 
   return {
-    hasAccess: hasActiveDemo || hasActiveDemoOld || hasActivePurchase,
-    isDemo: hasActiveDemo || hasActiveDemoOld, // Her iki sistem de kontrol ediliyor
+    hasAccess: hasActiveDemo || hasActivePurchase,
+    isDemo: hasActiveDemo, // Sadece aktif demo varsa true
     isPurchase: hasActivePurchase,
-    expiresAt: expiresAtDate, // Geriye dönük uyumluluk için
-    demoTotalMinutes: demoTotalMinutes,
-    demoMinutesUsed: demoMinutesUsed,
-    remainingMinutes: remainingMinutes,
+    minutesRemaining: minutesRemaining,
     loading,
   };
 };
