@@ -153,6 +153,7 @@
       "faq": "SSS",
       "help": "Yardım",
       "favoriteAI": "Favori AI",
+      "couponCode": "Kupon Kodu",
       "deleteAccount": "Hesabı Sil",
       "deleteAccountTitle": "Hesabı Sil",
       "deleteAccountMessage": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -457,7 +458,10 @@
     "empty": {
       "codeNotFound": "Kurs kodu bulunamadı",
       "enterCode": "Lütfen kurs kodunuzu girin",
-      "noSessions": "Henüz seans bulunmuyor"
+      "noSessions": "Henüz seans bulunmuyor",
+      "accessRequired": "Erişim Gerekli",
+      "enterCouponCode": "Bu özelliği kullanmak için kupon kodunuzu girin",
+      "getAccess": "Erişim Al"
     },
     "code": {
       "changeTitle": "Kurs Kodu Değiştir",
@@ -471,5 +475,35 @@
   },
   "notFound": {
     "title": "Oops!"
+  },
+  "purchase": {
+    "title": "EnglishCard Satın Al",
+    "description": "EnglishCard satın almak için bizimle iletişime geçin. Size özel bir kupon kodu ile uygulamayı aktif edebilirsiniz.",
+    "contactUs": "Bize Ulaşın",
+    "contactWhatsApp": "WhatsApp ile İletişim",
+    "contactPhone": "Telefon ile Arama",
+    "note": "Satın alma işlemi için WhatsApp veya telefon ile bizimle iletişime geçin.",
+    "cannotMakeCall": "Telefon araması yapılamadı"
+  },
+  "coupon": {
+    "title": "Kupon Kodu Gir",
+    "description": "Kupon kodunuzu girin ve uygulamayı aktif edin.",
+    "placeholder": "KME12345 veya KMD12345",
+    "enterCode": "Lütfen kupon kodunu girin",
+    "submit": "Aktif Et",
+    "success": "Kupon başarıyla aktif edildi",
+    "error": "Kupon geçersiz veya süresi dolmuş",
+    "selection": {
+      "title": "Kupon Kodunuz Var mı?",
+      "description": "Uygulamayı aktif etmek için kupon kodunuz var mı?",
+      "hasCoupon": "Evet, Kupon Kodum Var",
+      "noCoupon": "Hayır, Kupon Kodum Yok"
+    }
+  },
+  "common": {
+    "cancel": "İptal",
+    "ok": "Tamam",
+    "cannotOpenWhatsApp": "WhatsApp açılamadı",
+    "cannotMakeCall": "Telefon araması yapılamadı"
   }
 }

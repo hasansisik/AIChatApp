@@ -23,6 +23,7 @@ import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
+import { useCouponAccess } from '@/hooks/useCouponAccess';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -65,6 +66,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [userText, setUserText] = React.useState(''); // Kullanıcının konuştuğu metin
   const [aiText, setAiText] = React.useState(''); // AI'dan dönen metin
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr'); // STT dili
+  const [demoTimeRemaining, setDemoTimeRemaining] = React.useState<number | null>(null); // Demo kalan süre (saniye)
+  
+  // Check coupon access for demo timer
+  const { isDemo, expiresAt } = useCouponAccess();
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -311,6 +316,29 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, []);
 
+  // Demo timer - geri sayım
+  useEffect(() => {
+    if (!isDemo || !expiresAt) {
+      setDemoTimeRemaining(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const expiry = expiresAt.getTime();
+      const remaining = Math.max(0, Math.floor((expiry - now) / 1000)); // Saniye cinsinden
+      setDemoTimeRemaining(remaining);
+    };
+
+    // İlk güncelleme
+    updateTimer();
+
+    // Her saniye güncelle
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [isDemo, expiresAt]);
+
   // TTS Audio listener - AI'dan gelen sesi oynat
   useEffect(() => {
     let sound: Audio.Sound | null = null;
@@ -463,6 +491,20 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 text={userText}
                 family="regular"
                 size={16}
+                color={Colors.white}
+              />
+            </View>
+          </View>
+        ) : null}
+        
+        {/* Demo Timer - Header'ın altında */}
+        {isDemo && demoTimeRemaining !== null && demoTimeRemaining > 0 ? (
+          <View style={styles.demoTimerContainer}>
+            <View style={styles.demoTimerBubble}>
+              <ReusableText
+                text={`Demo: ${Math.floor(demoTimeRemaining / 60)}:${String(demoTimeRemaining % 60).padStart(2, '0')}`}
+                family="medium"
+                size={14}
                 color={Colors.white}
               />
             </View>
@@ -665,6 +707,20 @@ const styles = StyleSheet.create({
   userTextContainer: {
     paddingHorizontal: 20,
     alignItems: 'flex-start',
+    marginTop: 10,
+  },
+  demoTimerContainer: {
+    paddingHorizontal: 20,
+    alignItems: 'flex-end',
+    marginTop: 8,
+  },
+  demoTimerBubble: {
+    backgroundColor: 'rgba(255, 152, 0, 0.8)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   headerContent: {
     flexDirection: 'row',

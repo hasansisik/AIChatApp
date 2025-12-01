@@ -14,6 +14,10 @@ import { AICategory, aiCategories } from '@/data/AICategories';
 import aiService from '@/services/aiService';
 import AIDetailInitialView from '@/components/AI/AIDetailInitialView';
 import AIDetailVideoView from '@/components/AI/AIDetailVideoView';
+import PurchaseModal from '@/components/ui/PurchaseModal';
+import CouponModal from '@/components/ui/CouponModal';
+import CouponSelectionModal from '@/components/ui/CouponSelectionModal';
+import { useCouponAccess } from '@/hooks/useCouponAccess';
 
 const AIDetailPage = () => {
   const { t } = useTranslation();
@@ -27,11 +31,17 @@ const AIDetailPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [conversationText, setConversationText] = useState('');
+  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
+  const [couponModalVisible, setCouponModalVisible] = useState(false);
+  const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
   const gradientOpacity = useRef(new Animated.Value(1)).current;
   const bottomAreaOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
   const overlayOpacity = useRef(new Animated.Value(1)).current;
   const videoOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Check coupon access
+  const { hasAccess, loading: accessLoading } = useCouponAccess();
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
@@ -62,6 +72,22 @@ const AIDetailPage = () => {
   };
 
   const handleStartPress = () => {
+    // Check if user has access (wait for loading to finish)
+    if (accessLoading) {
+      return; // Wait for access check to complete
+    }
+
+    if (!hasAccess) {
+      // Show selection modal first
+      setCouponSelectionModalVisible(true);
+      return;
+    }
+
+    // User has access, proceed with animation
+    startVideoAnimation();
+  };
+
+  const startVideoAnimation = () => {
     // Animate gradient fade out, text fade out, overlay fade out, and bottom area fade in
     Animated.parallel([
       Animated.timing(gradientOpacity, {
@@ -95,6 +121,26 @@ const AIDetailPage = () => {
     });
   };
 
+  const handleHasCoupon = () => {
+    // User has coupon, show coupon modal
+    setCouponModalVisible(true);
+  };
+
+  const handleNoCoupon = () => {
+    // User doesn't have coupon, show purchase modal
+    setPurchaseModalVisible(true);
+  };
+
+  const handleCouponSuccess = async () => {
+    setCouponModalVisible(false);
+    // After successful coupon entry, reload user data
+    // The useCouponAccess hook will update automatically via checkDemoStatus
+    // Wait a bit for the hook to update, then check access
+    setTimeout(() => {
+      // Access will be checked by the useEffect that watches hasAccess
+    }, 1000);
+  };
+
 
   const handleAutoDetectPress = () => {
     setSelectedDetectionMethod('microphone');
@@ -114,6 +160,14 @@ const AIDetailPage = () => {
       aiService.prewarmConnection(item.voice);
     }
   }, [item?.voice]);
+
+  // Check access when hasAccess changes (after coupon entry)
+  useEffect(() => {
+    if (!accessLoading && hasAccess && isGradientVisible && !purchaseModalVisible && !couponModalVisible) {
+      // Access was granted after coupon entry, start animation
+      startVideoAnimation();
+    }
+  }, [hasAccess, accessLoading, isGradientVisible, purchaseModalVisible, couponModalVisible]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -168,6 +222,27 @@ const AIDetailPage = () => {
         onClose={() => setIsSelectionModalVisible(false)}
         onAutoDetectPress={handleAutoDetectPress}
         onHandDetectPress={handleHandDetectPress}
+      />
+
+      {/* Coupon Selection Modal */}
+      <CouponSelectionModal
+        visible={couponSelectionModalVisible}
+        onClose={() => setCouponSelectionModalVisible(false)}
+        onHasCoupon={handleHasCoupon}
+        onNoCoupon={handleNoCoupon}
+      />
+
+      {/* Purchase Modal */}
+      <PurchaseModal
+        visible={purchaseModalVisible}
+        onClose={() => setPurchaseModalVisible(false)}
+      />
+
+      {/* Coupon Modal */}
+      <CouponModal
+        visible={couponModalVisible}
+        onClose={() => setCouponModalVisible(false)}
+        onSuccess={handleCouponSuccess}
       />
     </View>
   );

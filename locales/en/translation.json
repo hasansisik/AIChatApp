@@ -152,6 +152,7 @@
       "faq": "FAQ",
       "help": "Help",
       "favoriteAI": "Favorite AI",
+      "couponCode": "Coupon Code",
       "deleteAccount": "Delete Account",
       "deleteAccountTitle": "Delete Account",
       "deleteAccountMessage": "Are you sure you want to delete your account? This action cannot be undone.",
@@ -456,7 +457,10 @@
     "empty": {
       "codeNotFound": "Course code not found",
       "enterCode": "Please enter your course code",
-      "noSessions": "No sessions found yet"
+      "noSessions": "No sessions found yet",
+      "accessRequired": "Access Required",
+      "enterCouponCode": "Please enter your coupon code to use this feature",
+      "getAccess": "Get Access"
     },
     "code": {
       "changeTitle": "Change Course Code",
@@ -470,5 +474,35 @@
   },
   "notFound": {
     "title": "Oops!"
+  },
+  "purchase": {
+    "title": "Purchase EnglishCard",
+    "description": "Contact us to purchase EnglishCard. You can activate the app with a special coupon code.",
+    "contactUs": "Contact Us",
+    "contactWhatsApp": "Contact via WhatsApp",
+    "contactPhone": "Call via Phone",
+    "note": "Contact us via WhatsApp or phone to complete your purchase.",
+    "cannotMakeCall": "Cannot make phone call"
+  },
+  "coupon": {
+    "title": "Enter Coupon Code",
+    "description": "Enter your coupon code and activate the app.",
+    "placeholder": "KME12345 or KMD12345",
+    "enterCode": "Please enter coupon code",
+    "submit": "Activate",
+    "success": "Coupon activated successfully",
+    "error": "Coupon is invalid or expired",
+    "selection": {
+      "title": "Do You Have a Coupon Code?",
+      "description": "Do you have a coupon code to activate the app?",
+      "hasCoupon": "Yes, I Have a Coupon Code",
+      "noCoupon": "No, I Don't Have a Coupon Code"
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "ok": "OK",
+    "cannotOpenWhatsApp": "Cannot open WhatsApp",
+    "cannotMakeCall": "Cannot make phone call"
   }
 }

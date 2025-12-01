@@ -23,6 +23,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import ProfileCard from "@/components/cards/ProfileCard";
 import OpenGalleryCameraModal from "@/components/other/OpenGalleryCameraModal";
 import { useTranslation } from "react-i18next";
+import CouponModal from "@/components/ui/CouponModal";
+import PurchaseModal from "@/components/ui/PurchaseModal";
+import CouponSelectionModal from "@/components/ui/CouponSelectionModal";
 
 const Profile: React.FC = () => {
   const { t } = useTranslation();
@@ -33,6 +36,9 @@ const Profile: React.FC = () => {
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
+  const [couponModalVisible, setCouponModalVisible] = useState(false);
+  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
+  const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
   const toastRef = useRef<any>(null);
   const favoritesLoadedRef = useRef(false);
 
@@ -177,6 +183,17 @@ const Profile: React.FC = () => {
               icon={"language"}
               onPress={() => router.push("/(profile)/language")}
             />
+            {/* Kupon Kodu */}
+            {user && (
+              <ProfileCard
+                title={t("profile.tabs.couponCode")}
+                icon={"ticket"}
+                onPress={() => {
+                  // Show selection modal first
+                  setCouponSelectionModalVisible(true);
+                }}
+              />
+            )}
             {/* Menu4 */}
             <ProfileCard
               title={t("profile.tabs.policies")}
@@ -259,6 +276,38 @@ const Profile: React.FC = () => {
             onUploadComplete={handleImageSelected}
           />
         </Modal>
+
+        {/* Coupon Selection Modal */}
+        <CouponSelectionModal
+          visible={couponSelectionModalVisible}
+          onClose={() => setCouponSelectionModalVisible(false)}
+          onHasCoupon={() => {
+            setCouponSelectionModalVisible(false);
+            setCouponModalVisible(true);
+          }}
+          onNoCoupon={() => {
+            setCouponSelectionModalVisible(false);
+            setPurchaseModalVisible(true);
+          }}
+        />
+
+        {/* Purchase Modal */}
+        <PurchaseModal
+          visible={purchaseModalVisible}
+          onClose={() => setPurchaseModalVisible(false)}
+        />
+
+        {/* Coupon Modal */}
+        <CouponModal
+          visible={couponModalVisible}
+          onClose={() => setCouponModalVisible(false)}
+          onSuccess={async () => {
+            setCouponModalVisible(false);
+            await dispatch<any>(loadUser());
+            setStatus("success");
+            setMessage(t("coupon.success"));
+          }}
+        />
       </SafeAreaView>
     </GestureHandlerRootView>
   );

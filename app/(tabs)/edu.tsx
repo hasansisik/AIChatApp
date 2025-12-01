@@ -20,6 +20,10 @@ import { loadUser } from "@/redux/actions/userActions";
 import ReusableText from "@/components/ui/ReusableText";
 import { FontSizes } from "@/constants/Fonts";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import PurchaseModal from "@/components/ui/PurchaseModal";
+import CouponModal from "@/components/ui/CouponModal";
+import CouponSelectionModal from "@/components/ui/CouponSelectionModal";
+import { useCouponAccess } from "@/hooks/useCouponAccess";
 
 const Edu = () => {
   const { t } = useTranslation();
@@ -30,12 +34,26 @@ const Edu = () => {
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [courseCode, setCourseCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
+  const [couponModalVisible, setCouponModalVisible] = useState(false);
+  const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
+  
+  // Check coupon access
+  const { hasAccess, loading: accessLoading } = useCouponAccess();
 
   useEffect(() => {
-    if (user?.courseCode) {
+    if (user?.courseCode && hasAccess) {
       dispatch<any>(getSessions({ code: user.courseCode }));
     }
-  }, [dispatch, user?.courseCode]);
+  }, [dispatch, user?.courseCode, hasAccess]);
+
+  // Check access separately to avoid infinite loops
+  useEffect(() => {
+    if (!accessLoading && !hasAccess && user && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible) {
+      // User doesn't have access, show selection modal (only once)
+      setCouponSelectionModalVisible(true);
+    }
+  }, [accessLoading, hasAccess, user?._id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -73,6 +91,81 @@ const Edu = () => {
     }
   };
 
+  const handleHasCoupon = () => {
+    // User has coupon, show coupon modal
+    setCouponModalVisible(true);
+  };
+
+  const handleNoCoupon = () => {
+    // User doesn't have coupon, show purchase modal
+    setPurchaseModalVisible(true);
+  };
+
+  const handleCouponSuccess = async () => {
+    setCouponModalVisible(false);
+    // Reload user to get updated courseCode
+    await dispatch<any>(loadUser());
+  };
+
+  // Show access check message if no access
+  if (!accessLoading && !hasAccess && user) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons
+            name="lock-outline"
+            size={64}
+            color={Colors.lightGray}
+          />
+          <ReusableText
+            text={t('edu.empty.accessRequired')}
+            family="medium"
+            size={FontSizes.medium}
+            color={Colors.black}
+          />
+          <ReusableText
+            text={t('edu.empty.enterCouponCode')}
+            family="regular"
+            size={FontSizes.small}
+            color={Colors.description}
+          />
+          <TouchableOpacity
+            style={styles.accessButton}
+            onPress={() => setCouponSelectionModalVisible(true)}
+          >
+            <ReusableText
+              text={t('edu.empty.getAccess')}
+              family="medium"
+              size={FontSizes.small}
+              color={Colors.white}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Coupon Selection Modal */}
+        <CouponSelectionModal
+          visible={couponSelectionModalVisible}
+          onClose={() => setCouponSelectionModalVisible(false)}
+          onHasCoupon={handleHasCoupon}
+          onNoCoupon={handleNoCoupon}
+        />
+
+        {/* Purchase Modal */}
+        <PurchaseModal
+          visible={purchaseModalVisible}
+          onClose={() => setPurchaseModalVisible(false)}
+        />
+
+        {/* Coupon Modal */}
+        <CouponModal
+          visible={couponModalVisible}
+          onClose={() => setCouponModalVisible(false)}
+          onSuccess={handleCouponSuccess}
+        />
+      </View>
+    );
+  }
+
   if (!user?.courseCode) {
     return (
       <View style={styles.container}>
@@ -95,6 +188,27 @@ const Edu = () => {
             color={Colors.description}
           />
         </View>
+
+        {/* Coupon Selection Modal */}
+        <CouponSelectionModal
+          visible={couponSelectionModalVisible}
+          onClose={() => setCouponSelectionModalVisible(false)}
+          onHasCoupon={handleHasCoupon}
+          onNoCoupon={handleNoCoupon}
+        />
+
+        {/* Purchase Modal */}
+        <PurchaseModal
+          visible={purchaseModalVisible}
+          onClose={() => setPurchaseModalVisible(false)}
+        />
+
+        {/* Coupon Modal */}
+        <CouponModal
+          visible={couponModalVisible}
+          onClose={() => setCouponModalVisible(false)}
+          onSuccess={handleCouponSuccess}
+        />
       </View>
     );
   }
@@ -296,6 +410,27 @@ const Edu = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Coupon Selection Modal */}
+      <CouponSelectionModal
+        visible={couponSelectionModalVisible}
+        onClose={() => setCouponSelectionModalVisible(false)}
+        onHasCoupon={handleHasCoupon}
+        onNoCoupon={handleNoCoupon}
+      />
+
+      {/* Purchase Modal */}
+      <PurchaseModal
+        visible={purchaseModalVisible}
+        onClose={() => setPurchaseModalVisible(false)}
+      />
+
+      {/* Coupon Modal */}
+      <CouponModal
+        visible={couponModalVisible}
+        onClose={() => setCouponModalVisible(false)}
+        onSuccess={handleCouponSuccess}
+      />
     </View>
   );
 };
@@ -418,6 +553,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  accessButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
   },
 });
 
