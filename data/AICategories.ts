@@ -7,6 +7,8 @@ export interface AICategory {
   description: string;
   avatar_id: number;
   voice: string; // OpenAI TTS voice name
+  video: any; // Normal video source (require path)
+  videoTTS: any; // TTS video source (require path)
 }
 
 export interface CategoryFilter {
@@ -34,6 +36,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.emma',
     avatar_id: 1,
     voice: 'alloy', // Kadın sesi
+    video: require('@/assets/video/aiexample.mp4'),
+    videoTTS: require('@/assets/video/aiexample1.mp4'),
   },
   {
     id: '2',
@@ -44,6 +48,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.alexander',
     avatar_id: 2,
     voice: 'ash', // Erkek sesi
+    video: require('@/assets/video/aiexample.mp4'),
+    videoTTS: require('@/assets/video/aiexample1.mp4'),
   },
   {
     id: '3',
@@ -54,6 +60,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.sophia',
     avatar_id: 3,
     voice: 'shimmer', // Kadın sesi
+    video: require('@/assets/video/aiexample.mp4'),
+    videoTTS: require('@/assets/video/aiexample1.mp4'),
   },
   {
     id: '4',
@@ -64,6 +72,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.james',
     avatar_id: 4,
     voice: 'onyx', // Erkek sesi
+    video: require('@/assets/video/aiexample.mp4'),
+    videoTTS: require('@/assets/video/aiexample1.mp4'),
   },
   {
     id: '5',
@@ -74,6 +84,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.isabella',
     avatar_id: 5,
     voice: 'shimmer', // Kadın sesi
+    video: require('@/assets/video/aiexample.mp4'),
+    videoTTS: require('@/assets/video/aiexample1.mp4'),
   },
   {
     id: '6',
@@ -84,5 +96,7 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.michael',
     avatar_id: 6,
     voice: 'onyx', // Erkek sesi
+    video: require('@/assets/video/aiexample.mp4'),
+    videoTTS: require('@/assets/video/aiexample1.mp4'),
   },
 ];

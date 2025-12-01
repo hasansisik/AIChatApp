@@ -408,7 +408,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       <View style={styles.videoContainer}>
         <Video
           ref={videoRef}
-          source={require('@/assets/video/aiexample.mp4')}
+          source={item.video}
           style={[styles.video, { opacity: isTTSPlaying ? 0 : 1 }]}
           resizeMode={ResizeMode.COVER}
           isLooping={true}
@@ -417,7 +417,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         />
         <Video
           ref={videoRefTTS}
-          source={require('@/assets/video/aiexample1.mp4')}
+          source={item.videoTTS}
           style={[styles.video, styles.videoOverlay, { opacity: isTTSPlaying ? 1 : 0 }]}
           resizeMode={ResizeMode.COVER}
           isLooping={true}
