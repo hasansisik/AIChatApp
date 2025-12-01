@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
 import { useRouter } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
@@ -11,8 +11,11 @@ import AIListing from '@/components/Home/AIListing';
 import { AICategory } from '@/data/AICategories';
 import { startConversation } from '@/redux/actions/aiActions';
 import { addFavoriteAI, removeFavoriteAI } from '@/redux/actions/userActions';
+import { getActiveOnboardings } from '@/redux/actions/onboardingActions';
 import { useSelector } from 'react-redux';
 import ChatBot from '@/components/ChatBot/ChatBot';
+import OnboardingCarousel from '@/components/Onboarding/OnboardingCarousel';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Home = () => {
   const router = useRouter();
@@ -20,7 +23,48 @@ const Home = () => {
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const { user } = useSelector((state: any) => state.user);
+  const { onboardings, loading: onboardingsLoading } = useSelector((state: any) => state.onboarding);
   const [chatBotVisible, setChatBotVisible] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+
+  // Load onboardings and check if should show
+  useEffect(() => {
+    const loadOnboardings = async () => {
+      try {
+        await dispatch(getActiveOnboardings() as any);
+        
+        // Check if user has seen onboarding before (test için yeni key)
+        const hasSeenOnboardingV2 = await AsyncStorage.getItem('hasSeenOnboardingV2');
+        
+        // Show onboarding if there are active onboardings and user hasn't seen it
+        // Test için: onboardings varsa her zaman göster
+        if (onboardings.length > 0) {
+          setOnboardingVisible(true);
+        }
+      } catch (error) {
+        console.error('Error loading onboardings:', error);
+      }
+    };
+
+    loadOnboardings();
+  }, [dispatch]);
+
+  // Update onboarding visibility when onboardings are loaded
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (onboardings.length > 0 && !onboardingsLoading) {
+        // Test için: onboardings varsa her zaman göster
+        setOnboardingVisible(true);
+      }
+    };
+
+    checkOnboarding();
+  }, [onboardings, onboardingsLoading]);
+
+  const handleOnboardingClose = async () => {
+    await AsyncStorage.setItem('hasSeenOnboardingV2', 'true');
+    setOnboardingVisible(false);
+  };
 
   const handleCategoryPress = (category: string) => {
     if (category === t('home.categories.liveChat')) {
@@ -86,6 +130,11 @@ const Home = () => {
       <ChatBot
         visible={chatBotVisible}
         onClose={() => setChatBotVisible(false)}
+      />
+      <OnboardingCarousel
+        onboardings={onboardings}
+        visible={onboardingVisible}
+        onClose={handleOnboardingClose}
       />
     </View>
   )

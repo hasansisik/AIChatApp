@@ -33,7 +33,7 @@ const resolveServerBaseURL = () => {
 };
 
 export const server = resolveServerBaseURL();
-export const aiServer = "http://16.171.161.33:8080/";
+export const aiServer = "http://localhost:5001/";
 export const aiPassword = "JSD876+J?*#Fd";
 
 // Debug için server URL'ini logla
