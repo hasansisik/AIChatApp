@@ -11,7 +11,6 @@ import {
 import React, { useState, useRef, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { login, loadUser } from "@/redux/actions/userActions";
-import { getToken } from "@/redux/actions/aiActions";
 import { useFormik } from "formik";
 import { FontSizes } from "@/constants/Fonts";
 import { Sizes } from "@/constants/Sizes";
@@ -104,8 +103,6 @@ const Login: React.FC<LoginProps> = () => {
         setMessage(t("auth.login.success"));
         // Load user data after successful login
         await dispatch(loadUser() as any);
-        // Get AI token after successful login
-        await dispatch(getToken() as any);
         // Navigate to tabs using router
         router.replace("/(tabs)/tabs");
       } else if (login.rejected.match(actionResult)) {
