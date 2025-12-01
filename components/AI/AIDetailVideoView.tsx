@@ -59,6 +59,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const { t } = useTranslation();
   const textInputRef = useRef<TextInput>(null);
   const videoRef = useRef<Video>(null);
+  const videoRefTTS = useRef<Video>(null);
   const bottomAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
@@ -67,6 +68,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [aiText, setAiText] = React.useState(''); // AI'dan dönen metin
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr'); // STT dili
   const [demoTimeRemaining, setDemoTimeRemaining] = React.useState<number | null>(null); // Demo kalan süre (saniye)
+  const [isTTSPlaying, setIsTTSPlaying] = React.useState(false); // TTS çalıyor mu?
   
   // Check coupon access for demo timer
   const { isDemo, expiresAt } = useCouponAccess();
@@ -279,12 +281,17 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   };
 
-  // Video loop için useEffect
+  // Video loop için useEffect - her iki video için de
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.setIsLoopingAsync(true);
       videoRef.current.setIsMutedAsync(true);
       videoRef.current.playAsync();
+    }
+    if (videoRefTTS.current) {
+      videoRefTTS.current.setIsLoopingAsync(true);
+      videoRefTTS.current.setIsMutedAsync(true);
+      videoRefTTS.current.playAsync();
     }
   }, []);
 
@@ -347,6 +354,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       try {
         console.log('🔊 TTS audio oynatılıyor:', audioUri);
         
+        // TTS başladığında video kaynağını değiştir
+        setIsTTSPlaying(true);
+        
         // Önceki ses varsa durdur
         if (sound) {
           await sound.unloadAsync();
@@ -367,13 +377,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             sound?.unloadAsync().catch(() => {});
             sound = null;
             console.log('✅ TTS audio oynatma tamamlandı, metinler temizleniyor');
-            // TTS bittiğinde metinleri temizle
+            // TTS bittiğinde metinleri temizle ve video kaynağını geri değiştir
             setUserText('');
             setAiText('');
+            setIsTTSPlaying(false);
           }
         });
       } catch (error) {
         console.error('❌ TTS audio oynatılamadı:', error);
+        setIsTTSPlaying(false);
       }
     };
 
@@ -392,15 +404,27 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   return (
     <View style={styles.container}>
       {/* Video Background - Loop, Muted, Full Screen */}
-      <Video
-        ref={videoRef}
-        source={require('@/assets/video/aiexample.mp4')}
-        style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        isLooping={true}
-        isMuted={true}
-        shouldPlay={true}
-      />
+      {/* İki video overlay - yumuşak geçiş için */}
+      <View style={styles.videoContainer}>
+        <Video
+          ref={videoRef}
+          source={require('@/assets/video/aiexample.mp4')}
+          style={[styles.video, { opacity: isTTSPlaying ? 0 : 1 }]}
+          resizeMode={ResizeMode.COVER}
+          isLooping={true}
+          isMuted={true}
+          shouldPlay={true}
+        />
+        <Video
+          ref={videoRefTTS}
+          source={require('@/assets/video/aiexample1.mp4')}
+          style={[styles.video, styles.videoOverlay, { opacity: isTTSPlaying ? 1 : 0 }]}
+          resizeMode={ResizeMode.COVER}
+          isLooping={true}
+          isMuted={true}
+          shouldPlay={true}
+        />
+      </View>
 
       {/* Header */}
       <SafeAreaView style={styles.header}>
@@ -686,6 +710,16 @@ const styles = StyleSheet.create({
     height: screenHeight,
     backgroundColor: Colors.black,
   },
+  videoContainer: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: screenWidth,
+    height: screenHeight,
+  },
   video: {
     flex: 1,
     position: 'absolute',
@@ -695,7 +729,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: screenWidth,
     height: screenHeight,
-    backgroundColor: Colors.black,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   header: {
     position: 'absolute',
