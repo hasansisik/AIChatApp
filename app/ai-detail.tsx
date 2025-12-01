@@ -48,7 +48,7 @@ const AIDetailPage = () => {
   const videoOpacity = useRef(new Animated.Value(0)).current;
   
   // Check coupon access - hem purchase hem demo kontrolü
-  const { hasAccess, loading: accessLoading, isDemo, isPurchase, expiresAt } = useCouponAccess();
+  const { hasAccess, loading: accessLoading, isDemo, isPurchase, expiresAt, demoTotalMinutes, demoMinutesUsed, remainingMinutes } = useCouponAccess();
   const [demoTimeRemaining, setDemoTimeRemaining] = React.useState<number | null>(null); // Demo kalan süre (saniye)
   
   // Demo süresi kontrolü için Redux action dispatch et
@@ -73,28 +73,26 @@ const AIDetailPage = () => {
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
   
-  // Demo timer - sadece ai-detail.tsx'te çalışır
+  // Demo timer - yeni sistem: remainingMinutes kullan (saniye cinsine çevir)
   useEffect(() => {
-    if (!isDemo || !expiresAt) {
+    if (!isDemo) {
       setDemoTimeRemaining(null);
       return;
     }
 
-    const updateTimer = () => {
+    // Yeni sistem: remainingMinutes kullan
+    if (remainingMinutes !== null && remainingMinutes !== undefined) {
+      setDemoTimeRemaining(Math.max(0, Math.floor(remainingMinutes * 60))); // Dakikayı saniyeye çevir
+    } else if (expiresAt) {
+      // Eski sistem (geriye dönük uyumluluk)
       const now = new Date().getTime();
       const expiry = expiresAt.getTime();
       const remaining = Math.max(0, Math.floor((expiry - now) / 1000)); // Saniye cinsinden
       setDemoTimeRemaining(remaining);
-    };
-
-    // İlk güncelleme
-    updateTimer();
-
-    // Her saniye güncelle
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [isDemo, expiresAt]);
+    } else {
+      setDemoTimeRemaining(null);
+    }
+  }, [isDemo, remainingMinutes, expiresAt]);
 
   if (!item) {
     return (

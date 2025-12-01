@@ -7,6 +7,9 @@ interface CouponAccess {
   isDemo: boolean;
   isPurchase: boolean;
   expiresAt: Date | null;
+  demoTotalMinutes: number | null;
+  demoMinutesUsed: number;
+  remainingMinutes: number;
   loading: boolean;
 }
 
@@ -43,11 +46,16 @@ export const useCouponAccess = (): CouponAccess => {
     return () => clearInterval(interval);
   }, [dispatch, user?._id]); // Re-check when user changes
 
-  // Demo kontrolü: expiresAt varsa ve gelecekteyse aktif demo var
-  // expiresAt geçmişteyse demo süresi dolmuş demektir
+  // Yeni sistem: demoTotalMinutes ve demoMinutesUsed kullan
+  const demoTotalMinutes = demoStatus?.demoTotalMinutes || null;
+  const demoMinutesUsed = demoStatus?.demoMinutesUsed || 0;
+  const remainingMinutes = demoTotalMinutes ? (demoTotalMinutes - demoMinutesUsed) : 0;
+  const hasActiveDemo = remainingMinutes > 0;
+  
+  // Eski sistem kontrolü (geriye dönük uyumluluk)
   const expiresAtDate = demoStatus?.expiresAt ? new Date(demoStatus.expiresAt) : null;
   const now = new Date();
-  const hasActiveDemo = demoStatus?.hasDemo && expiresAtDate && expiresAtDate > now;
+  const hasActiveDemoOld = demoStatus?.hasDemo && expiresAtDate && expiresAtDate > now;
   
   // Purchase kontrolü: activeCouponCode, courseCode varsa veya demoStatus'ta hasPurchase true ise
   const hasActivePurchase = 
@@ -56,10 +64,13 @@ export const useCouponAccess = (): CouponAccess => {
     demoStatus?.hasPurchase === true;
 
   return {
-    hasAccess: hasActiveDemo || hasActivePurchase,
-    isDemo: hasActiveDemo, // Sadece aktif demo varsa true
+    hasAccess: hasActiveDemo || hasActiveDemoOld || hasActivePurchase,
+    isDemo: hasActiveDemo || hasActiveDemoOld, // Her iki sistem de kontrol ediliyor
     isPurchase: hasActivePurchase,
-    expiresAt: expiresAtDate,
+    expiresAt: expiresAtDate, // Geriye dönük uyumluluk için
+    demoTotalMinutes: demoTotalMinutes,
+    demoMinutesUsed: demoMinutesUsed,
+    remainingMinutes: remainingMinutes,
     loading,
   };
 };
