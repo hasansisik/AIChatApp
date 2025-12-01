@@ -183,34 +183,7 @@ const Profile: React.FC = () => {
 
           {/* Menu */}
           <View style={styles.list}>
-            <View style={styles.listHeader}>
-              <Ionicons
-                name="reorder-three-outline"
-                size={30}
-                color={Colors.lightGray}
-              />
-              <ReusableText
-                text={t("profile.tabs.helpAndSupport")}
-                family={"medium"}
-                size={FontSizes.medium}
-                color={Colors.black}
-              />
-            </View>
-            {/* Favori AI'lar */}
-            {user && (
-              <ProfileCard
-                title={t("profile.tabs.favoriteAI")}
-                icon={"heart"}
-                onPress={() => router.push("/(profile)/favorite-ais")}
-              />
-            )}
-            {/* Menu3 */}
-            <ProfileCard
-              title={t("profile.tabs.language")}
-              icon={"language"}
-              onPress={() => router.push("/(profile)/language")}
-            />
-            {/* Kupon Kodu */}
+            {/* Kupon Kodu - En üstte */}
             {user && (
               <View style={styles.couponCard}>
                 <View style={styles.couponInfo}>
@@ -257,6 +230,20 @@ const Profile: React.FC = () => {
                 </TouchableOpacity>
               </View>
             )}
+            {/* Favori AI'lar */}
+            {user && (
+              <ProfileCard
+                title={t("profile.tabs.favoriteAI")}
+                icon={"heart"}
+                onPress={() => router.push("/(profile)/favorite-ais")}
+              />
+            )}
+            {/* Dil */}
+            <ProfileCard
+              title={t("profile.tabs.language")}
+              icon={"language"}
+              onPress={() => router.push("/(profile)/language")}
+            />
             {/* Menu4 */}
             <ProfileCard
               title={t("profile.tabs.policies")}
@@ -357,7 +344,7 @@ const Profile: React.FC = () => {
               />
               <TextInput
                 style={styles.codeInput}
-                placeholder={t('tabs.courseCode.placeholder') || 'Kupon kodunu girin'}
+                placeholder={t('profile.tabs.couponCodePlaceholder')}
                 placeholderTextColor={Colors.lightGray}
                 value={courseCode}
                 onChangeText={setCourseCode}

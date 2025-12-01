@@ -156,6 +156,7 @@
       "couponCode": "Kupon Kodu",
       "noCouponCode": "Kupon kodunuz yok",
       "changeCouponCode": "Kupon Kodunu Değiştir",
+      "couponCodePlaceholder": "Kupon kodunu girin (örn: KME12345 veya KMD12345)",
       "deleteAccount": "Hesabı Sil",
       "deleteAccountTitle": "Hesabı Sil",
       "deleteAccountMessage": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -512,6 +513,8 @@
     "cancel": "İptal",
     "ok": "Tamam",
     "cannotOpenWhatsApp": "WhatsApp açılamadı",
-    "cannotMakeCall": "Telefon araması yapılamadı"
+    "cannotMakeCall": "Telefon araması yapılamadı",
+    "change": "Değiştir",
+    "start": "Başla"
   }
 }
