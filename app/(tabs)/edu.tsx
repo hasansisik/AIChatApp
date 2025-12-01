@@ -49,12 +49,16 @@ const Edu = () => {
   }, [dispatch, user?.courseCode, isPurchase]);
 
   // Check access separately to avoid infinite loops - sadece purchase kuponu kontrolü
+  // Kullanıcıda activeCouponCode veya courseCode varsa tekrar sorma
   useEffect(() => {
-    if (!accessLoading && !isPurchase && user && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible) {
-      // User doesn't have purchase coupon, show selection modal (only once)
+    const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
+                          (user?.courseCode && user?.courseCode.trim() !== '');
+    
+    if (!accessLoading && !isPurchase && user && !hasCouponCode && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible) {
+      // User doesn't have purchase coupon and no coupon code, show selection modal (only once)
       setCouponSelectionModalVisible(true);
     }
-  }, [accessLoading, isPurchase, user?._id]);
+  }, [accessLoading, isPurchase, user?._id, user?.activeCouponCode, user?.courseCode, purchaseModalVisible, couponModalVisible, couponSelectionModalVisible]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -109,7 +113,11 @@ const Edu = () => {
   };
 
   // Show access check message if no purchase coupon
-  if (!accessLoading && !isPurchase && user) {
+  // Kullanıcıda activeCouponCode veya courseCode varsa erişim mesajı gösterme
+  const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
+                        (user?.courseCode && user?.courseCode.trim() !== '');
+  
+  if (!accessLoading && !isPurchase && user && !hasCouponCode) {
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>

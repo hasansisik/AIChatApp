@@ -19,7 +19,7 @@ const List = () => {
 
   const handleItemPress = async (item: AICategory) => {
     // Navigate directly to AI detail page
-    router.push(`/ai-detail?id=${item.id}`);
+      router.push(`/ai-detail?id=${item.id}`);
   };
 
   const handleFavoritePress = async (item: AICategory) => {

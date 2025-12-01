@@ -153,6 +153,8 @@
       "help": "Help",
       "favoriteAI": "Favorite AI",
       "couponCode": "Coupon Code",
+      "noCouponCode": "You don't have a coupon code",
+      "changeCouponCode": "Change Coupon Code",
       "deleteAccount": "Delete Account",
       "deleteAccountTitle": "Delete Account",
       "deleteAccountMessage": "Are you sure you want to delete your account? This action cannot be undone.",

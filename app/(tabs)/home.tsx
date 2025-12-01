@@ -40,12 +40,12 @@ const Home = () => {
 
   // Update onboarding visibility when onboardings are loaded
   useEffect(() => {
-    if (onboardings.length > 0 && !onboardingsLoading) {
+      if (onboardings.length > 0 && !onboardingsLoading) {
       // Show onboarding if there are unviewed onboardings
-      setOnboardingVisible(true);
+        setOnboardingVisible(true);
     } else {
       setOnboardingVisible(false);
-    }
+      }
   }, [onboardings, onboardingsLoading]);
 
   const handleOnboardingClose = async () => {
@@ -72,7 +72,7 @@ const Home = () => {
     } catch (error) {
       console.error('Error marking onboarding as viewed:', error);
       // Still close the modal even if marking fails
-      setOnboardingVisible(false);
+    setOnboardingVisible(false);
     }
   };
 
@@ -88,7 +88,7 @@ const Home = () => {
 
   const handleAICategoryPress = async (item: AICategory) => {
     // Navigate directly to AI detail page
-    router.push(`/ai-detail?id=${item.id}`);
+      router.push(`/ai-detail?id=${item.id}`);
   };
 
   const handleFavoritePress = async (item: AICategory) => {

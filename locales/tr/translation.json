@@ -154,6 +154,8 @@
       "help": "Yardım",
       "favoriteAI": "Favori AI",
       "couponCode": "Kupon Kodu",
+      "noCouponCode": "Kupon kodunuz yok",
+      "changeCouponCode": "Kupon Kodunu Değiştir",
       "deleteAccount": "Hesabı Sil",
       "deleteAccountTitle": "Hesabı Sil",
       "deleteAccountMessage": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",

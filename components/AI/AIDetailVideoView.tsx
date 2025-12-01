@@ -23,7 +23,6 @@ import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { useCouponAccess } from '@/hooks/useCouponAccess';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -40,6 +39,8 @@ interface AIDetailVideoViewProps {
   setIsProcessing: (processing: boolean) => void;
   selectedDetectionMethod: string;
   onGoBack: () => void;
+  isDemo?: boolean;
+  demoTimeRemaining?: number | null;
 }
 
 const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
@@ -55,6 +56,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   setIsProcessing,
   selectedDetectionMethod,
   onGoBack,
+  isDemo = false,
+  demoTimeRemaining = null,
 }) => {
   const { t } = useTranslation();
   const textInputRef = useRef<TextInput>(null);
@@ -67,11 +70,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [userText, setUserText] = React.useState(''); // Kullanıcının konuştuğu metin
   const [aiText, setAiText] = React.useState(''); // AI'dan dönen metin
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr'); // STT dili
-  const [demoTimeRemaining, setDemoTimeRemaining] = React.useState<number | null>(null); // Demo kalan süre (saniye)
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false); // TTS çalıyor mu?
-  
-  // Check coupon access for demo timer
-  const { isDemo, expiresAt } = useCouponAccess();
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -323,28 +322,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, []);
 
-  // Demo timer - geri sayım
-  useEffect(() => {
-    if (!isDemo || !expiresAt) {
-      setDemoTimeRemaining(null);
-      return;
-    }
-
-    const updateTimer = () => {
-      const now = new Date().getTime();
-      const expiry = expiresAt.getTime();
-      const remaining = Math.max(0, Math.floor((expiry - now) / 1000)); // Saniye cinsinden
-      setDemoTimeRemaining(remaining);
-    };
-
-    // İlk güncelleme
-    updateTimer();
-
-    // Her saniye güncelle
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [isDemo, expiresAt]);
 
   // TTS Audio listener - AI'dan gelen sesi oynat
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -521,6 +498,20 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               style={styles.liveChatText}
             />
           </View>
+          
+          {/* Demo Timer - Header içinde, sağ üstte sabit */}
+          {isDemo && demoTimeRemaining !== null && demoTimeRemaining > 0 ? (
+            <View style={styles.demoTimerHeader}>
+              <View style={styles.demoTimerBubble}>
+                <ReusableText
+                  text={`Demo: ${Math.floor(demoTimeRemaining / 60)}:${String(demoTimeRemaining % 60).padStart(2, '0')}`}
+                  family="medium"
+                  size={14}
+                  color={Colors.white}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
         
         {/* User Text - Header'ın altında, flex ile */}
@@ -531,20 +522,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 text={userText}
                 family="regular"
                 size={16}
-                color={Colors.white}
-              />
-            </View>
-          </View>
-        ) : null}
-        
-        {/* Demo Timer - Header'ın altında */}
-        {isDemo && demoTimeRemaining !== null && demoTimeRemaining > 0 ? (
-          <View style={styles.demoTimerContainer}>
-            <View style={styles.demoTimerBubble}>
-              <ReusableText
-                text={`Demo: ${Math.floor(demoTimeRemaining / 60)}:${String(demoTimeRemaining % 60).padStart(2, '0')}`}
-                family="medium"
-                size={14}
                 color={Colors.white}
               />
             </View>
@@ -765,10 +742,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginTop: 10,
   },
-  demoTimerContainer: {
-    paddingHorizontal: 20,
-    alignItems: 'flex-end',
-    marginTop: 8,
+  demoTimerHeader: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+    zIndex: 10,
   },
   demoTimerBubble: {
     backgroundColor: 'rgba(255, 152, 0, 0.8)',
@@ -786,6 +764,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 20,
     minHeight: 80,
+    position: 'relative',
   },
   leftSection: {
     flexDirection: 'row',

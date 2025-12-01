@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useSelector, useDispatch } from 'react-redux';
 import ReusableText from '@/components/ui/ReusableText';
 import SelectionModal from '@/components/ui/SelectionModal';
 import { AICategory, aiCategories } from '@/data/AICategories';
@@ -19,11 +20,16 @@ import PurchaseModal from '@/components/ui/PurchaseModal';
 import CouponModal from '@/components/ui/CouponModal';
 import CouponSelectionModal from '@/components/ui/CouponSelectionModal';
 import { useCouponAccess } from '@/hooks/useCouponAccess';
+import { checkDemoStatus } from '@/redux/actions/couponActions';
+import { checkDemoExpiration } from '@/redux/reducers/couponReducer';
 
 const AIDetailPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
+  const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
+  const { user } = useSelector((state: any) => state.user);
+  const { isDemoExpired, loading: couponLoading, demoStatus } = useSelector((state: any) => state.coupon);
   const [isGradientVisible, setIsGradientVisible] = useState(true);
   const [isTextVisible, setIsTextVisible] = useState(true);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -43,9 +49,52 @@ const AIDetailPage = () => {
   
   // Check coupon access - hem purchase hem demo kontrolü
   const { hasAccess, loading: accessLoading, isDemo, isPurchase, expiresAt } = useCouponAccess();
+  const [demoTimeRemaining, setDemoTimeRemaining] = React.useState<number | null>(null); // Demo kalan süre (saniye)
+  
+  // Demo süresi kontrolü için Redux action dispatch et
+  useEffect(() => {
+    const checkDemo = async () => {
+      const result = await dispatch(checkDemoStatus() as any);
+      if (checkDemoStatus.fulfilled.match(result)) {
+        dispatch(checkDemoExpiration());
+      }
+    };
+    
+    checkDemo();
+    
+    // Her saniye kontrol et
+    const interval = setInterval(() => {
+      dispatch(checkDemoExpiration());
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [dispatch]);
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
+  
+  // Demo timer - sadece ai-detail.tsx'te çalışır
+  useEffect(() => {
+    if (!isDemo || !expiresAt) {
+      setDemoTimeRemaining(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const expiry = expiresAt.getTime();
+      const remaining = Math.max(0, Math.floor((expiry - now) / 1000)); // Saniye cinsinden
+      setDemoTimeRemaining(remaining);
+    };
+
+    // İlk güncelleme
+    updateTimer();
+
+    // Her saniye güncelle
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [isDemo, expiresAt]);
 
   if (!item) {
     return (
@@ -74,24 +123,60 @@ const AIDetailPage = () => {
 
   const handleStartPress = () => {
     // Check if user has access (wait for loading to finish)
-    if (accessLoading) {
+    if (accessLoading || couponLoading) {
       return; // Wait for access check to complete
     }
 
-    // Purchase kuponu varsa direkt erişim ver, demo kontrolü sadece demo için
-    if (!hasAccess && !isPurchase) {
-      // Sadece demo kullanıcıları için selection modal göster
-      if (isDemo) {
-        // Demo süresi dolmuş, zaten useEffect'te alert gösterilecek
-        return;
-      }
-      // Hiç erişim yok, show selection modal
-      setCouponSelectionModalVisible(true);
+    // Demo süresi dolmuş mu kontrol et (hem Redux state'ten hem de local state'ten)
+    // expiresAt geçmişteyse demo süresi dolmuş demektir (hasDemo false olsa bile)
+    const expiresAtFromRedux = demoStatus?.expiresAt ? new Date(demoStatus.expiresAt) : null;
+    const isExpiredFromRedux = expiresAtFromRedux && expiresAtFromRedux <= new Date();
+    
+    const isDemoExpiredCheck = isDemoExpired || 
+                               isExpiredFromRedux ||
+                               (isDemo && demoTimeRemaining !== null && demoTimeRemaining <= 0) ||
+                               (isDemo && expiresAt && new Date(expiresAt) <= new Date());
+    
+    if (isDemoExpiredCheck) {
+      Alert.alert(
+        t('demo.expired.title') || 'Demo Süresi Doldu',
+        t('demo.expired.message') || 'Demo süreniz doldu. Bizimle iletişime geçin.',
+        [
+          {
+            text: t('common.ok') || 'Tamam',
+            onPress: () => {
+              // Tüm servisleri temizle
+              aiService.cleanup().catch(() => {});
+              // Home'a yönlendir
+              router.push('/(tabs)/home');
+            }
+          }
+        ],
+        { cancelable: false }
+      );
       return;
     }
 
-    // User has access (purchase veya aktif demo), proceed with animation
-    startVideoAnimation();
+    // Kullanıcıda activeCouponCode veya courseCode varsa erişim var demektir
+    const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
+                          (user?.courseCode && user?.courseCode.trim() !== '');
+
+    // Purchase kuponu varsa veya coupon code varsa direkt erişim ver
+    // Ama demo süresi dolmamış olmalı
+    if ((hasAccess || isPurchase || hasCouponCode) && !isDemoExpiredCheck) {
+      // User has access (purchase veya aktif demo veya coupon code), proceed with animation
+      startVideoAnimation();
+      return;
+    }
+
+    // Sadece demo kullanıcıları için selection modal göster
+    if (isDemo) {
+      // Demo süresi dolmuş, zaten yukarıda alert gösterildi
+      return;
+    }
+    
+    // Hiç erişim yok, show selection modal
+    setCouponSelectionModalVisible(true);
   };
 
   const startVideoAnimation = () => {
@@ -142,10 +227,7 @@ const AIDetailPage = () => {
     setCouponModalVisible(false);
     // After successful coupon entry, reload user data
     // The useCouponAccess hook will update automatically via checkDemoStatus
-    // Wait a bit for the hook to update, then check access
-    setTimeout(() => {
-      // Access will be checked by the useEffect that watches hasAccess
-    }, 1000);
+    // Kullanıcı "Başla" butonuna tıklayarak devam edecek
   };
 
 
@@ -168,41 +250,12 @@ const AIDetailPage = () => {
     }
   }, [item?.voice]);
 
-  // Check access when hasAccess changes (after coupon entry)
-  useEffect(() => {
-    if (!accessLoading && hasAccess && isGradientVisible && !purchaseModalVisible && !couponModalVisible) {
-      // Access was granted after coupon entry, start animation
-      startVideoAnimation();
-    }
-  }, [hasAccess, accessLoading, isGradientVisible, purchaseModalVisible, couponModalVisible]);
+  // NOT: Otomatik animasyon başlatma kaldırıldı
+  // Kullanıcı mutlaka "Başla" butonuna tıklamalı
+  // Bu sayede demo kontrolü ve erişim kontrolü handleStartPress içinde yapılıyor
 
-  // Check demo expiration - demo süresi dolduğunda kontrol et
-  useEffect(() => {
-    if (!accessLoading && isDemo && expiresAt) {
-      const now = new Date();
-      const expiry = new Date(expiresAt);
-      
-      // Demo süresi doldu mu kontrol et
-      if (expiry <= now) {
-        Alert.alert(
-          t('demo.expired.title') || 'Demo Süresi Doldu',
-          t('demo.expired.message') || 'Demo süreniz doldu. Bizimle iletişime geçin.',
-          [
-            {
-              text: t('common.ok') || 'Tamam',
-              onPress: () => {
-                // Tüm servisleri temizle
-                aiService.cleanup().catch(() => {});
-                // Home'a yönlendir
-                router.push('/(tabs)/home');
-              }
-            }
-          ],
-          { cancelable: false }
-        );
-      }
-    }
-  }, [accessLoading, isDemo, expiresAt, router, t]);
+  // NOT: Demo expiration alert'i handleStartPress içinde gösteriliyor
+  // Sayfa açılır açılmaz değil, "Başla" butonuna tıklandığında gösterilecek
 
   // Cleanup on unmount
   useEffect(() => {
@@ -236,6 +289,8 @@ const AIDetailPage = () => {
             setIsProcessing={setIsProcessing}
             selectedDetectionMethod={selectedDetectionMethod}
             onGoBack={handleGoBack}
+            isDemo={isDemo}
+            demoTimeRemaining={demoTimeRemaining}
           />
         </Animated.View>
       ) : (

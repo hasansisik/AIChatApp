@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "expo-router";
 import { editProfile, loadUser, logout, getFavoriteAIs, removeFavoriteAI } from "@/redux/actions/userActions";
+import { updateCourseCode } from "@/redux/actions/eduActions";
 import AppBar from "@/components/ui/AppBar";
 import { Colors } from "@/hooks/useThemeColor";
 import ReusableText from "@/components/ui/ReusableText";
@@ -23,9 +24,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import ProfileCard from "@/components/cards/ProfileCard";
 import OpenGalleryCameraModal from "@/components/other/OpenGalleryCameraModal";
 import { useTranslation } from "react-i18next";
-import CouponModal from "@/components/ui/CouponModal";
-import PurchaseModal from "@/components/ui/PurchaseModal";
-import CouponSelectionModal from "@/components/ui/CouponSelectionModal";
+import { TextInput, ActivityIndicator } from "react-native";
 
 const Profile: React.FC = () => {
   const { t } = useTranslation();
@@ -36,9 +35,9 @@ const Profile: React.FC = () => {
   const [status, setStatus] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const [couponModalVisible, setCouponModalVisible] = useState(false);
-  const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
-  const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
+  const [codeModalVisible, setCodeModalVisible] = useState(false);
+  const [courseCode, setCourseCode] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const toastRef = useRef<any>(null);
   const favoritesLoadedRef = useRef(false);
 
@@ -91,6 +90,34 @@ const Profile: React.FC = () => {
   const logoutHandler = () => {
     dispatch<any>(logout());
     router.push("/(auth)/login");
+  };
+
+  const handleCodeSubmit = async () => {
+    if (!courseCode.trim()) {
+      setStatus("error");
+      setMessage(t("edu.code.enterCode"));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await dispatch<any>(updateCourseCode(courseCode.trim().toUpperCase()));
+      if (updateCourseCode.fulfilled.match(result)) {
+        await dispatch<any>(loadUser());
+        setCodeModalVisible(false);
+        setCourseCode("");
+        setStatus("success");
+        setMessage(t("edu.code.updateSuccess"));
+      } else {
+        setStatus("error");
+        setMessage(result.payload || t("edu.code.updateError"));
+      }
+    } catch (error) {
+      setStatus("error");
+      setMessage(t("common.errorOccurred"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -185,14 +212,50 @@ const Profile: React.FC = () => {
             />
             {/* Kupon Kodu */}
             {user && (
-              <ProfileCard
-                title={t("profile.tabs.couponCode")}
-                icon={"ticket"}
-                onPress={() => {
-                  // Show selection modal first
-                  setCouponSelectionModalVisible(true);
-                }}
-              />
+              <View style={styles.couponCard}>
+                <View style={styles.couponInfo}>
+                  <Ionicons name="ticket" size={24} color={Colors.primary} />
+                  <View style={styles.couponTextContainer}>
+                    <ReusableText
+                      text={t("profile.tabs.couponCode")}
+                      family="medium"
+                      size={FontSizes.small}
+                      color={Colors.black}
+                    />
+                    {user?.activeCouponCode || user?.courseCode ? (
+                      <ReusableText
+                        text={user?.activeCouponCode || user?.courseCode || ""}
+                        family="regular"
+                        size={FontSizes.xSmall}
+                        color={Colors.description}
+                        style={styles.couponCodeText}
+                      />
+                    ) : (
+                      <ReusableText
+                        text={t("profile.tabs.noCouponCode")}
+                        family="regular"
+                        size={FontSizes.xSmall}
+                        color={Colors.description}
+                        style={styles.couponCodeText}
+                      />
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.changeButton}
+                  onPress={() => {
+                    setCourseCode(user?.activeCouponCode || user?.courseCode || "");
+                    setCodeModalVisible(true);
+                  }}
+                >
+                  <ReusableText
+                    text={t("common.change")}
+                    family="medium"
+                    size={FontSizes.xSmall}
+                    color={Colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
             )}
             {/* Menu4 */}
             <ProfileCard
@@ -277,37 +340,65 @@ const Profile: React.FC = () => {
           />
         </Modal>
 
-        {/* Coupon Selection Modal */}
-        <CouponSelectionModal
-          visible={couponSelectionModalVisible}
-          onClose={() => setCouponSelectionModalVisible(false)}
-          onHasCoupon={() => {
-            setCouponSelectionModalVisible(false);
-            setCouponModalVisible(true);
-          }}
-          onNoCoupon={() => {
-            setCouponSelectionModalVisible(false);
-            setPurchaseModalVisible(true);
-          }}
-        />
-
-        {/* Purchase Modal */}
-        <PurchaseModal
-          visible={purchaseModalVisible}
-          onClose={() => setPurchaseModalVisible(false)}
-        />
-
-        {/* Coupon Modal */}
-        <CouponModal
-          visible={couponModalVisible}
-          onClose={() => setCouponModalVisible(false)}
-          onSuccess={async () => {
-            setCouponModalVisible(false);
-            await dispatch<any>(loadUser());
-            setStatus("success");
-            setMessage(t("coupon.success"));
-          }}
-        />
+        {/* Code Change Modal */}
+        <Modal
+          visible={codeModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setCodeModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ReusableText
+                text={t('profile.tabs.changeCouponCode')}
+                family="bold"
+                size={FontSizes.large}
+                color={Colors.black}
+              />
+              <TextInput
+                style={styles.codeInput}
+                placeholder={t('tabs.courseCode.placeholder') || 'Kupon kodunu girin'}
+                placeholderTextColor={Colors.lightGray}
+                value={courseCode}
+                onChangeText={setCourseCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setCodeModalVisible(false);
+                    setCourseCode("");
+                  }}
+                >
+                  <ReusableText
+                    text={t('common.cancel')}
+                    family="medium"
+                    size={FontSizes.small}
+                    color={Colors.black}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.submitButton]}
+                  onPress={handleCodeSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color={Colors.white} />
+                  ) : (
+                    <ReusableText
+                      text={t('common.save')}
+                      family="medium"
+                      size={FontSizes.small}
+                      color={Colors.white}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -390,6 +481,78 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     color: "white",
+  },
+  couponCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: Colors.backgroundBox,
+    marginBottom: 15,
+  },
+  couponInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  couponTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  couponCodeText: {
+    marginTop: 2,
+  },
+  changeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.white,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 24,
+    width: "85%",
+    maxWidth: 400,
+    gap: 20,
+  },
+  codeInput: {
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: FontSizes.medium,
+    color: Colors.black,
+    backgroundColor: Colors.background,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "flex-end",
+  },
+  modalButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    minWidth: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: Colors.backgroundBox,
+  },
+  submitButton: {
+    backgroundColor: Colors.primary,
   },
 });
 

@@ -4,6 +4,7 @@ import {userReducer} from "./reducers/userReducer";
 import {eduReducer} from "./reducers/eduReducer";
 import {dialogfusionReducer} from "./reducers/dialogfusionReducer";
 import {onboardingReducer} from "./reducers/onboardingReducer";
+import couponReducer from "./reducers/couponReducer";
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     edu: eduReducer,
     dialogfusion: dialogfusionReducer,
     onboarding: onboardingReducer,
+    coupon: couponReducer,
   },
 });
 
