@@ -73,7 +73,7 @@ const TabNavigation = () => {
   
   const styles = StyleSheet.create({
     tabBarStyle: {
-      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.7)', 
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.8)', 
       height: 70,
       paddingTop: 15,
       position: "absolute",
@@ -88,28 +88,28 @@ const TabNavigation = () => {
       display: 'none',
     },
     activeTabContainer: {
-      width: 65,
-      height: 65,
+      width: 55,
+      height: 55,
       borderRadius: 50,
       justifyContent: 'center',
       alignItems: 'center',
     },
     inactiveTabContainer: {
-      width: 60,
-      height: 60,
+      width: 55,
+      height: 55,
       borderRadius: 50,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: Colors.tabBarBackground,
     },
     profileImage: {
-      width: 60,
-      height: 60,
+      width: 55,
+      height: 55,
       borderRadius: 35,
     },
     profileImageInactive: {
-      width: 60,
-      height: 60,
+      width: 55,
+      height: 55,
       borderRadius: 35,
       opacity: 0.7,
     },
