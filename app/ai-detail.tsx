@@ -117,11 +117,11 @@ const AIDetailPage = () => {
     // Eğer kod var ama demo süresi dolmuşsa, alert göster
     if (isDemoExpiredCheck) {
       Alert.alert(
-        t('demo.expired.title') || 'Demo Süresi Doldu',
-        t('demo.expired.message') || 'Demo süreniz doldu. Bizimle iletişime geçin.',
+        t('demo.expired.title'),
+        t('demo.expired.message'),
         [
           {
-            text: t('common.ok') || 'Tamam',
+            text: t('common.ok'),
             onPress: () => {
               // Tüm servisleri temizle
               aiService.cleanup().catch(() => {});

@@ -442,6 +442,13 @@
     "input": {
       "placeholder": "Not alın..."
     },
+    "microphone": {
+      "speaking": "Konuş...",
+      "pushToTalk": "Bas Konuş"
+    },
+    "demo": {
+      "timer": "Demo"
+    },
     "categories": {
       "lifestyle": "Yaşam Tarzı",
       "education": "Eğitim",
@@ -518,6 +525,9 @@
     "change": "Değiştir",
     "start": "Başla",
     "error": "Hata",
-    "success": "Başarılı"
+    "success": "Başarılı",
+    "notAvailable": "-",
+    "edit": "Düzenle",
+    "save": "Kaydet"
   }
 }

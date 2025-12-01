@@ -441,6 +441,13 @@
     "input": {
       "placeholder": "Take notes..."
     },
+    "microphone": {
+      "speaking": "Speaking...",
+      "pushToTalk": "Push to Talk"
+    },
+    "demo": {
+      "timer": "Demo"
+    },
     "categories": {
       "lifestyle": "Lifestyle",
       "education": "Education",
@@ -517,6 +524,9 @@
     "change": "Change",
     "start": "Start",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "notAvailable": "-",
+    "edit": "Edit",
+    "save": "Save"
   }
 }

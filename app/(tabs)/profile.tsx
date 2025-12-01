@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "expo-router";
 import { editProfile, loadUser, logout, getFavoriteAIs, removeFavoriteAI } from "@/redux/actions/userActions";
-import { updateCourseCode } from "@/redux/actions/eduActions";
+import { validateCoupon } from "@/redux/actions/couponActions";
 import AppBar from "@/components/ui/AppBar";
 import { Colors } from "@/hooks/useThemeColor";
 import ReusableText from "@/components/ui/ReusableText";
@@ -95,22 +95,22 @@ const Profile: React.FC = () => {
   const handleCodeSubmit = async () => {
     if (!courseCode.trim()) {
       setStatus("error");
-      setMessage(t("edu.code.enterCode"));
+      setMessage(t("coupon.enterCode"));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const result = await dispatch<any>(updateCourseCode(courseCode.trim().toUpperCase()));
-      if (updateCourseCode.fulfilled.match(result)) {
+      const result = await dispatch<any>(validateCoupon(courseCode.trim().toUpperCase()));
+      if (validateCoupon.fulfilled.match(result)) {
         await dispatch<any>(loadUser());
         setCodeModalVisible(false);
         setCourseCode("");
         setStatus("success");
-        setMessage(t("edu.code.updateSuccess"));
+        setMessage(t("coupon.success"));
       } else {
         setStatus("error");
-        setMessage(result.payload || t("edu.code.updateError"));
+        setMessage(result.payload || t("coupon.error"));
       }
     } catch (error) {
       setStatus("error");
@@ -394,7 +394,7 @@ const Profile: React.FC = () => {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.background,
     paddingHorizontal: 25,
   },
   scrollContent: {
@@ -473,10 +473,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
+    padding: 10,
     borderRadius: 12,
-    backgroundColor: Colors.backgroundBox,
-    marginBottom: 15,
+    marginBottom: 5,
   },
   couponInfo: {
     flexDirection: "row",

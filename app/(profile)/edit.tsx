@@ -52,8 +52,6 @@ const ProfileDetails: React.FC = () => {
         name: user.name || "",
         surname: user.surname || "",
         email: user.email || "",
-        password: "",
-        confirmPassword: "",
         picture: user.profile?.picture || "",
       });
     }
@@ -98,15 +96,6 @@ const ProfileDetails: React.FC = () => {
     name: Yup.string().min(2, t('validation.nameMinLength')),
     surname: Yup.string().min(2, t('validation.surnameMinLength')),
     email: Yup.string().email(t('validation.invalidEmail')),
-    password: Yup.string()
-      .min(6, t('validation.passwordMinLength'))
-      .test('password-match', t('validation.passwordsNotMatch'), function (value) {
-        return !value || value === this.parent.confirmPassword;
-      }),
-    confirmPassword: Yup.string()
-      .test('passwords-match', t('validation.passwordsNotMatch'), function (value) {
-        return !this.parent.password || value === this.parent.password;
-      }),
   });
 
   const submitHandler = async (): Promise<void> => {
@@ -126,10 +115,6 @@ const ProfileDetails: React.FC = () => {
       }
       if (values.email && values.email !== user?.email) {
         updateData.email = values.email;
-      }
-      if (values.password) {
-        updateData.password = values.password;
-        updateData.currentPassword = values.password; // For verification
       }
 
       // Only send request if there are changes
@@ -177,16 +162,12 @@ const ProfileDetails: React.FC = () => {
     name: string;
     surname: string;
     email: string;
-    password: string;
-    confirmPassword: string;
     picture: string;
   }>({
     initialValues: {
       name: "",
       surname: "",
       email: "",
-      password: "",
-      confirmPassword: "",
       picture: "",
     },
     validationSchema,
@@ -248,13 +229,6 @@ const ProfileDetails: React.FC = () => {
             </View>
           </View>
 
-          {/* İsim Soyisim */}
-          <ReusableText
-            text={t("profile.edit.name")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
           <ReusableInput
             label={t("profile.edit.name")}
             value={formik.values.name}
@@ -264,12 +238,6 @@ const ProfileDetails: React.FC = () => {
             labelColor={Colors.black}
           />
 
-          <ReusableText
-            text={t("profile.edit.surname")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
           <ReusableInput
             label={t("profile.edit.surname")}
             value={formik.values.surname}
@@ -279,13 +247,6 @@ const ProfileDetails: React.FC = () => {
             labelColor={Colors.black}
           />
 
-          {/* Email */}
-          <ReusableText
-            text={t("profile.edit.email")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
           <ReusableInput
             label={t("profile.edit.email")}
             value={formik.values.email}
@@ -297,48 +258,13 @@ const ProfileDetails: React.FC = () => {
           />
 
 
-          {/* Password Section */}
-          <ReusableText
-            text={t("profile.edit.password")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
-          <ReusableInput
-            label={t("profile.edit.password")}
-            value={formik.values.password}
-            onChangeText={formik.handleChange("password")}
-            touched={formik.touched.password}
-            error={formik.errors.password}
-            labelColor={Colors.black}
-            secureTextEntry
-            placeholder={t("profile.edit.passwordPlaceholder")}
-          />
-
-          <ReusableText
-            text={t("profile.edit.confirmPassword")}
-            family={"medium"}
-            size={FontSizes.small}
-            color={Colors.black}
-          />
-          <ReusableInput
-            label={t("profile.edit.confirmPassword")}
-            value={formik.values.confirmPassword}
-            onChangeText={formik.handleChange("confirmPassword")}
-            touched={formik.touched.confirmPassword}
-            error={formik.errors.confirmPassword}
-            labelColor={Colors.black}
-            secureTextEntry
-            placeholder={t("profile.edit.confirmPasswordPlaceholder")}
-          />
-
           {/* Submit Button */}
           <View style={styles.btnContainer}>
             <ReusableButton
               btnText={t("common.save")}
               width={Sizes.screenWidth - 40}
-              height={50}
-              borderRadius={Sizes.small}
+              height={55}
+              borderRadius={40}
               backgroundColor={Colors.lightBlack}
               textColor={Colors.lightWhite}
               textFontSize={FontSizes.small}

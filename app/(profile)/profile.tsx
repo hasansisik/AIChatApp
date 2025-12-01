@@ -95,7 +95,7 @@ const Profile = () => {
   };
 
   const profileItems = [
-    { label: t("profile.email"), value: user?.email || "-", icon: "mail" as const },
+    { label: t("profile.email"), value: user?.email || t("common.notAvailable"), icon: "mail" as const },
   ];
 
   return (

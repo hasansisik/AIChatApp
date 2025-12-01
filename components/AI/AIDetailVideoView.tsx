@@ -619,7 +619,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <View style={styles.demoTimerHeader}>
               <View style={styles.demoTimerBubble}>
                 <ReusableText
-                  text={`Demo: ${Math.floor(currentDemoMinutes)}:${String(Math.floor((currentDemoMinutes % 1) * 60)).padStart(2, '0')}`}
+                  text={`${t('ai.demo.timer')}: ${Math.floor(currentDemoMinutes)}:${String(Math.floor((currentDemoMinutes % 1) * 60)).padStart(2, '0')}`}
                   family="medium"
                   size={14}
                   color={Colors.white}
@@ -688,7 +688,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 <>
                   <Ionicons name="mic" size={28} color="white" />
                   <ReusableText
-                    text="Konuş..."
+                    text={t('ai.microphone.speaking')}
                     family="medium"
                     size={12}
                     color={Colors.white}
@@ -699,7 +699,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 <>
                   <Ionicons name="mic-outline" size={28} color="white" />
                   <ReusableText
-                    text="Bas Konuş"
+                    text={t('ai.microphone.pushToTalk')}
                     family="medium"
                     size={12}
                     color={Colors.white}
