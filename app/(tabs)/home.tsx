@@ -9,7 +9,6 @@ import Header from '@/components/Home/Header';
 import Categories from '@/components/Home/Categories';
 import AIListing from '@/components/Home/AIListing';
 import { AICategory } from '@/data/AICategories';
-import { startConversation } from '@/redux/actions/aiActions';
 import { addFavoriteAI, removeFavoriteAI } from '@/redux/actions/userActions';
 import { getActiveOnboardings } from '@/redux/actions/onboardingActions';
 import { useSelector } from 'react-redux';
@@ -77,23 +76,8 @@ const Home = () => {
   };
 
   const handleAICategoryPress = async (item: AICategory) => {
-    try {
-      // Start conversation with avatar_id
-      const result = await dispatch(startConversation({ avatar_id: item.avatar_id }) as any);
-      
-      if (startConversation.fulfilled.match(result)) {
-        // Navigate to AI detail page with conversation data
-        router.push(`/ai-detail?id=${item.id}`);
-      } else {
-        console.error('Failed to start conversation:', result.payload);
-        // Still navigate even if conversation fails
-        router.push(`/ai-detail?id=${item.id}`);
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-      // Still navigate even if conversation fails
-      router.push(`/ai-detail?id=${item.id}`);
-    }
+    // Navigate directly to AI detail page
+    router.push(`/ai-detail?id=${item.id}`);
   };
 
   const handleFavoritePress = async (item: AICategory) => {

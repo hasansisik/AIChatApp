@@ -39,6 +39,7 @@ class AIService {
   private isStreaming = false;
   private isStartingRecording = false;
   private currentVoice: string | null = null;
+  private currentLanguage: 'tr' | 'en' = 'tr';
   private voiceConfigSent = false;
 
   onTranscription(handler: TranscriptionHandler) {
@@ -115,10 +116,15 @@ class AIService {
 
     this.socketReady = new Promise((resolve, reject) => {
       try {
-        // Voice bilgisini query parameter olarak ekle
-        const voiceParam = this.currentVoice ? `?voice=${encodeURIComponent(this.currentVoice)}` : '';
+        // Voice ve language bilgisini query parameter olarak ekle
+        const params = new URLSearchParams();
+        if (this.currentVoice) {
+          params.append('voice', this.currentVoice);
+        }
+        params.append('language', this.currentLanguage);
+        const queryString = params.toString();
         const sttBaseUrl = getSTTWebSocketURL();
-        const wsUrl = `${sttBaseUrl}${voiceParam}`;
+        const wsUrl = queryString ? `${sttBaseUrl}?${queryString}` : sttBaseUrl;
         console.log(`🔌 WebSocket bağlantısı kuruluyor: ${wsUrl}`);
         this.sttSocket = new WebSocket(wsUrl);
         this.sttSocket.binaryType = 'arraybuffer';
@@ -379,6 +385,10 @@ class AIService {
     if (shouldSendAudio) {
       try {
         await this.sendBinaryAudio(audioUri);
+        // Son chunk'ların da işlenmesi için kısa bir gecikme
+        if (isFinal) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       } catch (error) {
         // Hata olsa bile devam et, dosyayı sil
       }
@@ -434,7 +444,7 @@ class AIService {
     }
   }
 
-  async startLiveTranscription(voice: string): Promise<boolean> {
+  async startLiveTranscription(voice: string, language: 'tr' | 'en' = 'tr'): Promise<boolean> {
     if (this.isStreaming) {
       return false;
     }
@@ -444,11 +454,19 @@ class AIService {
       return false;
     }
 
-    // Voice'u set et
+    // Voice ve language'ı set et
     this.currentVoice = voice.trim();
-    console.log(`🎙️ Voice: ${this.currentVoice}`);
+    this.currentLanguage = language;
+    console.log(`🎙️ Voice: ${this.currentVoice}, Language: ${this.currentLanguage}`);
     
-    // Socket'i bağla (voice query parameter olarak gönderilecek)
+    // Eğer socket açıksa ve dil değiştiyse, yeniden bağlan
+    if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+      this.sttSocket.close();
+      this.sttSocket = null;
+      this.socketReady = null;
+    }
+    
+    // Socket'i bağla (voice ve language query parameter olarak gönderilecek)
     await this.ensureSocket();
 
     const started = await this.startRecordingInstance();

@@ -19,7 +19,6 @@ import { FontSizes } from '@/constants/Fonts';
 import AppBar from '@/components/ui/AppBar';
 import { AICategory, aiCategories } from '@/data/AICategories';
 import { getFavoriteAIs, removeFavoriteAI } from '@/redux/actions/userActions';
-import { startConversation } from '@/redux/actions/aiActions';
 
 const FavoriteAIs: React.FC = () => {
   const router = useRouter();
@@ -77,23 +76,8 @@ const FavoriteAIs: React.FC = () => {
   };
 
   const handleItemPress = async (item: AICategory) => {
-    try {
-      // Start conversation with avatar_id
-      const result = await dispatch<any>(startConversation({ avatar_id: item.avatar_id }));
-      
-      if (startConversation.fulfilled.match(result)) {
-        // Navigate to AI detail page with conversation data
-        router.push(`/ai-detail?id=${item.id}`);
-      } else {
-        console.error('Failed to start conversation:', result.payload);
-        // Still navigate even if conversation fails
-        router.push(`/ai-detail?id=${item.id}`);
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-      // Still navigate even if conversation fails
-      router.push(`/ai-detail?id=${item.id}`);
-    }
+    // Navigate directly to AI detail page
+    router.push(`/ai-detail?id=${item.id}`);
   };
 
   const renderItem = ({ item }: { item: AICategory }) => (

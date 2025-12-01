@@ -7,23 +7,18 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { RootState } from '@/redux/store';
 import ReusableText from '@/components/ui/ReusableText';
 import SelectionModal from '@/components/ui/SelectionModal';
 import { AICategory, aiCategories } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { sendAudio, endConversation } from '@/redux/actions/aiActions';
 import AIDetailInitialView from '@/components/AI/AIDetailInitialView';
 import AIDetailVideoView from '@/components/AI/AIDetailVideoView';
 
 const AIDetailPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
-  const aiState = useSelector((state: RootState) => state.ai);
   const [isGradientVisible, setIsGradientVisible] = useState(true);
   const [isTextVisible, setIsTextVisible] = useState(true);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -40,10 +35,6 @@ const AIDetailPage = () => {
   
   // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
-  
-  // Get websocket_stream_url & conversation_id from Redux state
-  const webStreamUrl = aiState.conversation.websocket_stream_url;
-  const conversationId = aiState.conversation.conversation_id;
 
   if (!item) {
     return (
@@ -62,11 +53,6 @@ const AIDetailPage = () => {
       
       // Tüm servisleri temizle
       await aiService.cleanup();
-      
-      // Stream conversation'ı kapat
-      if (conversationId) {
-        await dispatch(endConversation(conversationId) as any);
-      }
     } catch (error) {
       // Ignore
     } finally {
@@ -136,66 +122,6 @@ const AIDetailPage = () => {
     };
   }, []);
 
-  // Listen for TTS audio and send to stream service
-  useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-
-    const handleTTSAudio = async (audioUri: string) => {
-      try {
-        // TTS audio'yu stream servisine gönder (video+audio stream için)
-        await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
-        console.log('✅ [ai-detail] TTS audio stream servisine gönderildi');
-      } catch (error: any) {
-        // 409 Conflict is normal when audio is already being processed - silently ignore
-        if (error?.response?.status === 409 || error?.message?.includes('409')) {
-          console.log('ℹ️ [ai-detail] TTS audio zaten işleniyor - normal durum');
-        } else {
-          console.error('❌ [ai-detail] TTS audio gönderilemedi:', error);
-        }
-      }
-    };
-
-    aiService.onTTSAudio(handleTTSAudio);
-    return () => {
-      aiService.offTTSAudio(handleTTSAudio);
-    };
-  }, [dispatch, conversationId]);
-
-  // Listen for recording completion and send to conversation for lipsync
-  useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-
-    const handleRecordingForLipsync = async (audioUri: string) => {
-      try {
-        console.log('🎤 [ai-detail] Recording conversation\'a gönderiliyor...');
-        setIsProcessing(true);
-        const result = await dispatch(sendAudio({ conversation_id: conversationId, audio: audioUri }) as any).unwrap();
-        console.log('✅ [ai-detail] Recording conversation\'a gönderildi:', result);
-        
-        // Recording sent successfully, server will process it
-        // The WebSocket stream will start receiving synchronized video+audio frames
-        // isProcessing will be set to false when recording stops (in handleMicrophonePress)
-        
-        // Clean up the temporary file after sending
-        setTimeout(() => {
-          const { deleteAsync } = require('expo-file-system/legacy');
-          deleteAsync(audioUri, { idempotent: true }).catch(() => {});
-        }, 5000);
-      } catch (error) {
-        console.error('❌ [ai-detail] Recording gönderilemedi:', error);
-        setIsProcessing(false);
-      }
-    };
-
-    aiService.onRecordingForLipsync(handleRecordingForLipsync);
-    return () => {
-      aiService.offRecordingForLipsync(handleRecordingForLipsync);
-    };
-  }, [dispatch, conversationId]);
 
   return (
     <View style={styles.container}>
@@ -205,11 +131,10 @@ const AIDetailPage = () => {
         translucent
       />
       
-      {/* Initial View (Gradient + Text) or Video View (WebView + All UI) */}
-      {webStreamUrl && !isGradientVisible ? (
+      {/* Initial View (Gradient + Text) or Video View */}
+      {!isGradientVisible ? (
         <Animated.View style={{ flex: 1, opacity: videoOpacity }}>
           <AIDetailVideoView
-            webStreamUrl={webStreamUrl}
             item={item}
             bottomAreaOpacity={bottomAreaOpacity}
             isKeyboardVisible={isKeyboardVisible}
@@ -222,7 +147,6 @@ const AIDetailPage = () => {
             setIsProcessing={setIsProcessing}
             selectedDetectionMethod={selectedDetectionMethod}
             onGoBack={handleGoBack}
-            conversationId={aiState.conversation.conversation_id ?? undefined}
           />
         </Animated.View>
       ) : (
