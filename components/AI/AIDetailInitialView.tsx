@@ -19,6 +19,7 @@ interface AIDetailInitialViewProps {
   isTextVisible: boolean;
   onStartPress: () => void;
   onGoBack: () => void;
+  buttonText?: string; // Optional custom button text
 }
 
 const AIDetailInitialView: React.FC<AIDetailInitialViewProps> = ({
@@ -30,6 +31,7 @@ const AIDetailInitialView: React.FC<AIDetailInitialViewProps> = ({
   isTextVisible,
   onStartPress,
   onGoBack,
+  buttonText,
 }) => {
   return (
     <>
@@ -100,6 +102,7 @@ const AIDetailInitialView: React.FC<AIDetailInitialViewProps> = ({
           isVisible={isTextVisible}
           opacity={textOpacity}
           onStartPress={onStartPress}
+          buttonText={buttonText}
         />
       </View>
     </>

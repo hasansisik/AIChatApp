@@ -41,7 +41,7 @@ export const useCouponAccess = (): CouponAccess => {
     const interval = setInterval(checkAccess, 60000);
     
     return () => clearInterval(interval);
-  }, [dispatch, user?._id]); // Re-check when user changes
+  }, [dispatch, user?._id, user?.activeCouponCode, user?.courseCode]); // Re-check when user or coupon codes change
 
   // Demo kontrolü: minutesRemaining > 0 ise aktif demo var
   const minutesRemaining = demoStatus?.minutesRemaining ?? null;

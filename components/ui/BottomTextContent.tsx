@@ -11,6 +11,7 @@ interface BottomTextContentProps {
   isVisible: boolean;
   opacity: Animated.Value;
   onStartPress: () => void;
+  buttonText?: string; // Optional custom button text
 }
 
 const BottomTextContent: React.FC<BottomTextContentProps> = ({
@@ -18,6 +19,7 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
   isVisible,
   opacity,
   onStartPress,
+  buttonText,
 }) => {
   const { t } = useTranslation();
   if (!isVisible) return null;
@@ -53,7 +55,7 @@ const BottomTextContent: React.FC<BottomTextContentProps> = ({
         activeOpacity={0.8}
       >
         <ReusableText
-          text={t('ai.startButton')}
+          text={buttonText || t('ai.startButton')}
           family="medium"
           size={16}
           color={Colors.lightWhite}

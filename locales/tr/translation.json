@@ -431,6 +431,7 @@
   "ai": {
     "notFound": "AI bulunamadı",
     "startButton": "Hemen Başla",
+    "noCodeButton": "Kod Yok",
     "liveChat": "Canlı",
     "recording": {
       "startError": "Kayıt başlatılamadı"
@@ -515,6 +516,8 @@
     "cannotOpenWhatsApp": "WhatsApp açılamadı",
     "cannotMakeCall": "Telefon araması yapılamadı",
     "change": "Değiştir",
-    "start": "Başla"
+    "start": "Başla",
+    "error": "Hata",
+    "success": "Başarılı"
   }
 }

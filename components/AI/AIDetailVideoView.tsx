@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
   },
   demoTimerHeader: {
     position: 'absolute',
-    top: 10,
+    top: 60,
     right: 20,
     zIndex: 10,
   },

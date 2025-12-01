@@ -22,6 +22,7 @@ import CouponSelectionModal from '@/components/ui/CouponSelectionModal';
 import { useCouponAccess } from '@/hooks/useCouponAccess';
 import { checkDemoStatus } from '@/redux/actions/couponActions';
 import { checkDemoExpiration } from '@/redux/reducers/couponReducer';
+import { loadUser } from '@/redux/actions/userActions';
 
 const AIDetailPage = () => {
   const { t } = useTranslation();
@@ -102,6 +103,18 @@ const AIDetailPage = () => {
     const isDemoExpiredCheck = isDemoExpired || 
                                (isDemo && (minutesRemaining === null || minutesRemaining <= 0));
     
+    // Kullanıcıda activeCouponCode veya courseCode varsa erişim var demektir
+    const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
+                          (user?.courseCode && user?.courseCode.trim() !== '');
+
+    // Eğer kod yoksa (ne purchase ne demo), selection modal göster
+    if (!hasAccess && !isPurchase && !hasCouponCode && !isDemo) {
+      // Hiç erişim yok, show selection modal
+      setCouponSelectionModalVisible(true);
+      return;
+    }
+
+    // Eğer kod var ama demo süresi dolmuşsa, alert göster
     if (isDemoExpiredCheck) {
       Alert.alert(
         t('demo.expired.title') || 'Demo Süresi Doldu',
@@ -112,8 +125,8 @@ const AIDetailPage = () => {
             onPress: () => {
               // Tüm servisleri temizle
               aiService.cleanup().catch(() => {});
-              // Home'a yönlendir
-              router.push('/(tabs)/home');
+              // Tabs'a yönlendir (home yerine)
+              router.push('/(tabs)/tabs');
             }
           }
         ],
@@ -122,26 +135,12 @@ const AIDetailPage = () => {
       return;
     }
 
-    // Kullanıcıda activeCouponCode veya courseCode varsa erişim var demektir
-    const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
-                          (user?.courseCode && user?.courseCode.trim() !== '');
-
-    // Purchase kuponu varsa veya coupon code varsa direkt erişim ver
-    // Ama demo süresi dolmamış olmalı
+    // Purchase kuponu varsa veya coupon code varsa veya aktif demo varsa direkt erişim ver
     if ((hasAccess || isPurchase || hasCouponCode) && !isDemoExpiredCheck) {
       // User has access (purchase veya aktif demo veya coupon code), proceed with animation
       startVideoAnimation();
       return;
     }
-
-    // Sadece demo kullanıcıları için selection modal göster
-    if (isDemo) {
-      // Demo süresi dolmuş, zaten yukarıda alert gösterildi
-      return;
-    }
-    
-    // Hiç erişim yok, show selection modal
-    setCouponSelectionModalVisible(true);
   };
 
   const startVideoAnimation = () => {
@@ -190,8 +189,9 @@ const AIDetailPage = () => {
 
   const handleCouponSuccess = async () => {
     setCouponModalVisible(false);
-    // After successful coupon entry, reload user data
-    // The useCouponAccess hook will update automatically via checkDemoStatus
+    // After successful coupon entry, reload user data and check demo status
+    await dispatch(loadUser() as any);
+    await dispatch(checkDemoStatus() as any);
     // Kullanıcı "Başla" butonuna tıklayarak devam edecek
   };
 

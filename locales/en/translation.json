@@ -430,6 +430,7 @@
   "ai": {
     "notFound": "AI not found",
     "startButton": "Start Now",
+    "noCodeButton": "No Code",
     "liveChat": "Live Chat",
     "recording": {
       "startError": "Recording could not be started"
@@ -514,6 +515,8 @@
     "cannotOpenWhatsApp": "Cannot open WhatsApp",
     "cannotMakeCall": "Cannot make phone call",
     "change": "Change",
-    "start": "Start"
+    "start": "Start",
+    "error": "Error",
+    "success": "Success"
   }
 }
