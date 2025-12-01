@@ -1,8 +1,9 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { getActiveOnboardings } from "../actions/onboardingActions";
+import { getActiveOnboardings, markOnboardingAsViewed } from "../actions/onboardingActions";
 
 interface Onboarding {
   _id: string;
+  onboardingId?: string; // Parent onboarding ID
   mediaUrl: string;
   mediaType: 'image' | 'video';
   order: number;
@@ -35,6 +36,22 @@ export const onboardingReducer = createReducer(initialState, (builder) => {
     .addCase(getActiveOnboardings.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
+    })
+    // Mark Onboarding as Viewed
+    .addCase(markOnboardingAsViewed.pending, (state) => {
+      // No loading state change needed
+    })
+    .addCase(markOnboardingAsViewed.fulfilled, (state, action) => {
+      // Remove onboardings that belong to the viewed onboarding
+      const onboardingId = action.meta.arg;
+      if (onboardingId) {
+        state.onboardings = state.onboardings.filter(
+          item => item.onboardingId !== onboardingId
+        );
+      }
+    })
+    .addCase(markOnboardingAsViewed.rejected, (state, action) => {
+      // Error is handled in component
     });
 });
 

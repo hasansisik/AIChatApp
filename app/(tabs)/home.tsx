@@ -10,11 +10,10 @@ import Categories from '@/components/Home/Categories';
 import AIListing from '@/components/Home/AIListing';
 import { AICategory } from '@/data/AICategories';
 import { addFavoriteAI, removeFavoriteAI } from '@/redux/actions/userActions';
-import { getActiveOnboardings } from '@/redux/actions/onboardingActions';
+import { getActiveOnboardings, markOnboardingAsViewed } from '@/redux/actions/onboardingActions';
 import { useSelector } from 'react-redux';
 import ChatBot from '@/components/ChatBot/ChatBot';
 import OnboardingCarousel from '@/components/Onboarding/OnboardingCarousel';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Home = () => {
   const router = useRouter();
@@ -31,15 +30,6 @@ const Home = () => {
     const loadOnboardings = async () => {
       try {
         await dispatch(getActiveOnboardings() as any);
-        
-        // Check if user has seen onboarding before (test için yeni key)
-        const hasSeenOnboardingV2 = await AsyncStorage.getItem('hasSeenOnboardingV2');
-        
-        // Show onboarding if there are active onboardings and user hasn't seen it
-        // Test için: onboardings varsa her zaman göster
-        if (onboardings.length > 0) {
-          setOnboardingVisible(true);
-        }
       } catch (error) {
         console.error('Error loading onboardings:', error);
       }
@@ -50,19 +40,40 @@ const Home = () => {
 
   // Update onboarding visibility when onboardings are loaded
   useEffect(() => {
-    const checkOnboarding = async () => {
-      if (onboardings.length > 0 && !onboardingsLoading) {
-        // Test için: onboardings varsa her zaman göster
-        setOnboardingVisible(true);
-      }
-    };
-
-    checkOnboarding();
+    if (onboardings.length > 0 && !onboardingsLoading) {
+      // Show onboarding if there are unviewed onboardings
+      setOnboardingVisible(true);
+    } else {
+      setOnboardingVisible(false);
+    }
   }, [onboardings, onboardingsLoading]);
 
   const handleOnboardingClose = async () => {
-    await AsyncStorage.setItem('hasSeenOnboardingV2', 'true');
-    setOnboardingVisible(false);
+    try {
+      // Get all unique onboarding IDs from the current onboardings
+      const uniqueOnboardingIds = new Set<string>();
+      onboardings.forEach((item: any) => {
+        if (item.onboardingId) {
+          uniqueOnboardingIds.add(item.onboardingId);
+        }
+      });
+
+      // Mark all viewed onboardings
+      const markPromises = Array.from(uniqueOnboardingIds).map((onboardingId) =>
+        dispatch(markOnboardingAsViewed(onboardingId) as any)
+      );
+
+      await Promise.all(markPromises);
+      
+      // Reload onboardings to get updated list (without viewed ones)
+      await dispatch(getActiveOnboardings() as any);
+      
+      setOnboardingVisible(false);
+    } catch (error) {
+      console.error('Error marking onboarding as viewed:', error);
+      // Still close the modal even if marking fails
+      setOnboardingVisible(false);
+    }
   };
 
   const handleCategoryPress = (category: string) => {

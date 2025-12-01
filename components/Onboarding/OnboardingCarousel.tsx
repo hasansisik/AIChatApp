@@ -34,6 +34,15 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
   // Sort onboardings by order
   const sortedOnboardings = [...onboardings].sort((a, b) => a.order - b.order);
 
+  // Reset currentIndex when visible becomes true
+  useEffect(() => {
+    if (visible && sortedOnboardings.length > 0) {
+      setCurrentIndex(0);
+      setIsCloseEnabled(false);
+      setTimeRemaining(3);
+    }
+  }, [visible, sortedOnboardings.length]);
+
   // Her slide için timer süresi: ilk slide 3 saniye, diğerleri 5 saniye
   const getTimerDuration = (index: number) => {
     return index === 0 ? 3 : 5;
