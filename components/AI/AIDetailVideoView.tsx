@@ -19,12 +19,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Switch } from 'react-native';
-import { useDispatch } from 'react-redux';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
-import { updateDemoMinutes } from '@/redux/actions/couponActions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -62,7 +60,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   demoMinutesRemaining = null, // Minutes remaining (not seconds)
 }) => {
   const { t } = useTranslation();
-  const dispatch = useDispatch();
   const textInputRef = useRef<TextInput>(null);
   const videoRef = useRef<Video>(null);
   const videoRefTTS = useRef<Video>(null);
@@ -75,10 +72,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr'); // STT dili
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false); // TTS çalıyor mu?
   const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(demoMinutesRemaining);
-  const startTimeRef = React.useRef<number | null>(null); // Sayfa açıldığında başlangıç zamanı
-  const initialMinutesRef = React.useRef<number | null>(null); // Başlangıç dakika değeri
-  const lastUpdateTimeRef = React.useRef<number>(Date.now());
-  const updateIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -339,38 +332,14 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       setIsSocketConnected(connected);
       
       if (connected) {
-        // WebSocket açıldığında demo süresi takibini başlat
+        // WebSocket açıldığında - backend'de timer başlatılıyor, sadece başlangıç değerini göster
         if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
-          // Eğer başlangıç zamanı yoksa, kaydet
-          if (startTimeRef.current === null) {
-            startTimeRef.current = Date.now();
-            initialMinutesRef.current = demoMinutesRemaining;
-            setCurrentDemoMinutes(demoMinutesRemaining);
-            lastUpdateTimeRef.current = Date.now();
-            console.log('🎬 Demo süresi takibi başlatıldı (WebSocket açıldı):', demoMinutesRemaining, 'dakika');
-          }
+          setCurrentDemoMinutes(demoMinutesRemaining);
+          console.log('📊 WebSocket açıldı, demo süresi gösteriliyor:', demoMinutesRemaining, 'dakika (backend\'de takip ediliyor)');
         }
       } else {
-        // WebSocket kapandığında demo süresi takibini durdur
-        if (updateIntervalRef.current) {
-          clearInterval(updateIntervalRef.current);
-          updateIntervalRef.current = null;
-        }
-        
-        if (startTimeRef.current !== null && initialMinutesRef.current !== null) {
-          const now = Date.now();
-          const elapsedMs = now - startTimeRef.current;
-          const elapsedMinutes = elapsedMs / (1000 * 60);
-          const remainingMinutes = Math.max(0, initialMinutesRef.current - elapsedMinutes);
-          
-          console.log('🛑 WebSocket kapandı, demo süresi takibi durduruldu. Kalan süre:', remainingMinutes, 'dakika');
-          // Son güncellemeyi backend'e gönder
-          dispatch(updateDemoMinutes(remainingMinutes) as any);
-          
-          // Başlangıç zamanını sıfırla (WebSocket tekrar açıldığında yeni başlangıç zamanı kaydedilsin)
-          startTimeRef.current = null;
-          initialMinutesRef.current = null;
-        }
+        // WebSocket kapandığında - backend'de timer durduruldu, son değeri göster
+        console.log('🛑 WebSocket kapandı, backend\'de timer durduruldu');
       }
     };
 
@@ -379,103 +348,41 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     return () => {
       aiService.offSocketConnection(handleSocketConnection);
     };
-  }, [dispatch, isDemo, demoMinutesRemaining]);
+  }, [isDemo, demoMinutesRemaining]);
 
-  // Demo minutes tracking - WebSocket bağlantısı açıkken süreyi takip et
+  // Backend'den gelen demo timer güncellemelerini dinle
   useEffect(() => {
-    if (!isDemo || demoMinutesRemaining === null || demoMinutesRemaining <= 0 || !isSocketConnected) {
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current);
-        updateIntervalRef.current = null;
+    const handleDemoTimerUpdate = (minutesRemaining: number) => {
+      if (isDemo) {
+        setCurrentDemoMinutes(minutesRemaining);
+        console.log('📊 Backend\'den demo süresi güncellendi:', minutesRemaining, 'dakika');
       }
+    };
+
+    aiService.onDemoTimerUpdate(handleDemoTimerUpdate);
+    
+    return () => {
+      aiService.offDemoTimerUpdate(handleDemoTimerUpdate);
+    };
+  }, [isDemo]);
+
+  // Component unmount olduğunda - backend'de zaten socket kapandığında timer durduruluyor
+  // Burada ekstra bir şey yapmaya gerek yok
+
+  // Props değiştiğinde (yeni demo süresi geldiğinde) currentDemoMinutes state'ini güncelle
+  // Backend'de timer çalışıyor, sadece görüntülemek için state'i güncelle
+  useEffect(() => {
+    if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
+      // Socket bağlı değilse veya timer çalışmıyorsa, sadece göster
       if (!isSocketConnected) {
-        setCurrentDemoMinutes(null);
+        setCurrentDemoMinutes(demoMinutesRemaining);
       }
-      return;
+      // Socket bağlıysa, backend'den gelen güncellemeleri kullan (yukarıdaki useEffect'te)
+    } else if (isDemo && (demoMinutesRemaining === null || demoMinutesRemaining <= 0)) {
+      // Demo süresi bitti
+      setCurrentDemoMinutes(0);
     }
-
-    // WebSocket açıkken her saniye geçirilen süreyi hesapla ve kalan süreyi güncelle
-    updateIntervalRef.current = setInterval(() => {
-      if (startTimeRef.current === null || initialMinutesRef.current === null || !isSocketConnected) {
-        return;
-      }
-
-      const now = Date.now();
-      // Geçirilen süre (milisaniye cinsinden)
-      const elapsedMs = now - startTimeRef.current;
-      // Geçirilen süre (dakika cinsinden)
-      const elapsedMinutes = elapsedMs / (1000 * 60);
-      // Kalan süre = başlangıç süresi - geçirilen süre
-      const remainingMinutes = Math.max(0, initialMinutesRef.current - elapsedMinutes);
-      
-      setCurrentDemoMinutes(remainingMinutes);
-      
-      // Her 10 saniyede bir backend'e gönder
-      const elapsedSeconds = Math.floor((now - lastUpdateTimeRef.current) / 1000);
-      
-      if (elapsedSeconds >= 10 || remainingMinutes === 0) {
-        // Backend'e gönder (dakika cinsinden)
-        dispatch(updateDemoMinutes(remainingMinutes) as any);
-        lastUpdateTimeRef.current = now;
-      }
-    }, 1000); // Her saniye
-
-    return () => {
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current);
-        updateIntervalRef.current = null;
-      }
-    };
-  }, [isDemo, demoMinutesRemaining, dispatch, isSocketConnected]);
-
-  // Component unmount olduğunda son kalan süreyi backend'e gönder
-  useEffect(() => {
-    return () => {
-      if (startTimeRef.current !== null && initialMinutesRef.current !== null) {
-        const now = Date.now();
-        const elapsedMs = now - startTimeRef.current;
-        const elapsedMinutes = elapsedMs / (1000 * 60);
-        const remainingMinutes = Math.max(0, initialMinutesRef.current - elapsedMinutes);
-        
-        console.log('🛑 Component unmount, demo süresi takibi durduruldu. Kalan süre:', remainingMinutes, 'dakika');
-        // Son güncellemeyi backend'e gönder
-        dispatch(updateDemoMinutes(remainingMinutes) as any);
-      }
-    };
-  }, [dispatch]);
-
-  // Props değiştiğinde (yeni demo süresi geldiğinde) başlangıç zamanını sıfırla
-  // Ama sadece component zaten mount olmuşsa ve yeni bir değer geldiyse
-  useEffect(() => {
-    if (demoMinutesRemaining !== null && demoMinutesRemaining > 0 && isDemo) {
-      // Eğer başlangıç zamanı yoksa (ilk mount) veya yeni bir değer geldiyse, sıfırla
-      if (startTimeRef.current === null) {
-        // İlk mount - yukarıdaki useEffect zaten hallediyor
-        return;
-      }
-      
-      // Yeni bir değer geldi (örneğin admin tarafından ek süre verildi)
-      if (initialMinutesRef.current !== demoMinutesRemaining) {
-        // Mevcut geçirilen süreyi hesapla
-        const now = Date.now();
-        if (startTimeRef.current !== null && initialMinutesRef.current !== null) {
-          const elapsedMs = now - startTimeRef.current;
-          const elapsedMinutes = elapsedMs / (1000 * 60);
-          const oldRemaining = Math.max(0, initialMinutesRef.current - elapsedMinutes);
-          
-          // Yeni başlangıç süresi = eski kalan süre + yeni eklenen süre
-          const newInitial = oldRemaining + (demoMinutesRemaining - oldRemaining);
-          
-          // Başlangıç zamanını sıfırla (yeni süre eklendi, sıfırdan başlat)
-          startTimeRef.current = Date.now();
-          initialMinutesRef.current = newInitial;
-          setCurrentDemoMinutes(newInitial);
-          lastUpdateTimeRef.current = Date.now();
-          console.log('🔄 Demo süresi güncellendi. Yeni süre:', newInitial, 'dakika');
-        }
-      }
-    }
-  }, [demoMinutesRemaining, isDemo]);
+  }, [demoMinutesRemaining, isDemo, isSocketConnected]);
 
   // TTS Audio listener - AI'dan gelen sesi oynat
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -660,16 +567,25 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             />
           </View>
           
-          {/* Demo Timer - Header içinde, sağ üstte sabit */}
-          {isDemo && currentDemoMinutes !== null && currentDemoMinutes > 0 ? (
+          {/* Demo Timer - Header içinde, sağ üstte sabit - Her zaman görünür (isDemo ise) */}
+          {isDemo ? (
             <View style={styles.demoTimerHeader}>
               <View style={styles.demoTimerBubble}>
-                <ReusableText
-                  text={`${t('ai.demo.timer')}: ${Math.floor(currentDemoMinutes)}:${String(Math.floor((currentDemoMinutes % 1) * 60)).padStart(2, '0')}`}
-                  family="medium"
-                  size={14}
-                  color={Colors.white}
-                />
+                {currentDemoMinutes !== null && currentDemoMinutes > 0 ? (
+                  <ReusableText
+                    text={`${t('ai.demo.timer')}: ${Math.floor(currentDemoMinutes)}:${String(Math.floor((currentDemoMinutes % 1) * 60)).padStart(2, '0')}`}
+                    family="medium"
+                    size={14}
+                    color={Colors.white}
+                  />
+                ) : (
+                  <ReusableText
+                    text={`${t('ai.demo.timer')}: ${demoMinutesRemaining !== null && demoMinutesRemaining > 0 ? `${Math.floor(demoMinutesRemaining)}:${String(Math.floor((demoMinutesRemaining % 1) * 60)).padStart(2, '0')}` : '0:00'}`}
+                    family="medium"
+                    size={14}
+                    color={isSocketConnected ? Colors.white : Colors.lightWhite}
+                  />
+                )}
               </View>
             </View>
           ) : null}

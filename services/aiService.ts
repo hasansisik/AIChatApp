@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { server } from '@/config';
 
 // server değişkeninden WebSocket URL'ini dinamik olarak türet
@@ -27,6 +28,7 @@ type StatusHandler = (status: string) => void;
 type TTSAudioHandler = (audioUri: string) => void;
 type RecordingForLipsyncHandler = (audioUri: string) => void;
 type SocketConnectionHandler = (connected: boolean) => void;
+type DemoTimerUpdateHandler = (minutesRemaining: number) => void;
 
 class AIService {
   private recording: Audio.Recording | null = null;
@@ -36,6 +38,7 @@ class AIService {
   private ttsAudioHandlers = new Set<TTSAudioHandler>();
   private recordingForLipsyncHandlers = new Set<RecordingForLipsyncHandler>();
   private socketConnectionHandlers = new Set<SocketConnectionHandler>();
+  private demoTimerUpdateHandlers = new Set<DemoTimerUpdateHandler>();
   private socketReady: Promise<void> | null = null;
   private chunkTimer: ReturnType<typeof setTimeout> | null = null;
   private isStreaming = false;
@@ -84,8 +87,20 @@ class AIService {
     this.socketConnectionHandlers.delete(handler);
   }
 
+  onDemoTimerUpdate(handler: DemoTimerUpdateHandler) {
+    this.demoTimerUpdateHandlers.add(handler);
+  }
+
+  offDemoTimerUpdate(handler: DemoTimerUpdateHandler) {
+    this.demoTimerUpdateHandlers.delete(handler);
+  }
+
   private notifySocketConnection(connected: boolean) {
     this.socketConnectionHandlers.forEach(cb => cb(connected));
+  }
+
+  private notifyDemoTimerUpdate(minutesRemaining: number) {
+    this.demoTimerUpdateHandlers.forEach(cb => cb(minutesRemaining));
   }
 
   private notifyStatus(status: string) {
@@ -123,23 +138,34 @@ class AIService {
     }
   }
 
-  private connectSttSocket() {
+  private async connectSttSocket() {
     if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
       return;
     }
 
-    this.socketReady = new Promise((resolve, reject) => {
+    this.socketReady = new Promise(async (resolve, reject) => {
       try {
-        // Voice ve language bilgisini query parameter olarak ekle
+        // Token'ı AsyncStorage'dan al
+        let token = null;
+        try {
+          token = await AsyncStorage.getItem('accessToken');
+        } catch (error) {
+          console.warn('⚠️ Token alınamadı:', error);
+        }
+
+        // Voice, language ve token bilgisini query parameter olarak ekle
         const params = new URLSearchParams();
         if (this.currentVoice) {
           params.append('voice', this.currentVoice);
         }
         params.append('language', this.currentLanguage);
+        if (token) {
+          params.append('token', token);
+        }
         const queryString = params.toString();
         const sttBaseUrl = getSTTWebSocketURL();
         const wsUrl = queryString ? `${sttBaseUrl}?${queryString}` : sttBaseUrl;
-        console.log(`🔌 WebSocket bağlantısı kuruluyor: ${wsUrl}`);
+        console.log(`🔌 WebSocket bağlantısı kuruluyor: ${wsUrl.replace(/token=[^&]+/, 'token=***')}`);
         this.sttSocket = new WebSocket(wsUrl);
         this.sttSocket.binaryType = 'arraybuffer';
 
@@ -182,6 +208,12 @@ class AIService {
               case 'tts_audio':
                 if (message.audio) {
                   this.enqueueTTSAudio(message.audio, message.mimeType);
+                }
+                break;
+              case 'demo_timer_update':
+                // Backend'den gelen demo süresi güncellemesi
+                if (message.minutesRemaining !== undefined) {
+                  this.notifyDemoTimerUpdate(message.minutesRemaining);
                 }
                 break;
               case 'error':
@@ -250,7 +282,7 @@ class AIService {
     }
 
     if (!this.socketReady) {
-      this.connectSttSocket();
+      await this.connectSttSocket();
     }
 
     if (this.socketReady) {
