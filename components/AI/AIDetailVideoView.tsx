@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Dimensions,
-  Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
   Animated,
@@ -13,6 +12,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -587,9 +587,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
             <View style={styles.profileImageContainer}>
               <Image
-                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                source={item.image}
                 style={styles.profileImage}
-                resizeMode="contain"
+                contentFit="contain"
+                transition={200}
+                cachePolicy="memory-disk"
+                priority="high"
               />
             </View>
           </View>
@@ -603,6 +606,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                   : require('@/assets/images/main/en.png')
                 }
                 style={styles.flagImage}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+                priority="high"
               />
               <Switch
                 value={sttLanguage === 'en'}

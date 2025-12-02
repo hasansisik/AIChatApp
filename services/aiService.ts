@@ -145,14 +145,18 @@ class AIService {
 
         this.sttSocket.onopen = () => {
           console.log(`✅ WebSocket bağlandı (voice: ${this.currentVoice})`);
-          // Voice config'i gönder
-          if (this.currentVoice) {
-            this.sttSocket!.send(JSON.stringify({
-              type: 'voice_config',
-              voice: this.currentVoice
-            }));
+          // Voice config'i gönder - socket null kontrolü ile
+          if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && this.currentVoice) {
+            try {
+              this.sttSocket.send(JSON.stringify({
+                type: 'voice_config',
+                voice: this.currentVoice
+              }));
+              this.voiceConfigSent = true;
+            } catch (error) {
+              console.warn('⚠️ Voice config gönderilemedi:', error);
+            }
           }
-          this.voiceConfigSent = true;
           this.notifySocketConnection(true); // WebSocket açıldı
           resolve();
         };

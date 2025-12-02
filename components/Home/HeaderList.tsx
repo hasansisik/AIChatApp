@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { useRouter } from 'expo-router';
@@ -59,11 +60,14 @@ const HeaderList: React.FC<HeaderListProps> = ({ onSearchPress, onProfilePress }
           <Image
             source={
               user?.profile?.picture
-                ? { uri: user.profile.picture }
+                ? user.profile.picture
                 : require("@/assets/images/person.png")
             }
             style={styles.profileImage}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            priority="high"
           />
         </TouchableOpacity>
       </View>

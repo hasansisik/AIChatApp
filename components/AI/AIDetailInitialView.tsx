@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, Image, Animated, Dimensions, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Animated, Dimensions, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,9 +38,12 @@ const AIDetailInitialView: React.FC<AIDetailInitialViewProps> = ({
     <>
       {/* Background Image */}
       <Image
-        source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+        source={item.image}
         style={styles.backgroundImage}
-        resizeMode="cover"
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
+        priority="high"
       />
       
       {/* Dark Overlay */}
@@ -76,9 +80,12 @@ const AIDetailInitialView: React.FC<AIDetailInitialViewProps> = ({
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                source={item.image}
                 style={styles.profileImage}
-                resizeMode="contain"
+                contentFit="contain"
+                transition={200}
+                cachePolicy="memory-disk"
+                priority="high"
               />
             </View>
             
