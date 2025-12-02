@@ -48,8 +48,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.alexander',
     avatar_id: 2,
     voice: 'ash', // Erkek sesi
-    video: require('@/assets/video/id1-s.mp4'),
-    videoTTS: require('@/assets/video/id1-k.mp4'),
+    video: require('@/assets/video/id2-s.mp4'),
+    videoTTS: require('@/assets/video/id2-k.mp4'),
   },
   {
     id: '3',
@@ -60,8 +60,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.sophia',
     avatar_id: 3,
     voice: 'shimmer', // Kadın sesi
-    video: require('@/assets/video/id1-s.mp4'),
-    videoTTS: require('@/assets/video/id1-k.mp4'),
+    video: require('@/assets/video/id3-s.mp4'),
+    videoTTS: require('@/assets/video/id3-k.mp4'),
   },
   {
     id: '4',
@@ -72,8 +72,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.james',
     avatar_id: 4,
     voice: 'onyx', // Erkek sesi
-    video: require('@/assets/video/id1-s.mp4'),
-    videoTTS: require('@/assets/video/id1-k.mp4'),
+    video: require('@/assets/video/id4-s.mp4'),
+    videoTTS: require('@/assets/video/id4-k.mp4'),
   },
   {
     id: '5',
@@ -84,8 +84,8 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.isabella',
     avatar_id: 5,
     voice: 'shimmer', // Kadın sesi
-    video: require('@/assets/video/id1-s.mp4'),
-    videoTTS: require('@/assets/video/id1-k.mp4'),
+    video: require('@/assets/video/id5-s.mp4'),
+    videoTTS: require('@/assets/video/id5-k.mp4'),
   },
   {
     id: '6',
@@ -96,7 +96,7 @@ export const aiCategories: AICategory[] = [
     description: 'ai.descriptions.michael',
     avatar_id: 6,
     voice: 'onyx', // Erkek sesi
-    video: require('@/assets/video/id1-s.mp4'),
-    videoTTS: require('@/assets/video/id1-k.mp4'),
+    video: require('@/assets/video/id6-s.mp4'),
+    videoTTS: require('@/assets/video/id6-k.mp4'),
   },
 ];
