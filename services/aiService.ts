@@ -26,6 +26,7 @@ type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
 type TTSAudioHandler = (audioUri: string) => void;
 type RecordingForLipsyncHandler = (audioUri: string) => void;
+type SocketConnectionHandler = (connected: boolean) => void;
 
 class AIService {
   private recording: Audio.Recording | null = null;
@@ -34,6 +35,7 @@ class AIService {
   private statusHandlers = new Set<StatusHandler>();
   private ttsAudioHandlers = new Set<TTSAudioHandler>();
   private recordingForLipsyncHandlers = new Set<RecordingForLipsyncHandler>();
+  private socketConnectionHandlers = new Set<SocketConnectionHandler>();
   private socketReady: Promise<void> | null = null;
   private chunkTimer: ReturnType<typeof setTimeout> | null = null;
   private isStreaming = false;
@@ -72,6 +74,18 @@ class AIService {
 
   offRecordingForLipsync(handler: RecordingForLipsyncHandler) {
     this.recordingForLipsyncHandlers.delete(handler);
+  }
+
+  onSocketConnection(handler: SocketConnectionHandler) {
+    this.socketConnectionHandlers.add(handler);
+  }
+
+  offSocketConnection(handler: SocketConnectionHandler) {
+    this.socketConnectionHandlers.delete(handler);
+  }
+
+  private notifySocketConnection(connected: boolean) {
+    this.socketConnectionHandlers.forEach(cb => cb(connected));
   }
 
   private notifyStatus(status: string) {
@@ -131,7 +145,15 @@ class AIService {
 
         this.sttSocket.onopen = () => {
           console.log(`✅ WebSocket bağlandı (voice: ${this.currentVoice})`);
+          // Voice config'i gönder
+          if (this.currentVoice) {
+            this.sttSocket!.send(JSON.stringify({
+              type: 'voice_config',
+              voice: this.currentVoice
+            }));
+          }
           this.voiceConfigSent = true;
+          this.notifySocketConnection(true); // WebSocket açıldı
           resolve();
         };
 
@@ -176,6 +198,7 @@ class AIService {
 
         this.sttSocket.onclose = () => {
           console.log('🔌 WebSocket bağlantısı kapandı');
+          this.notifySocketConnection(false); // WebSocket kapandı
           this.sttSocket = null;
           this.socketReady = null;
           this.voiceConfigSent = false;
@@ -193,7 +216,11 @@ class AIService {
       try {
         // Socket'i kapat (event listener'lar otomatik temizlenecek)
         if (this.sttSocket.readyState === WebSocket.OPEN || this.sttSocket.readyState === WebSocket.CONNECTING) {
+          // onclose event'i otomatik olarak notifySocketConnection(false) çağıracak
           this.sttSocket.close();
+        } else {
+          // Eğer socket zaten kapalıysa, manuel olarak notify et
+          this.notifySocketConnection(false);
         }
         
         // Event listener'ları temizle (close'dan sonra)

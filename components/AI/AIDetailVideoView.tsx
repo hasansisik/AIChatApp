@@ -331,33 +331,72 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, []);
 
 
-  // Demo minutes tracking - sadece bu component görünür olduğunda başlat
-  // Component mount olduğunda (video görünür olduğunda) başlangıç zamanını kaydet
+  // WebSocket bağlantı durumunu takip et
+  const [isSocketConnected, setIsSocketConnected] = React.useState(false);
+
   useEffect(() => {
-    if (!isDemo || demoMinutesRemaining === null || demoMinutesRemaining <= 0) {
+    const handleSocketConnection = (connected: boolean) => {
+      setIsSocketConnected(connected);
+      
+      if (connected) {
+        // WebSocket açıldığında demo süresi takibini başlat
+        if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
+          // Eğer başlangıç zamanı yoksa, kaydet
+          if (startTimeRef.current === null) {
+            startTimeRef.current = Date.now();
+            initialMinutesRef.current = demoMinutesRemaining;
+            setCurrentDemoMinutes(demoMinutesRemaining);
+            lastUpdateTimeRef.current = Date.now();
+            console.log('🎬 Demo süresi takibi başlatıldı (WebSocket açıldı):', demoMinutesRemaining, 'dakika');
+          }
+        }
+      } else {
+        // WebSocket kapandığında demo süresi takibini durdur
+        if (updateIntervalRef.current) {
+          clearInterval(updateIntervalRef.current);
+          updateIntervalRef.current = null;
+        }
+        
+        if (startTimeRef.current !== null && initialMinutesRef.current !== null) {
+          const now = Date.now();
+          const elapsedMs = now - startTimeRef.current;
+          const elapsedMinutes = elapsedMs / (1000 * 60);
+          const remainingMinutes = Math.max(0, initialMinutesRef.current - elapsedMinutes);
+          
+          console.log('🛑 WebSocket kapandı, demo süresi takibi durduruldu. Kalan süre:', remainingMinutes, 'dakika');
+          // Son güncellemeyi backend'e gönder
+          dispatch(updateDemoMinutes(remainingMinutes) as any);
+          
+          // Başlangıç zamanını sıfırla (WebSocket tekrar açıldığında yeni başlangıç zamanı kaydedilsin)
+          startTimeRef.current = null;
+          initialMinutesRef.current = null;
+        }
+      }
+    };
+
+    aiService.onSocketConnection(handleSocketConnection);
+    
+    return () => {
+      aiService.offSocketConnection(handleSocketConnection);
+    };
+  }, [dispatch, isDemo, demoMinutesRemaining]);
+
+  // Demo minutes tracking - WebSocket bağlantısı açıkken süreyi takip et
+  useEffect(() => {
+    if (!isDemo || demoMinutesRemaining === null || demoMinutesRemaining <= 0 || !isSocketConnected) {
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current);
         updateIntervalRef.current = null;
       }
-      setCurrentDemoMinutes(null);
-      startTimeRef.current = null;
-      initialMinutesRef.current = null;
+      if (!isSocketConnected) {
+        setCurrentDemoMinutes(null);
+      }
       return;
     }
 
-    // Component mount olduğunda (video görünür olduğunda) başlangıç zamanını kaydet
-    // Sadece ilk mount'ta veya yeni bir değer geldiğinde başlat
-    if (startTimeRef.current === null) {
-      startTimeRef.current = Date.now();
-      initialMinutesRef.current = demoMinutesRemaining;
-      setCurrentDemoMinutes(demoMinutesRemaining);
-      lastUpdateTimeRef.current = Date.now();
-      console.log('🎬 Demo süresi takibi başlatıldı:', demoMinutesRemaining, 'dakika');
-    }
-
-    // Her saniye geçirilen süreyi hesapla ve kalan süreyi güncelle
+    // WebSocket açıkken her saniye geçirilen süreyi hesapla ve kalan süreyi güncelle
     updateIntervalRef.current = setInterval(() => {
-      if (startTimeRef.current === null || initialMinutesRef.current === null) {
+      if (startTimeRef.current === null || initialMinutesRef.current === null || !isSocketConnected) {
         return;
       }
 
@@ -386,24 +425,24 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         clearInterval(updateIntervalRef.current);
         updateIntervalRef.current = null;
       }
-      
-      // Component unmount olduğunda (sayfa kapatıldığında) son kalan süreyi backend'e gönder
+    };
+  }, [isDemo, demoMinutesRemaining, dispatch, isSocketConnected]);
+
+  // Component unmount olduğunda son kalan süreyi backend'e gönder
+  useEffect(() => {
+    return () => {
       if (startTimeRef.current !== null && initialMinutesRef.current !== null) {
         const now = Date.now();
         const elapsedMs = now - startTimeRef.current;
         const elapsedMinutes = elapsedMs / (1000 * 60);
         const remainingMinutes = Math.max(0, initialMinutesRef.current - elapsedMinutes);
         
-        console.log('🛑 Demo süresi takibi durduruldu. Kalan süre:', remainingMinutes, 'dakika');
+        console.log('🛑 Component unmount, demo süresi takibi durduruldu. Kalan süre:', remainingMinutes, 'dakika');
         // Son güncellemeyi backend'e gönder
         dispatch(updateDemoMinutes(remainingMinutes) as any);
-        
-        // Ref'leri temizle
-        startTimeRef.current = null;
-        initialMinutesRef.current = null;
       }
     };
-  }, [isDemo, demoMinutesRemaining, dispatch]);
+  }, [dispatch]);
 
   // Props değiştiğinde (yeni demo süresi geldiğinde) başlangıç zamanını sıfırla
   // Ama sadece component zaten mount olmuşsa ve yeni bir değer geldiyse
