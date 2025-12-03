@@ -1,6 +1,5 @@
 import {
   View,
-  SafeAreaView,
   Platform,
   StatusBar,
   StyleSheet,
@@ -14,6 +13,7 @@ import { Colors } from "@/hooks/useThemeColor";
 import { FontSizes } from "@/constants/Fonts";
 import { Sizes } from "@/constants/Sizes";
 import { ReusableSettings } from "@/components/ui/ReusableSettings";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Politcy = () => {
   const router = useRouter();
@@ -23,7 +23,6 @@ const Politcy = () => {
     <SafeAreaView
       style={[
         styles.container,
-        { paddingTop: Platform.OS === "ios" ? 20 : StatusBar.currentHeight },
       ]}
     >
       <AppBar
@@ -74,15 +73,7 @@ const Politcy = () => {
             })
           }
         />
-        <ReusableSettings
-          icon={"card"}
-          title={t("profile.policies.subscription")}
-          onPress={() =>
-            router.push({
-              pathname: "/(profile)/politicy/pay",
-            })
-          }
-        />
+       
       </View>
     </SafeAreaView>
   );
