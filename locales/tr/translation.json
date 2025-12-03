@@ -63,7 +63,7 @@
       "error": "Giriş başarısız"
     },
     "register": {
-      "title": "Merhaba,\nŞimdi Kayıt Ol",
+      "title": "Kayıt Ol",
       "name": "İsim",
       "surname": "Soyisim",
       "email": "E-mail",

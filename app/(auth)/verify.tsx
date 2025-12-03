@@ -17,9 +17,8 @@ import { againEmail, verifyEmail, loadUser } from "@/redux/actions/userActions";
 
 const Verify: React.FC = () => {
   const dispatch = useDispatch();
-  const { email, fromEdit } = useLocalSearchParams();
+  const { email } = useLocalSearchParams();
   const emailString = Array.isArray(email) ? email[0] : email;
-  const isFromEdit = fromEdit === "true" || fromEdit === true;
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -78,16 +77,9 @@ const Verify: React.FC = () => {
         // Reload user data to get updated info
         await dispatch(loadUser() as any);
         
-        // If coming from edit profile, redirect to tabs
-        // Otherwise, redirect to onboarding
+        // Always redirect to tabs - onboarding check is handled inside tabs
         setTimeout(() => {
-          if (isFromEdit) {
-            router.replace("/(tabs)/tabs");
-          } else {
-            router.push({
-              pathname: "/onboarding-demo",
-            });
-          }
+          router.replace("/(tabs)/tabs");
         }, 2000);
       } else if (verifyEmail.rejected.match(actionResult)) {
         setStatus("error");

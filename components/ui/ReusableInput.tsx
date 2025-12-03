@@ -44,6 +44,8 @@ const ReusableInput: React.FC<ReusableInputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           textColor={Colors.black}
+          textContentType={secureTextEntry ? "none" : undefined}
+          autoComplete={secureTextEntry ? "off" : undefined}
           theme={{ 
             colors: { 
               primary: Colors.black,
@@ -53,7 +55,7 @@ const ReusableInput: React.FC<ReusableInputProps> = ({
           right={
             secureTextEntry ? (
               <TextInput.Icon
-                icon={passwordVisible ? "eye-off" : "eye"}
+                icon={passwordVisible ? "eye" : "eye-off"}
                 onPress={togglePasswordVisibility}
                 color={Colors.icon}
               />

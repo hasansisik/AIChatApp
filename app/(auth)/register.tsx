@@ -205,6 +205,8 @@ const Register = () => {
                 onChangeText={formik.handleChange("password")}
                 touched={formik.touched.password}
                 error={formik.errors.password}
+                textContentType="none"
+                autoComplete="off"
               />
               <ReusableInput
                 label={t("auth.register.confirmPassword")}
@@ -214,6 +216,8 @@ const Register = () => {
                 onChangeText={formik.handleChange("confirmPassword")}
                 touched={formik.touched.confirmPassword}
                 error={formik.errors.confirmPassword}
+                textContentType="none"
+                autoComplete="off"
               />
               <HeightSpacer height={20} />
               <ReusableButton

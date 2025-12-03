@@ -62,7 +62,7 @@
       "error": "Login failed"
     },
     "register": {
-      "title": "Hello,\nRegister Now",
+      "title": "Register",
       "name": "Name",
       "surname": "Surname",
       "email": "E-mail",

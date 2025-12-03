@@ -136,7 +136,7 @@ const ProfileDetails: React.FC = () => {
             setTimeout(() => {
               router.push({
                 pathname: "/(auth)/verify",
-                params: { email: newEmail, fromEdit: "true" },
+                params: { email: newEmail },
               });
             }, 2000);
           } else {
