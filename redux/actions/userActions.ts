@@ -437,3 +437,34 @@ export const getFavoriteAIs = createAsyncThunk(
     }
   }
 );
+
+// Delete Account
+export const deleteAccount = createAsyncThunk(
+  "user/deleteAccount",
+  async (_, thunkAPI) => {
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) {
+        return thunkAPI.rejectWithValue("Oturum açmanız gerekiyor");
+      }
+
+      const { data } = await axios.delete(
+        `${server}/auth/delete-account`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        }
+      );
+
+      await AsyncStorage.removeItem("accessToken");
+      return data.message;
+    } catch (error: any) {
+      await AsyncStorage.removeItem("accessToken");
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Hesap silinirken bir hata oluştu"
+      );
+    }
+  }
+);

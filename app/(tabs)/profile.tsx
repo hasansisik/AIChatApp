@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "expo-router";
-import { editProfile, loadUser, logout, getFavoriteAIs, removeFavoriteAI } from "@/redux/actions/userActions";
+import { editProfile, loadUser, logout, getFavoriteAIs, removeFavoriteAI, deleteAccount } from "@/redux/actions/userActions";
 import { validateCoupon } from "@/redux/actions/couponActions";
 import AppBar from "@/components/ui/AppBar";
 import { Colors } from "@/hooks/useThemeColor";
@@ -38,6 +38,7 @@ const Profile: React.FC = () => {
   const [codeModalVisible, setCodeModalVisible] = useState(false);
   const [courseCode, setCourseCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState(0);
   const toastRef = useRef<any>(null);
   const favoritesLoadedRef = useRef(false);
 
@@ -117,6 +118,72 @@ const Profile: React.FC = () => {
       setMessage(t("common.errorOccurred"));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (deleteConfirmStep === 0) {
+      // İlk onay: "Emin misiniz?"
+      Alert.alert(
+        t("profile.tabs.deleteAccountTitle"),
+        t("profile.tabs.deleteAccountMessage"),
+        [
+          {
+            text: t("common.cancel"),
+            style: "cancel",
+            onPress: () => setDeleteConfirmStep(0),
+          },
+          {
+            text: t("common.continue"),
+            style: "destructive",
+            onPress: () => {
+              setDeleteConfirmStep(1);
+              // İkinci onay: "Geri alınamaz"
+              setTimeout(() => {
+                Alert.alert(
+                  t("profile.tabs.deleteAccountTitle"),
+                  t("profile.tabs.deleteAccountFinalWarning"),
+                  [
+                    {
+                      text: t("common.cancel"),
+                      style: "cancel",
+                      onPress: () => setDeleteConfirmStep(0),
+                    },
+                    {
+                      text: t("profile.tabs.delete"),
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          setIsSubmitting(true);
+                          const result = await dispatch<any>(deleteAccount());
+                          if (deleteAccount.fulfilled.match(result)) {
+                            setStatus("success");
+                            setMessage(result.payload || t("profile.tabs.deleteAccountSuccess"));
+                            // Logout and redirect to login
+                            setTimeout(() => {
+                              router.replace("/(auth)/login");
+                            }, 2000);
+                          } else {
+                            setStatus("error");
+                            setMessage(result.payload || t("profile.tabs.deleteAccountError"));
+                            setDeleteConfirmStep(0);
+                          }
+                        } catch (error) {
+                          setStatus("error");
+                          setMessage(t("profile.tabs.deleteAccountError"));
+                          setDeleteConfirmStep(0);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }, 300);
+            },
+          },
+        ]
+      );
     }
   };
 
@@ -268,28 +335,7 @@ const Profile: React.FC = () => {
                 <ProfileCard
                   title={t("profile.tabs.deleteAccount")}
                   icon={"trash"}
-                  onPress={() => {
-                    Alert.alert(
-                      t("profile.tabs.deleteAccountTitle"),
-                      t("profile.tabs.deleteAccountMessage"),
-                      [
-                        {
-                          text: t("common.cancel"),
-                          style: "cancel"
-                        },
-                        {
-                          text: t("profile.tabs.delete"),
-                          style: "destructive",
-                          onPress: () => {
-                            // Here you would implement account deletion logic
-                            // For now, just show a message
-                            setStatus("info");
-                            setMessage(t("profile.tabs.deleteAccountProcessing"));
-                          }
-                        }
-                      ]
-                    );
-                  }}
+                  onPress={handleDeleteAccount}
                   color={Colors.red}
                   titleColor={Colors.red}
                 />

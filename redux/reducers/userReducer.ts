@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { register, login, loadUser, logout, verifyEmail, againEmail, forgotPassword, resetPassword, editProfile, verifyPassword, checkInitialAuth, updateOnboardingData, addFavoriteAI, removeFavoriteAI, getFavoriteAIs } from "../actions/userActions";
+import { register, login, loadUser, logout, verifyEmail, againEmail, forgotPassword, resetPassword, editProfile, verifyPassword, checkInitialAuth, updateOnboardingData, addFavoriteAI, removeFavoriteAI, getFavoriteAIs, deleteAccount } from "../actions/userActions";
 
 interface UserState {
     items: any[];
@@ -226,6 +226,20 @@ export const userReducer = createReducer(initialState, (builder) => {
             }
         })
         .addCase(getFavoriteAIs.rejected, (state, action) => {
+            state.loading = false;
+            state.error = action.payload as string | null;
+        })
+        // Delete Account
+        .addCase(deleteAccount.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(deleteAccount.fulfilled, (state, action) => {
+            state.loading = false;
+            state.isAuthenticated = false;
+            state.user = null;
+            state.message = action.payload;
+        })
+        .addCase(deleteAccount.rejected, (state, action) => {
             state.loading = false;
             state.error = action.payload as string | null;
         })
