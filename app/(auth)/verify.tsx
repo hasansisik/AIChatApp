@@ -17,8 +17,9 @@ import { againEmail, verifyEmail, loadUser } from "@/redux/actions/userActions";
 
 const Verify: React.FC = () => {
   const dispatch = useDispatch();
-  const { email } = useLocalSearchParams();
+  const { email, fromEdit } = useLocalSearchParams();
   const emailString = Array.isArray(email) ? email[0] : email;
+  const isFromEdit = fromEdit === "true" || fromEdit === true;
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -74,12 +75,19 @@ const Verify: React.FC = () => {
       if (verifyEmail.fulfilled.match(actionResult)) {
         setStatus("success");
         setMessage(t("auth.verify.success"));
-        // Verify email already returns user data, no need to call loadUser
-        // Onboarding'e yönlendir
+        // Reload user data to get updated info
+        await dispatch(loadUser() as any);
+        
+        // If coming from edit profile, redirect to tabs
+        // Otherwise, redirect to onboarding
         setTimeout(() => {
-          router.push({
-            pathname: "/onboarding-demo",
-          });
+          if (isFromEdit) {
+            router.replace("/(tabs)/tabs");
+          } else {
+            router.push({
+              pathname: "/onboarding-demo",
+            });
+          }
         }, 2000);
       } else if (verifyEmail.rejected.match(actionResult)) {
         setStatus("error");

@@ -119,6 +119,9 @@ const ProfileDetails: React.FC = () => {
 
       // Only send request if there are changes
       if (Object.keys(updateData).length > 0) {
+        const emailWasUpdated = !!updateData.email;
+        const newEmail = updateData.email || values.email;
+        
         const actionResult = await dispatch<any>(editProfile(updateData));
         
         if (editProfile.fulfilled.match(actionResult)) {
@@ -129,11 +132,11 @@ const ProfileDetails: React.FC = () => {
           dispatch<any>(loadUser());
           
           // If email was updated, navigate to verification
-          if (values.email && values.email !== user?.email) {
+          if (emailWasUpdated && newEmail) {
             setTimeout(() => {
               router.push({
                 pathname: "/(auth)/verify",
-                params: { email: values.email },
+                params: { email: newEmail, fromEdit: "true" },
               });
             }, 2000);
           } else {
