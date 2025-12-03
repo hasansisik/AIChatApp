@@ -209,28 +209,7 @@ const ProfileDetails: React.FC = () => {
             />
           </View>
 
-          {/* Profile Picture Section */}
-          <View style={styles.profilePictureSection}>
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={
-                  formik.values.picture
-                    ? { uri: formik.values.picture }
-                    : require("../../assets/images/main/user.png")
-                }
-                style={styles.profileImage}
-              />
-              <TouchableOpacity 
-                style={styles.cameraOverlay} 
-                onPress={() => setModalVisible(true)}
-                disabled={loading}
-              >
-                <Text style={styles.cameraText}>
-                  {loading ? t('profile.edit.uploading') : t('profile.edit.change')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+
 
           <ReusableInput
             label={t("profile.edit.name")}
