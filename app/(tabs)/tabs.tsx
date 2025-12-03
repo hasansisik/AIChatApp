@@ -6,6 +6,7 @@ import { StyleSheet, Image, View, Modal, TextInput, TouchableOpacity, Alert, Act
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from 'react-i18next';
+import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/app/(tabs)/home";
 import List from "@/app/(tabs)/list";
@@ -28,7 +29,8 @@ const ChatPlaceholder = () => {
 const TabNavigation = () => {
   const { isDark } = useTheme();
   const { t } = useTranslation();
-  const { user } = useSelector((state: any) => state.user);
+  const router = useRouter();
+  const { user, isAuthenticated } = useSelector((state: any) => state.user);
   const { loading: authLoading, isOnboardingCompleted } = useAuth();
   const dispatch = useDispatch();
   const [codeModalVisible, setCodeModalVisible] = useState(false);
@@ -42,9 +44,19 @@ const TabNavigation = () => {
     // This will be handled in the Edu component itself
   }, [user]);
 
+  // Check if user is authenticated, if not redirect to login
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace("/(auth)/login");
+    }
+  }, [isAuthenticated, authLoading, router]);
+
   const handleOnboardingComplete = async () => {
     setOnboardingOverrideComplete(true);
-    await dispatch<any>(loadUser());
+    const result = await dispatch<any>(loadUser());
+    if (loadUser.rejected.match(result)) {
+      router.replace("/(auth)/login");
+    }
   };
 
   const handleCodeSubmit = async () => {

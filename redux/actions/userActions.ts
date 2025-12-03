@@ -131,7 +131,11 @@ export const loadUser = createAsyncThunk(
       return data.user;
     } catch (error: any) {
       await AsyncStorage.removeItem("accessToken");
-      return thunkAPI.rejectWithValue(error.response.data.message);
+      // If 404 or any error, reject with appropriate message
+      const errorMessage = error.response?.status === 404 
+        ? "Kullanıcı bulunamadı. Lütfen tekrar giriş yapın."
+        : error.response?.data?.message || "Oturum açmanız gerekiyor";
+      return thunkAPI.rejectWithValue(errorMessage);
     }
   }
 );

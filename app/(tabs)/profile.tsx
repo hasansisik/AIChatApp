@@ -43,8 +43,14 @@ const Profile: React.FC = () => {
   const favoritesLoadedRef = useRef(false);
 
   useEffect(() => {
-    dispatch<any>(loadUser());
-  }, [dispatch]);
+    const loadUserData = async () => {
+      const result = await dispatch<any>(loadUser());
+      if (loadUser.rejected.match(result)) {
+        router.replace("/(auth)/login");
+      }
+    };
+    loadUserData();
+  }, [dispatch, router]);
 
   useEffect(() => {
     // User yüklendiğinde favorileri yükle (sadece bir kez)

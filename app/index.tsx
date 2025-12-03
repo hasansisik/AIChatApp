@@ -20,9 +20,14 @@ const Index = () => {
         
         // If user is authenticated, load user data to check onboarding status
         if (authResult.payload?.isAuthenticated) {
-          await dispatch(loadUser() as any);
-          // Redirect to tabs on initial load if authenticated
-          router.replace("/(tabs)/tabs");
+          const loadUserResult = await dispatch(loadUser() as any);
+          // If loadUser fails (404 or other error), redirect to login
+          if (loadUser.rejected.match(loadUserResult)) {
+            router.replace("/(auth)/login");
+          } else {
+            // Redirect to tabs on initial load if authenticated
+            router.replace("/(tabs)/tabs");
+          }
         } else {
           // Redirect to login if not authenticated
           router.replace("/(auth)/login");
