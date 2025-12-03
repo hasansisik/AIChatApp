@@ -412,6 +412,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             soundRef.current = null;
           }
 
+          // Ses modunu ayarla - SADECE hoparlörden çalması için (kayıt modunu kapat)
+          // Yankıyı önlemek için tüm kayıt modlarını kapat
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false, // Kayıt modunu kapat (yankıyı önler)
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: false, // Yankıyı önlemek için ducking'i kapat
+            playThroughEarpieceAndroid: false, // Hoparlörden çal (ahizeden değil)
+            staysActiveInBackground: false,
+          });
+
           // Yeni ses dosyasını yükle ve oynat
           const { sound: newSound } = await Audio.Sound.createAsync(
             { uri: audioUri },
@@ -421,16 +431,20 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           soundRef.current = newSound;
 
           // Ses bittiğinde temizle ve metinleri kaldır
-          newSound.setOnPlaybackStatusUpdate((status) => {
+          newSound.setOnPlaybackStatusUpdate(async (status) => {
             if (status.isLoaded && status.didJustFinish) {
               soundRef.current?.unloadAsync().catch(() => {});
               soundRef.current = null;
               isPlayingRef.current = false; // Oynatma bitti, yeni ses kabul edilebilir
               console.log('✅ TTS audio oynatma tamamlandı, metinler temizleniyor');
+              
               // TTS bittiğinde metinleri temizle ve video kaynağını geri değiştir
               setUserText('');
               setAiText('');
               setIsTTSPlaying(false);
+              
+              // Ses modunu geri ayarlama - kayıt başlatıldığında aiService zaten ayarlayacak
+              // Bu şekilde çift ses sorunu olmaz
             }
           });
         } catch (error) {

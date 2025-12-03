@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AIChat",
-    "slug": "AIChat",
+    "name": "Kamila",
+    "slug": "Kamila",
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aslanglobal.kamila"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,7 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "package": "com.birimajans.AIChat"
+      "package": "com.aslanglobal.kamila"
     },
     "web": {
       "bundler": "metro",
