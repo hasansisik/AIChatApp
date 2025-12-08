@@ -359,6 +359,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   // Backend'den gelen demo timer güncellemelerini dinle
   useEffect(() => {
     const handleDemoTimerUpdate = (minutesRemaining: number) => {
+      // WebSocket kapalıysa güncellemeleri ignore et
+      if (!isSocketConnected) {
+        return;
+      }
+      
       if (isDemo) {
         // Backend'den gelen güncelleme ile frontend timer'ı senkronize et
         setCurrentDemoMinutes(minutesRemaining);
@@ -373,7 +378,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     return () => {
       aiService.offDemoTimerUpdate(handleDemoTimerUpdate);
     };
-  }, [isDemo]);
+  }, [isDemo, isSocketConnected]);
 
   // Frontend timer - Her saniye düşür (backend güncellemeleri ile senkronize)
   useEffect(() => {
