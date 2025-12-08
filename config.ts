@@ -34,14 +34,11 @@ const resolveServerBaseURL = () => {
 
 export const server = resolveServerBaseURL();
 export const aiServer = "http://localhost:5001/";
-export const aiPassword = "JSD876+J?*#Fd";
 
 // Contact information for purchase
 export const CONTACT_INFO = {
-  whatsapp: "+905551234567", // Replace with actual WhatsApp number
-  phone: "+90 555 123 45 67", // Replace with actual phone number
+  whatsapp: "+908503074195", // Replace with actual WhatsApp number
+  phone: "+90 850 307 4195", // Replace with actual phone number
   whatsappMessage: "Merhaba, EnglishCard satın almak istiyorum."
 };
 
-// Debug için server URL'ini logla
-console.log("🔌 API Server URL:", server);
