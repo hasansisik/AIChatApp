@@ -106,16 +106,6 @@
       "error": "Password change failed"
     }
   },
-  "common": {
-    "edit": "Edit",
-    "confirm": "Confirm",
-    "save": "Save",
-    "cancel": "Cancel",
-    "continue": "Continue",
-    "error": "Error",
-    "success": "Success",
-    "errorOccurred": "An error occurred"
-  },
   "profile": {
     "email": "E-mail",
     "dateOfBirth": "Date of Birth",
@@ -531,6 +521,9 @@
     "success": "Success",
     "notAvailable": "-",
     "edit": "Edit",
-    "save": "Save"
+    "save": "Save",
+    "continue": "Continue",
+    "confirm": "Confirm",
+    "errorOccurred": "An error occurred"
   }
 }

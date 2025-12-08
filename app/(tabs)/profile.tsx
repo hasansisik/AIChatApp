@@ -165,10 +165,12 @@ const Profile: React.FC = () => {
                           if (deleteAccount.fulfilled.match(result)) {
                             setStatus("success");
                             setMessage(result.payload || t("profile.tabs.deleteAccountSuccess"));
-                            // Logout and redirect to login
+                            // Clear state and logout before redirect
+                            await dispatch<any>(logout());
+                            // Redirect to login after logout completes
                             setTimeout(() => {
                               router.replace("/(auth)/login");
-                            }, 2000);
+                            }, 1000);
                           } else {
                             setStatus("error");
                             setMessage(result.payload || t("profile.tabs.deleteAccountError"));

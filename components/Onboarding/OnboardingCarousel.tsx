@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Dimensions, Image, TouchableOpacity, Modal, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Modal, Text } from 'react-native';
+import { Image } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { Colors } from '@/hooks/useThemeColor';
 
@@ -26,32 +27,83 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
   timerDuration = 3 
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(3);
+  const [timeRemaining, setTimeRemaining] = useState(15);
   const [isCloseEnabled, setIsCloseEnabled] = useState(false);
+  const [canContinue, setCanContinue] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
   const videoRefs = useRef<{ [key: string]: Video | null }>({});
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Sort onboardings by order
   const sortedOnboardings = [...onboardings].sort((a, b) => a.order - b.order);
 
+  // Preload all images when modal becomes visible
+  useEffect(() => {
+    if (visible && sortedOnboardings.length > 0) {
+      // Preload first image immediately with high priority
+      const firstItem = sortedOnboardings[0];
+      if (firstItem.mediaType === 'image') {
+        Image.prefetch(firstItem.mediaUrl, {
+          priority: 'high',
+          cachePolicy: 'memory-disk',
+        }).catch(() => {
+          // Ignore prefetch errors
+        });
+      }
+
+      // Preload other images in background (with delay to prioritize first image)
+      setTimeout(() => {
+        sortedOnboardings.slice(1).forEach((item, index) => {
+          if (item.mediaType === 'image') {
+            // Stagger the prefetch to avoid overwhelming the network
+            setTimeout(() => {
+              Image.prefetch(item.mediaUrl, {
+                priority: 'normal',
+                cachePolicy: 'memory-disk',
+              }).catch(() => {
+                // Ignore prefetch errors
+              });
+            }, index * 100); // 100ms delay between each prefetch
+          }
+        });
+      }, 500); // Start preloading others after 500ms
+    }
+  }, [visible, sortedOnboardings]);
+
   // Reset currentIndex when visible becomes true
   useEffect(() => {
     if (visible && sortedOnboardings.length > 0) {
       setCurrentIndex(0);
       setIsCloseEnabled(false);
-      setTimeRemaining(3);
+      setCanContinue(false);
+      setTimeRemaining(15);
+      setIsImageLoaded(false);
     }
   }, [visible, sortedOnboardings.length]);
 
-  // Her slide için timer süresi: ilk slide 3 saniye, diğerleri 5 saniye
+  // Reset image loaded state when current index changes
+  useEffect(() => {
+    setIsImageLoaded(false);
+  }, [currentIndex]);
+
+  // Her slide için timer süresi: 15 saniye
   const getTimerDuration = (index: number) => {
-    return index === 0 ? 3 : 5;
+    return 15;
   };
 
-  // İlk açılışta ve her slide değiştiğinde timer'ı başlat
+  // İlk açılışta ve her slide değiştiğinde timer'ı başlat (sadece görsel yüklendiyse)
   useEffect(() => {
     if (!visible || sortedOnboardings.length === 0) {
       // Timer'ı temizle
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Görsel yüklenene kadar timer'ı başlatma
+    if (!isImageLoaded) {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -68,6 +120,7 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
     const duration = getTimerDuration(currentIndex);
     setTimeRemaining(duration);
     setIsCloseEnabled(false);
+    setCanContinue(false);
 
     // Timer'ı hemen başlat - ilk saniyeyi hemen say
     const tick = () => {
@@ -75,19 +128,15 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
         const newValue = prev - 1;
         
         if (newValue <= 0) {
-          // Timer bitti
+          // Timer bitti - devam et butonunu aktif et
           if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
           }
           
-          // Bir sonraki slide'a geç veya kapat
+          setCanContinue(true);
           const isLast = currentIndex >= sortedOnboardings.length - 1;
-          if (!isLast) {
-            // Bir sonraki slide'a geç
-            setCurrentIndex(prev => prev + 1);
-          } else {
-            // Son slide, çarpı ikonunu göster
+          if (isLast) {
             setIsCloseEnabled(true);
           }
           return 0;
@@ -110,7 +159,7 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
         timerIntervalRef.current = null;
       }
     };
-  }, [currentIndex, visible, sortedOnboardings.length]);
+  }, [currentIndex, visible, sortedOnboardings.length, isImageLoaded]);
 
   const handleClose = useCallback(() => {
     // Stop all videos
@@ -121,6 +170,10 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
   }, [onClose]);
 
   const handleNext = useCallback(() => {
+    if (!canContinue) {
+      return; // Timer bitmeden devam edilemez
+    }
+    
     setCurrentIndex((prevIndex) => {
       if (prevIndex < sortedOnboardings.length - 1) {
         // Stop current video if exists
@@ -134,7 +187,7 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
         return prevIndex;
       }
     });
-  }, [sortedOnboardings, handleClose]);
+  }, [sortedOnboardings, handleClose, canContinue]);
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
@@ -167,7 +220,7 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
         <View style={styles.timerContainer}>
           {!isCloseEnabled ? (
             <View style={styles.timerBadge}>
-              <Text style={styles.timerText}>{timeRemaining} saniye sonra geç</Text>
+              <Text style={styles.timerText}>{timeRemaining} saniye</Text>
             </View>
           ) : (
             <TouchableOpacity 
@@ -202,15 +255,34 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
               shouldPlay
               isLooping
               isMuted={false}
+              onLoad={() => setIsImageLoaded(true)}
             />
           ) : (
             <Image
               source={{ uri: currentItem.mediaUrl }}
               style={styles.media}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={100}
+              cachePolicy="memory-disk"
+              priority={currentIndex === 0 ? "high" : "normal"}
+              recyclingKey={currentItem._id}
+              onLoad={() => setIsImageLoaded(true)}
             />
           )}
         </View>
+
+        {/* Devam Et Button */}
+        {!isLast && canContinue && (
+          <View style={styles.continueButtonContainer}>
+            <TouchableOpacity 
+              style={styles.continueButton} 
+              onPress={handleNext}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.continueButtonText}>Devam Et</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Navigation buttons */}
         {sortedOnboardings.length > 1 && (
@@ -219,14 +291,6 @@ const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
               <TouchableOpacity style={styles.navButton} onPress={handlePrevious}>
                 <View style={styles.navButtonContent}>
                   <View style={[styles.arrow, styles.arrowLeft]} />
-                </View>
-              </TouchableOpacity>
-            )}
-            
-            {!isLast && (
-              <TouchableOpacity style={styles.navButton} onPress={handleNext}>
-                <View style={styles.navButtonContent}>
-                  <View style={[styles.arrow, styles.arrowRight]} />
                 </View>
               </TouchableOpacity>
             )}
@@ -384,6 +448,28 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  continueButtonContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 25,
+    minWidth: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

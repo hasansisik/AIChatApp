@@ -12,7 +12,7 @@ import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import ReusableText from '@/components/ui/ReusableText';
 import { Colors } from '@/hooks/useThemeColor';
-import { updateOnboardingData } from '@/redux/actions/userActions';
+import { updateOnboardingData, loadUser } from '@/redux/actions/userActions';
 import InterestStep from './steps/InterestStep';
 import MainGoalStep from './steps/MainGoalStep';
 import ReasonStep from './steps/ReasonStep';
@@ -87,27 +87,9 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
     }
   };
 
-  const handleSkip = async () => {
-    // User skipped onboarding, mark as completed without saving data
-    setIsLoading(true);
-    try {
-      const actionResult = await dispatch(updateOnboardingData({
-        interest: 'dil-ogrenmek', // Default value
-        mainGoal: 'konusma', // Default value
-        reason: 'hobi', // Default value
-        favorites: [], // Empty array
-      }) as any);
-      
-      if (updateOnboardingData.fulfilled.match(actionResult)) {
-        console.log('Skipped onboarding data saved successfully');
-      } else {
-        console.error('Failed to save skipped onboarding data:', actionResult.payload);
-      }
-    } catch (error) {
-      console.error('Error saving skipped onboarding:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSkip = () => {
+    // User skipped onboarding, don't save anything
+    // isOnboardingCompleted will remain false, so onboarding will show again on page refresh
     onComplete();
   };
 

@@ -107,16 +107,6 @@
       "error": "Şifre değiştirme başarısız"
     }
   },
-  "common": {
-    "edit": "Düzenle",
-    "confirm": "Onayla",
-    "save": "Kaydet",
-    "cancel": "İptal",
-    "continue": "Devam Et",
-    "error": "Hata",
-    "success": "Başarılı",
-    "errorOccurred": "Bir hata oluştu"
-  },
   "profile": {
     "email": "E-posta",
     "dateOfBirth": "Doğum Tarihi",
@@ -532,6 +522,9 @@
     "success": "Başarılı",
     "notAvailable": "-",
     "edit": "Düzenle",
-    "save": "Kaydet"
+    "save": "Kaydet",
+    "continue": "Devam Et",
+    "confirm": "Onayla",
+    "errorOccurred": "Bir hata oluştu"
   }
 }
