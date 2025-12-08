@@ -74,6 +74,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(demoMinutesRemaining);
   const timerStartTimeRef = React.useRef<number | null>(null);
   const timerInitialMinutesRef = React.useRef<number | null>(null);
+  const timerIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleDemoTimerUpdateRef = React.useRef<((minutesRemaining: number) => void) | null>(null);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -303,9 +305,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, []);
 
   const [isSocketConnected, setIsSocketConnected] = React.useState(false);
+  const isSocketConnectedRef = React.useRef(false);
 
   useEffect(() => {
     const handleSocketConnection = (connected: boolean) => {
+      isSocketConnectedRef.current = connected;
       setIsSocketConnected(connected);
       
       if (connected) {
@@ -316,8 +320,17 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           console.log('📊 WebSocket açıldı, demo süresi gösteriliyor:', demoMinutesRemaining, 'dakika (frontend timer başlatıldı)');
         }
       } else {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        if (handleDemoTimerUpdateRef.current) {
+          aiService.offDemoTimerUpdate(handleDemoTimerUpdateRef.current);
+          handleDemoTimerUpdateRef.current = null;
+        }
         timerStartTimeRef.current = null;
         timerInitialMinutesRef.current = null;
+        setCurrentDemoMinutes(demoMinutesRemaining);
         console.log('🛑 WebSocket kapandı, frontend timer durduruldu');
       }
     };
@@ -331,7 +344,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
   useEffect(() => {
     const handleDemoTimerUpdate = (minutesRemaining: number) => {
-      if (!isSocketConnected) {
+      if (!isSocketConnectedRef.current) {
         return;
       }
       
@@ -343,20 +356,35 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       }
     };
 
+    handleDemoTimerUpdateRef.current = handleDemoTimerUpdate;
     aiService.onDemoTimerUpdate(handleDemoTimerUpdate);
     
     return () => {
-      aiService.offDemoTimerUpdate(handleDemoTimerUpdate);
+      if (handleDemoTimerUpdateRef.current) {
+        aiService.offDemoTimerUpdate(handleDemoTimerUpdateRef.current);
+        handleDemoTimerUpdateRef.current = null;
+      }
     };
-  }, [isDemo, isSocketConnected]);
+  }, [isDemo]);
 
   useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
     if (!isDemo || !isSocketConnected || timerStartTimeRef.current === null || timerInitialMinutesRef.current === null) {
       return;
     }
 
-    const timerInterval = setInterval(() => {
-      if (timerStartTimeRef.current === null || timerInitialMinutesRef.current === null) {
+    timerIntervalRef.current = setInterval(() => {
+      if (!isSocketConnectedRef.current || timerStartTimeRef.current === null || timerInitialMinutesRef.current === null) {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        timerStartTimeRef.current = null;
+        timerInitialMinutesRef.current = null;
         return;
       }
 
@@ -366,13 +394,20 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       setCurrentDemoMinutes(remainingMinutes);
 
       if (remainingMinutes <= 0) {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
         timerStartTimeRef.current = null;
         timerInitialMinutesRef.current = null;
       }
     }, 1000);
 
     return () => {
-      clearInterval(timerInterval);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
     };
   }, [isDemo, isSocketConnected]);
 
