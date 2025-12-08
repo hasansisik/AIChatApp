@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,7 +48,11 @@ const AIItem: React.FC<AIItemProps> = ({ item, onPress, onFavoritePress }) => {
       <Image
         source={typeof item.image === 'string' ? { uri: item.image } : item.image}
         style={styles.backgroundImage}
-        resizeMode="cover"
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
+        priority="high"
+        recyclingKey={item.id}
       />
       
       {/* Favorite Icon */}

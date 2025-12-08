@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from "@/hooks/useThemeColor";
 import { getSessions, updateCourseCode } from "@/redux/actions/eduActions";
 import { loadUser } from "@/redux/actions/userActions";
@@ -28,6 +29,7 @@ import { useCouponAccess } from "@/hooks/useCouponAccess";
 const Edu = () => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const navigation = useNavigation();
   const { user } = useSelector((state: any) => state.user);
   const { sessions, loading, error, code } = useSelector((state: any) => state.edu);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,6 +39,7 @@ const Edu = () => {
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [couponModalVisible, setCouponModalVisible] = useState(false);
   const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
+  const modalClosedRef = useRef(false); // Track if modal was closed by user
   
   // Check coupon access - sadece purchase kuponu kontrolü (demo edu için geçerli değil)
   const { hasAccess, loading: accessLoading, isPurchase } = useCouponAccess();
@@ -50,11 +53,12 @@ const Edu = () => {
 
   // Check access separately to avoid infinite loops - sadece purchase kuponu kontrolü
   // Kullanıcıda activeCouponCode veya courseCode varsa tekrar sorma
+  // Modal kapatıldıysa tekrar açma
   useEffect(() => {
     const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
                           (user?.courseCode && user?.courseCode.trim() !== '');
     
-    if (!accessLoading && !isPurchase && user && !hasCouponCode && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible) {
+    if (!accessLoading && !isPurchase && user && !hasCouponCode && !purchaseModalVisible && !couponModalVisible && !couponSelectionModalVisible && !modalClosedRef.current) {
       // User doesn't have purchase coupon and no coupon code, show selection modal (only once)
       setCouponSelectionModalVisible(true);
     }
@@ -112,6 +116,14 @@ const Edu = () => {
     await dispatch<any>(loadUser());
   };
 
+  const handleCouponSelectionClose = () => {
+    // Mark modal as closed to prevent it from reopening
+    modalClosedRef.current = true;
+    setCouponSelectionModalVisible(false);
+    // Navigate to Home tab
+    navigation.navigate('Home' as never);
+  };
+
   // Show access check message if no purchase coupon
   // Kullanıcıda activeCouponCode veya courseCode varsa erişim mesajı gösterme
   const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
@@ -154,7 +166,7 @@ const Edu = () => {
         {/* Coupon Selection Modal */}
         <CouponSelectionModal
           visible={couponSelectionModalVisible}
-          onClose={() => setCouponSelectionModalVisible(false)}
+          onClose={handleCouponSelectionClose}
           onHasCoupon={handleHasCoupon}
           onNoCoupon={handleNoCoupon}
         />
@@ -201,7 +213,7 @@ const Edu = () => {
         {/* Coupon Selection Modal */}
         <CouponSelectionModal
           visible={couponSelectionModalVisible}
-          onClose={() => setCouponSelectionModalVisible(false)}
+          onClose={handleCouponSelectionClose}
           onHasCoupon={handleHasCoupon}
           onNoCoupon={handleNoCoupon}
         />

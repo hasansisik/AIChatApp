@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Colors, useTheme } from "@/hooks/useThemeColor";
-import { StyleSheet, Image, View, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Modal, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from 'react-i18next';
-import { useRouter } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/app/(tabs)/home";
 import List from "@/app/(tabs)/list";
@@ -30,6 +31,7 @@ const TabNavigation = () => {
   const { isDark } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
+  const segments = useSegments();
   const { user, isAuthenticated } = useSelector((state: any) => state.user);
   const { loading: authLoading, isOnboardingCompleted } = useAuth();
   const dispatch = useDispatch();
@@ -44,12 +46,23 @@ const TabNavigation = () => {
     // This will be handled in the Edu component itself
   }, [user]);
 
-  // Check if user is authenticated, if not redirect to login
+  // Preload profile picture when user data is available
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (user?.profile?.picture) {
+      Image.prefetch(user.profile.picture).catch(() => {
+        // Ignore prefetch errors
+      });
+    }
+  }, [user?.profile?.picture]);
+
+  // Check if user is authenticated, if not redirect to login
+  // Only redirect if we're still on tabs route (not already redirected to login)
+  useEffect(() => {
+    const isOnAuthRoute = segments[0] === '(auth)';
+    if (!authLoading && !isAuthenticated && !isOnAuthRoute) {
       router.replace("/(auth)/login");
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, segments]);
 
   const handleOnboardingComplete = async () => {
     setOnboardingOverrideComplete(true);
@@ -362,7 +375,11 @@ const TabNavigation = () => {
                         : require("@/assets/images/person.png")
                     }
                     style={styles.profileImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                    priority="high"
+                    recyclingKey={user?.profile?.picture || "default-profile"}
                   />
                 </LinearGradient>
               ) : (
@@ -373,7 +390,11 @@ const TabNavigation = () => {
                       : require("@/assets/images/person.png")
                   }
                   style={styles.profileImageInactive}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                  priority="high"
+                  recyclingKey={user?.profile?.picture || "default-profile"}
                 />
               )}
             </View>

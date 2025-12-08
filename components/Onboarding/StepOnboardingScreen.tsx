@@ -136,7 +136,7 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
         
         <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
           <ReusableText
-            text={t('onboarding.skip')}
+            text={currentStep === totalSteps - 1 ? t('start.finish') : t('onboarding.skip')}
             family="medium"
             size={16}
             color={Colors.gray}
