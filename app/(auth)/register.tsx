@@ -24,6 +24,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { register, loadUser } from "@/redux/actions/userActions";
 import { Colors } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
+import { registerSchema } from "@/utils/validation";
 
 const Register = () => {
   const router = useRouter();
@@ -96,6 +97,9 @@ const Register = () => {
       confirmPassword: "",
       complianceModal: false,
     },
+    validationSchema: registerSchema,
+    validateOnChange: false,
+    validateOnBlur: false,
     onSubmit: async (values) => {
       const actionResult = await dispatch(
         register({

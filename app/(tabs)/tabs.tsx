@@ -59,6 +59,14 @@ const TabNavigation = () => {
     }
   };
 
+  // Check onboarding status whenever user data changes
+  useEffect(() => {
+    if (user && !authLoading) {
+      // Reload user to get latest onboarding status
+      dispatch<any>(loadUser());
+    }
+  }, [user?._id]);
+
   const handleCodeSubmit = async () => {
     if (!courseCode.trim()) {
       Alert.alert(t('common.error'), t('tabs.courseCode.enterCode'));
@@ -168,7 +176,14 @@ const TabNavigation = () => {
       backgroundColor: Colors.primary,
     },
   });
-  const shouldShowOnboarding = !authLoading && !isOnboardingCompleted && !onboardingOverrideComplete;
+  // Check onboarding from both state and user object
+  const userOnboardingCompleted = user?.isOnboardingCompleted || false;
+  const shouldShowOnboarding = !authLoading && 
+    isAuthenticated && 
+    user && 
+    !isOnboardingCompleted && 
+    !userOnboardingCompleted && 
+    !onboardingOverrideComplete;
 
   if (shouldShowOnboarding) {
     return (

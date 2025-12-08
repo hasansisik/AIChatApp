@@ -1,7 +1,8 @@
 import * as Yup from 'yup';
 
 export const registerSchema = Yup.object({
-  name: Yup.string().required('İsim soyisim zorunlu alan'),
+  name: Yup.string().required('İsim zorunlu alan'),
+  surname: Yup.string().required('Soyisim zorunlu alan'),
   password: Yup.string()
     .matches(/^[A-Za-z0-9.,!?\/]*$/, 'Geçersiz karakter içeriyor')
     .min(8, "Şifre en az 8 karakter olmalıdır")
@@ -10,7 +11,7 @@ export const registerSchema = Yup.object({
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password'), undefined], 'Şifreler uyuşmalı')
     .required('Zorunlu alan'),
-  complianceModal: Yup.boolean().oneOf([true], 'Kullanıcı Sözleşmesi ve Gizlilik Politikasını onaylamanız gerekmektedir.')
+  complianceModal: Yup.boolean()
 });
 
 export const loginSchema = Yup.object({
