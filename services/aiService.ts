@@ -3,30 +3,27 @@ import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { server } from '@/config';
 
-// server değişkeninden WebSocket URL'ini dinamik olarak türet
-// server: "http://192.168.1.104:5001/v1" -> "ws://192.168.1.104:5001/ws/stt"
 const getSTTWebSocketURL = (): string => {
   try {
     const serverUrl = new URL(server);
     const host = serverUrl.hostname;
-    const port = serverUrl.port || '5001';
-    console.log(`🔌 STT WebSocket URL: ws://${host}:${port}/ws/stt`);
-    return `ws://${host}:${port}/ws/stt`;
+    const protocol = serverUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+    const port = serverUrl.port || (protocol === 'wss:' ? '443' : '5001');
+    const wsUrl = `${protocol}//${host}${port && port !== '443' && port !== '80' ? `:${port}` : ''}/ws/stt`;
+    console.log(`🔌 STT WebSocket URL: ${wsUrl}`);
+    return wsUrl;
   } catch (error) {
     console.warn('⚠️ Server URL parse edilemedi, fallback kullanılıyor:', error);
     return 'ws://localhost:5001/ws/stt';
   }
 };
 
-// Chunk interval'i artırarak FFmpeg yükünü azalt
-// Daha uzun chunk'lar = daha az FFmpeg çağrısı = daha hızlı işleme
-const CHUNK_INTERVAL_MS = 500; // 140ms -> 500ms (daha az chunk, daha hızlı)
-const FIRST_CHUNK_DELAY_MS = 300; // 60ms -> 300ms (ilk chunk için daha uzun bekleme)
+const CHUNK_INTERVAL_MS = 500;
+const FIRST_CHUNK_DELAY_MS = 300;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
 type TTSAudioHandler = (audioUri: string) => void;
-type RecordingForLipsyncHandler = (audioUri: string) => void;
 type SocketConnectionHandler = (connected: boolean) => void;
 type DemoTimerUpdateHandler = (minutesRemaining: number) => void;
 
@@ -36,7 +33,6 @@ class AIService {
   private transcriptionHandlers = new Set<TranscriptionHandler>();
   private statusHandlers = new Set<StatusHandler>();
   private ttsAudioHandlers = new Set<TTSAudioHandler>();
-  private recordingForLipsyncHandlers = new Set<RecordingForLipsyncHandler>();
   private socketConnectionHandlers = new Set<SocketConnectionHandler>();
   private demoTimerUpdateHandlers = new Set<DemoTimerUpdateHandler>();
   private socketReady: Promise<void> | null = null;
@@ -69,14 +65,6 @@ class AIService {
 
   offTTSAudio(handler: TTSAudioHandler) {
     this.ttsAudioHandlers.delete(handler);
-  }
-
-  onRecordingForLipsync(handler: RecordingForLipsyncHandler) {
-    this.recordingForLipsyncHandlers.add(handler);
-  }
-
-  offRecordingForLipsync(handler: RecordingForLipsyncHandler) {
-    this.recordingForLipsyncHandlers.delete(handler);
   }
 
   onSocketConnection(handler: SocketConnectionHandler) {
@@ -145,7 +133,6 @@ class AIService {
 
     this.socketReady = new Promise(async (resolve, reject) => {
       try {
-        // Token'ı AsyncStorage'dan al
         let token = null;
         try {
           token = await AsyncStorage.getItem('accessToken');
@@ -153,7 +140,6 @@ class AIService {
           console.warn('⚠️ Token alınamadı:', error);
         }
 
-        // Voice, language ve token bilgisini query parameter olarak ekle
         const params = new URLSearchParams();
         if (this.currentVoice) {
           params.append('voice', this.currentVoice);
@@ -171,7 +157,6 @@ class AIService {
 
         this.sttSocket.onopen = () => {
           console.log(`✅ WebSocket bağlandı (voice: ${this.currentVoice})`);
-          // Voice config'i gönder - socket null kontrolü ile
           if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && this.currentVoice) {
             try {
               this.sttSocket.send(JSON.stringify({
@@ -183,7 +168,7 @@ class AIService {
               console.warn('⚠️ Voice config gönderilemedi:', error);
             }
           }
-          this.notifySocketConnection(true); // WebSocket açıldı
+          this.notifySocketConnection(true);
           resolve();
         };
 
@@ -211,7 +196,6 @@ class AIService {
                 }
                 break;
               case 'demo_timer_update':
-                // Backend'den gelen demo süresi güncellemesi
                 if (message.minutesRemaining !== undefined) {
                   this.notifyDemoTimerUpdate(message.minutesRemaining);
                 }
@@ -234,7 +218,7 @@ class AIService {
 
         this.sttSocket.onclose = () => {
           console.log('🔌 WebSocket bağlantısı kapandı');
-          this.notifySocketConnection(false); // WebSocket kapandı
+          this.notifySocketConnection(false);
           this.sttSocket = null;
           this.socketReady = null;
           this.voiceConfigSent = false;
@@ -250,16 +234,12 @@ class AIService {
   private disconnectSttSocket() {
     if (this.sttSocket) {
       try {
-        // Socket'i kapat (event listener'lar otomatik temizlenecek)
         if (this.sttSocket.readyState === WebSocket.OPEN || this.sttSocket.readyState === WebSocket.CONNECTING) {
-          // onclose event'i otomatik olarak notifySocketConnection(false) çağıracak
           this.sttSocket.close();
         } else {
-          // Eğer socket zaten kapalıysa, manuel olarak notify et
           this.notifySocketConnection(false);
         }
         
-        // Event listener'ları temizle (close'dan sonra)
         this.sttSocket.onopen = null;
         this.sttSocket.onmessage = null;
         this.sttSocket.onerror = null;
@@ -295,12 +275,10 @@ class AIService {
       return false;
     }
 
-    // Eğer eski recording varsa, önce temizle
     if (this.recording) {
       try {
         await this.recording.stopAndUnloadAsync();
       } catch (error) {
-        // Ignore
       }
       this.recording = null;
     }
@@ -327,14 +305,12 @@ class AIService {
       this.recording = recording;
       return true;
     } catch (error) {
-      // Hata durumunda audio mode'u sıfırla
       try {
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
         });
       } catch (e) {
-        // Ignore
       }
       return false;
     } finally {
@@ -444,36 +420,17 @@ class AIService {
       return;
     }
 
-    // Send to STT for transcription (only if shouldSendAudio is true)
     if (shouldSendAudio) {
       try {
         await this.sendBinaryAudio(audioUri);
-        // Son chunk'ların da işlenmesi için kısa bir gecikme
         if (isFinal) {
           await new Promise(resolve => setTimeout(resolve, 200));
         }
       } catch (error) {
-        // Hata olsa bile devam et, dosyayı sil
       }
     }
     
-    // If this is the final recording, notify lipsync handlers (only if shouldSendAudio is true)
     if (isFinal && shouldSendAudio) {
-      // Copy the file before deleting (for lipsync)
-      const lipsyncAudioUri = `${FileSystem.cacheDirectory}lipsync_${Date.now()}.m4a`;
-      try {
-        const base64Data = await FileSystem.readAsStringAsync(audioUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        await FileSystem.writeAsStringAsync(lipsyncAudioUri, base64Data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        // Notify handlers about the recording for lipsync
-        this.recordingForLipsyncHandlers.forEach(handler => handler(lipsyncAudioUri));
-      } catch (error) {
-        console.error('Lipsync audio kopyalanamadı:', error);
-      }
-      
       if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
         try {
           this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
@@ -482,11 +439,9 @@ class AIService {
         }
       }
     } else if (isFinal && !shouldSendAudio) {
-      // Pause durumunda: Sadece kaydı durdur, gönderme, STT session'ını iptal et
       console.log('⏸️ Kayıt pause edildi, ses gönderilmiyor');
       if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
         try {
-          // STT'ye pause sinyali gönder (STT timeout'unu önlemek için)
           this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
         } catch (error) {
           console.warn('⚠️ speech_pause mesajı gönderilemedi:', error);
@@ -494,14 +449,12 @@ class AIService {
       }
     }
     
-    // Dosyayı sil
     try {
       await FileSystem.deleteAsync(audioUri, { idempotent: true });
     } catch (error) {
       console.warn('⚠️ Dosya silinemedi:', error);
     }
 
-    // Eğer final değilse ve streaming devam ediyorsa, yeni kayıt başlat
     if (!isFinal && this.isStreaming) {
       await this.startRecordingInstance();
     }
@@ -517,19 +470,16 @@ class AIService {
       return false;
     }
 
-    // Voice ve language'ı set et
     this.currentVoice = voice.trim();
     this.currentLanguage = language;
     console.log(`🎙️ Voice: ${this.currentVoice}, Language: ${this.currentLanguage}`);
     
-    // Eğer socket açıksa ve dil değiştiyse, yeniden bağlan
     if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
       this.sttSocket.close();
       this.sttSocket = null;
       this.socketReady = null;
     }
     
-    // Socket'i bağla (voice ve language query parameter olarak gönderilecek)
     await this.ensureSocket();
 
     const started = await this.startRecordingInstance();
@@ -565,10 +515,8 @@ class AIService {
     } else if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
       try {
         if (shouldSendAudio) {
-          // Normal stop: speech_end gönder
           this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
         } else {
-          // Pause: speech_pause gönder (STT timeout'unu önlemek için)
           this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
         }
       } catch (error) {
@@ -582,9 +530,7 @@ class AIService {
       return false;
     }
 
-    // Mevcut socket'i kullan, yeni bağlantı kurma
     if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
-      // Socket yoksa veya açık değilse, bağlan
       await this.ensureSocket();
       
       if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
@@ -594,7 +540,6 @@ class AIService {
     }
 
     try {
-      // Text mesajını server'a gönder (string olarak)
       const message = JSON.stringify({
         type: 'text_message',
         text: text.trim()
@@ -610,38 +555,30 @@ class AIService {
   }
 
   async cleanup(): Promise<void> {
-    // 1. Streaming'i durdur
     this.isStreaming = false;
     this.clearChunkTimer();
     
-    // 2. Recording'i temizle
     if (this.recording) {
       try {
         await this.recording.stopAndUnloadAsync();
       } catch (error) {
-        // Ignore
       }
       this.recording = null;
     }
     
-    // 3. Audio mode'u sıfırla
     try {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
       });
     } catch (error) {
-      // Ignore
     }
     
-    // 4. WebSocket'i kapat
     this.disconnectSttSocket();
     
-    // 5. Handler'ları temizle
     this.transcriptionHandlers.clear();
     this.statusHandlers.clear();
     this.ttsAudioHandlers.clear();
-    this.recordingForLipsyncHandlers.clear();
   }
 
   private async enqueueTTSAudio(base64Audio: string, mimeType: string = 'audio/mpeg') {

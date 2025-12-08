@@ -67,26 +67,22 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const inputAreaTranslateY = React.useRef(new Animated.Value(0)).current;
   const isManuallyOpeningKeyboardRef = React.useRef(false);
   const [keyboardHeight, setKeyboardHeight] = React.useState(0);
-  const [userText, setUserText] = React.useState(''); // Kullanıcının konuştuğu metin
-  const [aiText, setAiText] = React.useState(''); // AI'dan dönen metin
-  const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr'); // STT dili
-  const [isTTSPlaying, setIsTTSPlaying] = React.useState(false); // TTS çalıyor mu?
+  const [userText, setUserText] = React.useState('');
+  const [aiText, setAiText] = React.useState('');
+  const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr');
+  const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
   const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(demoMinutesRemaining);
-  const timerStartTimeRef = React.useRef<number | null>(null); // Timer başlangıç zamanı
-  const timerInitialMinutesRef = React.useRef<number | null>(null); // Timer başlangıç dakikası
+  const timerStartTimeRef = React.useRef<number | null>(null);
+  const timerInitialMinutesRef = React.useRef<number | null>(null);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
-      // Klavye kapalıysa aç
       isManuallyOpeningKeyboardRef.current = true;
       
-      // Android için: Önce tahmini bir klavye yüksekliği ayarla ki input görünsün
       if (Platform.OS === 'android') {
         setKeyboardHeight(300);
         setIsKeyboardVisible(true);
         
-        // Android'de render tamamlandıktan sonra focus yap
-        // requestAnimationFrame + setTimeout kombinasyonu daha güvenilir
         requestAnimationFrame(() => {
           setTimeout(() => {
             if (textInputRef.current) {
@@ -98,7 +94,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           }, 100);
         });
       } else {
-        // iOS için mevcut mantık
         setIsKeyboardVisible(true);
         setTimeout(() => {
           textInputRef.current?.focus();
@@ -108,7 +103,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         }, 50);
       }
     } else {
-      // Klavye açıksa kapat
       dismissKeyboard();
     }
   };
@@ -140,14 +134,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         const inputAreaHeight = 80;
         const totalOffset = height + inputAreaHeight;
         
-        // Android için klavye yüksekliğini state'e kaydet
         if (Platform.OS === 'android') {
-          // screenY: klavyenin başladığı Y pozisyonu (ekranın üstünden)
           const screenY = event.endCoordinates.screenY || 0;
           const calculatedHeight = screenHeight - screenY;
-          // Fallback ve minimum değer kontrolü + ekstra 10px güvenlik marjı
           const baseHeight = calculatedHeight > 100 ? calculatedHeight : (height > 100 ? height : 280);
-          const finalHeight = baseHeight + 10; // Navigation bar için ekstra offset
+          const finalHeight = baseHeight + 10;
           console.log('📱 Android keyboard - screenY:', screenY, 'screenHeight:', screenHeight, 'height:', height, 'final:', finalHeight);
           setKeyboardHeight(finalHeight);
         }
@@ -158,7 +149,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           useNativeDriver: true,
         }).start();
 
-        // iOS için transform kullan
         if (Platform.OS === 'ios') {
           Animated.timing(inputAreaTranslateY, {
             toValue: -height,
@@ -178,7 +168,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
         setIsKeyboardVisible(false);
         
-        // Android için klavye yüksekliğini sıfırla
         if (Platform.OS === 'android') {
           setKeyboardHeight(0);
         }
@@ -205,20 +194,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, [setIsKeyboardVisible, bottomAreaTranslateY, inputAreaTranslateY]);
 
-  // Basılı tutma - Kayıt başlat
   const handleMicrophonePressIn = async () => {
-    // Android'de klavye açıksa önce kapat ve bekle
     if (Platform.OS === 'android' && isKeyboardVisible) {
       console.log('🔄 Android: Klavye kapatılıyor...');
       Keyboard.dismiss();
       setIsKeyboardVisible(false);
       setKeyboardHeight(0);
       
-      // Klavyenin tamamen kapanması için bekle
       await new Promise(resolve => setTimeout(resolve, 400));
     }
     
-    // iOS'ta da klavye açıksa kapat
     if (Platform.OS === 'ios' && isKeyboardVisible) {
       Keyboard.dismiss();
       setIsKeyboardVisible(false);
@@ -239,14 +224,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   };
 
-  // Bırakma - Kayıt durdur ve STT'ye gönder
   const handleMicrophonePressOut = async () => {
     if (!isRecording) {
       return;
     }
 
     try {
-      await aiService.stopLiveTranscription(true); // shouldSendAudio = true (send)
+      await aiService.stopLiveTranscription(true);
       setIsRecording(false);
       console.log('⏸️ Kayıt durduruldu, ses gönderildi');
     } catch (error) {
@@ -262,10 +246,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       return;
     }
 
-    // Kullanıcının yazdığı metni göster
     setUserText(textToSend);
 
-    // Text mesajını STT yapmadan direkt LLM'e gönder
     try {
       const sent = await aiService.sendTextMessage(textToSend);
       if (sent) {
@@ -283,7 +265,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   };
 
-  // Video loop için useEffect - her iki video için de
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.setIsLoopingAsync(true);
@@ -297,7 +278,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }
   }, []);
 
-  // STT transcription listener - kullanıcının konuştuğu metin
   useEffect(() => {
     const handleTranscription = (text: string) => {
       setUserText(text);
@@ -309,13 +289,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, []);
 
-  // AI response listener - AI'dan dönen metin
   useEffect(() => {
     const handleStatus = (status: string) => {
-      // "AI: " prefix'ini kaldır
       if (status.startsWith('AI: ')) {
         setAiText(status.substring(4));
-        // TTS bitene kadar bekle, otomatik temizleme yok
       }
     };
 
@@ -325,8 +302,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, []);
 
-
-  // WebSocket bağlantı durumunu takip et
   const [isSocketConnected, setIsSocketConnected] = React.useState(false);
 
   useEffect(() => {
@@ -334,7 +309,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       setIsSocketConnected(connected);
       
       if (connected) {
-        // WebSocket açıldığında - backend'de timer başlatılıyor, frontend timer'ı da başlat
         if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
           setCurrentDemoMinutes(demoMinutesRemaining);
           timerStartTimeRef.current = Date.now();
@@ -342,7 +316,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           console.log('📊 WebSocket açıldı, demo süresi gösteriliyor:', demoMinutesRemaining, 'dakika (frontend timer başlatıldı)');
         }
       } else {
-        // WebSocket kapandığında - frontend timer'ı durdur
         timerStartTimeRef.current = null;
         timerInitialMinutesRef.current = null;
         console.log('🛑 WebSocket kapandı, frontend timer durduruldu');
@@ -356,16 +329,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, [isDemo, demoMinutesRemaining]);
 
-  // Backend'den gelen demo timer güncellemelerini dinle
   useEffect(() => {
     const handleDemoTimerUpdate = (minutesRemaining: number) => {
-      // WebSocket kapalıysa güncellemeleri ignore et
       if (!isSocketConnected) {
         return;
       }
       
       if (isDemo) {
-        // Backend'den gelen güncelleme ile frontend timer'ı senkronize et
         setCurrentDemoMinutes(minutesRemaining);
         timerStartTimeRef.current = Date.now();
         timerInitialMinutesRef.current = minutesRemaining;
@@ -380,7 +350,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, [isDemo, isSocketConnected]);
 
-  // Frontend timer - Her saniye düşür (backend güncellemeleri ile senkronize)
   useEffect(() => {
     if (!isDemo || !isSocketConnected || timerStartTimeRef.current === null || timerInitialMinutesRef.current === null) {
       return;
@@ -391,52 +360,39 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         return;
       }
 
-      // Geçen süreyi hesapla (dakika cinsinden)
       const elapsedMinutes = (Date.now() - timerStartTimeRef.current) / (1000 * 60);
       const remainingMinutes = Math.max(0, timerInitialMinutesRef.current - elapsedMinutes);
       
       setCurrentDemoMinutes(remainingMinutes);
 
-      // Eğer süre bittiyse timer'ı durdur
       if (remainingMinutes <= 0) {
         timerStartTimeRef.current = null;
         timerInitialMinutesRef.current = null;
       }
-    }, 1000); // Her saniye güncelle
+    }, 1000);
 
     return () => {
       clearInterval(timerInterval);
     };
   }, [isDemo, isSocketConnected]);
 
-  // Component unmount olduğunda - backend'de zaten socket kapandığında timer durduruluyor
-  // Burada ekstra bir şey yapmaya gerek yok
-
-  // Props değiştiğinde (yeni demo süresi geldiğinde) currentDemoMinutes state'ini güncelle
-  // Backend'de timer çalışıyor, sadece görüntülemek için state'i güncelle
   useEffect(() => {
     if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
-      // Socket bağlı değilse veya timer çalışmıyorsa, sadece göster
       if (!isSocketConnected) {
         setCurrentDemoMinutes(demoMinutesRemaining);
       }
-      // Socket bağlıysa, backend'den gelen güncellemeleri kullan (yukarıdaki useEffect'te)
     } else if (isDemo && (demoMinutesRemaining === null || demoMinutesRemaining <= 0)) {
-      // Demo süresi bitti
       setCurrentDemoMinutes(0);
     }
   }, [demoMinutesRemaining, isDemo, isSocketConnected]);
 
-  // TTS Audio listener - AI'dan gelen sesi oynat
   const soundRef = useRef<Audio.Sound | null>(null);
-  const isPlayingRef = useRef(false); // Çift oynatmayı önlemek için
+  const isPlayingRef = useRef(false);
   const handlerRef = useRef<((audioUri: string) => Promise<void>) | null>(null);
 
   useEffect(() => {
-    // Handler'ı sadece bir kez oluştur ve ref'te sakla
     if (!handlerRef.current) {
       handlerRef.current = async (audioUri: string) => {
-        // Eğer zaten bir ses oynatılıyorsa, yeni sesi yok say
         if (isPlayingRef.current) {
           console.log('⚠️ TTS zaten oynatılıyor, yeni ses yok sayılıyor');
           return;
@@ -446,26 +402,21 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           isPlayingRef.current = true;
           console.log('🔊 TTS audio oynatılıyor:', audioUri);
           
-          // TTS başladığında video kaynağını değiştir
           setIsTTSPlaying(true);
           
-          // Önceki ses varsa durdur
           if (soundRef.current) {
             await soundRef.current.unloadAsync();
             soundRef.current = null;
           }
 
-          // Ses modunu ayarla - SADECE hoparlörden çalması için (kayıt modunu kapat)
-          // Yankıyı önlemek için tüm kayıt modlarını kapat
           await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false, // Kayıt modunu kapat (yankıyı önler)
+            allowsRecordingIOS: false,
             playsInSilentModeIOS: true,
-            shouldDuckAndroid: false, // Yankıyı önlemek için ducking'i kapat
-            playThroughEarpieceAndroid: false, // Hoparlörden çal (ahizeden değil)
+            shouldDuckAndroid: false,
+            playThroughEarpieceAndroid: false,
             staysActiveInBackground: false,
           });
 
-          // Yeni ses dosyasını yükle ve oynat
           const { sound: newSound } = await Audio.Sound.createAsync(
             { uri: audioUri },
             { shouldPlay: true, volume: 1.0 }
@@ -473,21 +424,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           
           soundRef.current = newSound;
 
-          // Ses bittiğinde temizle ve metinleri kaldır
           newSound.setOnPlaybackStatusUpdate(async (status) => {
             if (status.isLoaded && status.didJustFinish) {
               soundRef.current?.unloadAsync().catch(() => {});
               soundRef.current = null;
-              isPlayingRef.current = false; // Oynatma bitti, yeni ses kabul edilebilir
+              isPlayingRef.current = false;
               console.log('✅ TTS audio oynatma tamamlandı, metinler temizleniyor');
               
-              // TTS bittiğinde metinleri temizle ve video kaynağını geri değiştir
               setUserText('');
               setAiText('');
               setIsTTSPlaying(false);
-              
-              // Ses modunu geri ayarlama - kayıt başlatıldığında aiService zaten ayarlayacak
-              // Bu şekilde çift ses sorunu olmaz
             }
           });
         } catch (error) {
@@ -503,7 +449,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     
     return () => {
       aiService.offTTSAudio(handler);
-      // Cleanup
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(() => {});
         soundRef.current = null;
@@ -514,8 +459,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Video Background - Loop, Muted, Full Screen */}
-      {/* İki video overlay - yumuşak geçiş için */}
       <View style={styles.videoContainer}>
         <Video
           ref={videoRef}
@@ -537,7 +480,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         />
       </View>
 
-      {/* Header */}
       <SafeAreaView style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.leftSection}>
@@ -562,7 +504,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           </View>
 
           <View style={styles.liveChatContainer}>
-            {/* Language Switch */}
             <View style={styles.languageContainer}>
               <Image
                 source={sttLanguage === 'tr' 
@@ -624,7 +565,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             />
           </View>
           
-          {/* Demo Timer - Header içinde, sağ üstte sabit - Her zaman görünür (isDemo ise) */}
           {isDemo ? (
             <View style={styles.demoTimerHeader}>
               <View style={styles.demoTimerBubble}>
@@ -652,7 +592,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           ) : null}
         </View>
         
-        {/* User Text - Header'ın altında, flex ile */}
         {userText ? (
           <View style={styles.userTextContainer}>
             <View style={styles.userTextBubble}>
@@ -667,7 +606,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         ) : null}
       </SafeAreaView>
 
-      {/* AI Text - Altta */}
       {aiText ? (
         <View style={styles.aiTextContainer}>
           <View style={styles.aiTextBubble}>
@@ -742,16 +680,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         </View>
       </Animated.View>
 
-      {/* Keyboard Dismiss Overlay - boş alana tıklayınca klavye kapansın */}
       {isKeyboardVisible && (
         <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <View style={styles.keyboardDismissOverlay} />
         </TouchableWithoutFeedback>
       )}
 
-      {/* Keyboard Input Area */}
       {Platform.OS === 'android' ? (
-        // Android: Sabit pozisyonlu View kullan - sadece keyboard height > 0 iken göster
         isKeyboardVisible && keyboardHeight > 0 && (
           <View
             style={[

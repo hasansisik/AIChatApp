@@ -48,10 +48,8 @@ const AIDetailPage = () => {
   const overlayOpacity = useRef(new Animated.Value(1)).current;
   const videoOpacity = useRef(new Animated.Value(0)).current;
   
-  // Check coupon access - hem purchase hem demo kontrolü
   const { hasAccess, loading: accessLoading, isDemo, isPurchase, minutesRemaining } = useCouponAccess();
   
-  // Demo süresi kontrolü için Redux action dispatch et
   useEffect(() => {
     const checkDemo = async () => {
       await dispatch(checkDemoStatus() as any);
@@ -59,13 +57,11 @@ const AIDetailPage = () => {
     
     checkDemo();
     
-    // Her dakika kontrol et (saniye yerine dakika)
     const interval = setInterval(checkDemo, 60000);
     
     return () => clearInterval(interval);
   }, [dispatch]);
   
-  // Find the AI item by ID
   const item = aiCategories.find(ai => ai.id === id);
 
   if (!item) {
@@ -78,15 +74,12 @@ const AIDetailPage = () => {
 
   const handleGoBack = async () => {
     try {
-      // Recording'i durdur (eğer aktifse)
       if (isRecording) {
         await aiService.stopLiveTranscription(false);
       }
       
-      // Tüm servisleri temizle
       await aiService.cleanup();
     } catch (error) {
-      // Ignore
     } finally {
       setIsRecording(false);
       router.push('/(tabs)/tabs');
@@ -94,27 +87,21 @@ const AIDetailPage = () => {
   };
 
   const handleStartPress = () => {
-    // Check if user has access (wait for loading to finish)
     if (accessLoading || couponLoading) {
-      return; // Wait for access check to complete
+      return;
     }
 
-    // Demo süresi dolmuş mu kontrol et - minutesRemaining kullan
     const isDemoExpiredCheck = isDemoExpired || 
                                (isDemo && (minutesRemaining === null || minutesRemaining <= 0));
     
-    // Kullanıcıda activeCouponCode veya courseCode varsa erişim var demektir
     const hasCouponCode = (user?.activeCouponCode && user?.activeCouponCode.trim() !== '') || 
                           (user?.courseCode && user?.courseCode.trim() !== '');
 
-    // Eğer kod yoksa (ne purchase ne demo), selection modal göster
     if (!hasAccess && !isPurchase && !hasCouponCode && !isDemo) {
-      // Hiç erişim yok, show selection modal
       setCouponSelectionModalVisible(true);
       return;
     }
 
-    // Eğer kod var ama demo süresi dolmuşsa, alert göster
     if (isDemoExpiredCheck) {
       Alert.alert(
         t('demo.expired.title'),
@@ -123,9 +110,7 @@ const AIDetailPage = () => {
           {
             text: t('common.ok'),
             onPress: () => {
-              // Tüm servisleri temizle
               aiService.cleanup().catch(() => {});
-              // Tabs'a yönlendir (home yerine)
               router.push('/(tabs)/tabs');
             }
           }
@@ -135,16 +120,13 @@ const AIDetailPage = () => {
       return;
     }
 
-    // Purchase kuponu varsa veya coupon code varsa veya aktif demo varsa direkt erişim ver
     if ((hasAccess || isPurchase || hasCouponCode) && !isDemoExpiredCheck) {
-      // User has access (purchase veya aktif demo veya coupon code), proceed with animation
       startVideoAnimation();
       return;
     }
   };
 
   const startVideoAnimation = () => {
-    // Animate gradient fade out, text fade out, overlay fade out, and bottom area fade in
     Animated.parallel([
       Animated.timing(gradientOpacity, {
         toValue: 0,
@@ -178,51 +160,35 @@ const AIDetailPage = () => {
   };
 
   const handleHasCoupon = () => {
-    // User has coupon, show coupon modal
     setCouponModalVisible(true);
   };
 
   const handleNoCoupon = () => {
-    // User doesn't have coupon, show purchase modal
     setPurchaseModalVisible(true);
   };
 
   const handleCouponSuccess = async () => {
     setCouponModalVisible(false);
-    // After successful coupon entry, reload user data and check demo status
     await dispatch(loadUser() as any);
     await dispatch(checkDemoStatus() as any);
-    // Kullanıcı "Başla" butonuna tıklayarak devam edecek
   };
-
 
   const handleAutoDetectPress = () => {
     setSelectedDetectionMethod('microphone');
     setIsSelectionModalVisible(false);
-    // Modal açılmıyor, sadece icon değişiyor
   };
 
   const handleHandDetectPress = () => {
     setSelectedDetectionMethod('hand');
     setIsSelectionModalVisible(false);
-    // Modal açılmıyor, sadece icon değişiyor
   };
 
-  // Set voice when component mounts or item changes
   useEffect(() => {
     if (item?.voice) {
       aiService.prewarmConnection(item.voice);
     }
   }, [item?.voice]);
 
-  // NOT: Otomatik animasyon başlatma kaldırıldı
-  // Kullanıcı mutlaka "Başla" butonuna tıklamalı
-  // Bu sayede demo kontrolü ve erişim kontrolü handleStartPress içinde yapılıyor
-
-  // NOT: Demo expiration alert'i handleStartPress içinde gösteriliyor
-  // Sayfa açılır açılmaz değil, "Başla" butonuna tıklandığında gösterilecek
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       aiService.cleanup();
