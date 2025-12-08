@@ -2,7 +2,6 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -47,14 +46,15 @@ const Header: React.FC<HeaderProps> = ({ onSearchPress, onProfilePress }) => {
           <Ionicons name="search" size={24} color={Colors.text} />
         </TouchableOpacity>
 
-        {/* Video Logo */}
+        {/* Logo */}
         <View style={styles.logoContainer}>
-          <Video
-            source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
-            style={styles.video}
-            shouldPlay
-            isLooping
-            resizeMode={ResizeMode.CONTAIN}
+          <Image
+            source={isDark ? require('@/assets/images/icon-w.png') : require('@/assets/images/icon-b.png')}
+            style={styles.logo}
+            contentFit="contain"
+            transition={200}
+            cachePolicy="memory-disk"
+            priority="high"
           />
         </View>
 
@@ -102,13 +102,12 @@ const styles = StyleSheet.create({
   headerContainer: {
     backgroundColor: Colors.background,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 20,
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   iconContainer: {
     width: 40,
@@ -122,9 +121,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 50,
   },
-  video: {
+  logo: {
     width: 120,
     height: 50,
   },

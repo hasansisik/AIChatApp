@@ -2,7 +2,6 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { Colors, useTheme } from '@/hooks/useThemeColor';
@@ -44,14 +43,15 @@ const HeaderList: React.FC<HeaderListProps> = ({ onSearchPress, onProfilePress }
           <Ionicons name="search" size={24} color={Colors.text} />
         </TouchableOpacity>
 
-        {/* Video Logo */}
+        {/* Logo */}
         <View style={styles.logoContainer}>
-          <Video
-            source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
-            style={styles.video}
-            shouldPlay
-            isLooping
-            resizeMode={ResizeMode.CONTAIN}
+          <Image
+            source={isDark ? require('@/assets/images/icon-w.png') : require('@/assets/images/icon-b.png')}
+            style={styles.logo}
+            contentFit="contain"
+            transition={200}
+            cachePolicy="memory-disk"
+            priority="high"
           />
         </View>
 
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 50,
   },
-  video: {
+  logo: {
     width: 120,
     height: 50,
   },

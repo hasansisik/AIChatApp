@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Image } from 'expo-image';
 import ReusableText from '@/components/ui/ReusableText';
 import ReusableButton from '@/components/ui/ReusableButton';
 import { Colors } from '@/constants/Colors';
@@ -69,13 +69,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <Video
-        source={require('@/assets/video/onboarding.mp4')}
-        style={styles.videoBackground}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        isMuted
+      <Image
+        source={require('@/assets/images/iconbg.jpg')}
+        style={styles.backgroundImage}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
+        priority="high"
       />
       <FlatList
         ref={flatListRef}
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  videoBackground: {
+  backgroundImage: {
     position: 'absolute',
     top: 0,
     left: 0,

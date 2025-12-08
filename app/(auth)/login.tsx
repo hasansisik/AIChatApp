@@ -24,7 +24,7 @@ import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Colors } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
-import { Video, ResizeMode } from "expo-av";
+import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useThemeColor";
 
 interface LoginProps {
@@ -124,10 +124,10 @@ const Login: React.FC<LoginProps> = () => {
           <Toast ref={toastRef} />
 
           
-          {/* Video Background */}
+          {/* Logo Background */}
           <Animated.View
             style={[
-              loginStyles.videoContainer,
+              loginStyles.logoContainer,
               {
                 opacity: textAnimation,
                 transform: [
@@ -141,13 +141,13 @@ const Login: React.FC<LoginProps> = () => {
               },
             ]}
           >
-            <Video
-              source={isDark ? require('@/assets/video/Tlogotm-dark.mp4') : require('@/assets/video/Tlogotm.mp4')}
-              style={loginStyles.video}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
-              isLooping
-              isMuted
+            <Image
+              source={isDark ? require('@/assets/images/icon-w.png') : require('@/assets/images/icon-b.png')}
+              style={loginStyles.logo}
+              contentFit="contain"
+              transition={200}
+              cachePolicy="memory-disk"
+              priority="high"
             />
           </Animated.View>
           
@@ -263,17 +263,17 @@ const loginStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: Colors.background,
   },
-  videoContainer: {
+  logoContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     backgroundColor: Colors.background,
   },
-  video: {
+  logo: {
     width: '100%',
     height: '100%',
-    maxHeight: 300,
+    maxHeight: 100,
   },
   contentContainer: {
     justifyContent: 'flex-end',
