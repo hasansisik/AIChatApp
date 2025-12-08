@@ -1,8 +1,5 @@
-import Constants from "expo-constants";
-
-const DEFAULT_API_HOST = "localhost";
-const DEFAULT_API_PORT = "5001";
 const DEFAULT_API_PATH = "/v1";
+const HEROKU_BASE_URL = "https://ai-chat-server-birimajans-cf2523744522.herokuapp.com";
 
 const resolveServerBaseURL = () => {
   // Önce environment variable kontrol et
@@ -10,30 +7,12 @@ const resolveServerBaseURL = () => {
     return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  // Expo Go'dan host IP'sini al
-  const hostUri =
-    Constants?.expoConfig?.hostUri ??
-    (Constants?.manifest2?.extra?.expoGo as any)?.debuggerHost ??
-    (Constants?.manifest as any)?.debuggerHost;
-
-  if (!hostUri) {
-    // Fallback: localhost kullan (sadece simulator/emulator için çalışır)
-    return `http://${DEFAULT_API_HOST}:${DEFAULT_API_PORT}${DEFAULT_API_PATH}`;
-  }
-
-  // hostUri formatı: "192.168.1.104:8081" - port kısmını ayır
-  const host = hostUri.split(":")[0];
-
-  // Geçerli bir IP adresi varsa kullan
-  if (host && host !== "127.0.0.1" && host !== "localhost") {
-    return `http://${host}:${DEFAULT_API_PORT}${DEFAULT_API_PATH}`;
-  }
-
-  return `http://${DEFAULT_API_HOST}:${DEFAULT_API_PORT}${DEFAULT_API_PATH}`;
+  // Heroku URL'sini kullan
+  return `${HEROKU_BASE_URL}${DEFAULT_API_PATH}`;
 };
 
 export const server = resolveServerBaseURL();
-export const aiServer = "http://localhost:5001/";
+export const aiServer = `${HEROKU_BASE_URL}/`;
 
 // Contact information for purchase
 export const CONTACT_INFO = {
