@@ -71,10 +71,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [aiText, setAiText] = React.useState('');
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr');
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
-  const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(demoMinutesRemaining);
-  const timerStartTimeRef = React.useRef<number | null>(null);
-  const timerInitialMinutesRef = React.useRef<number | null>(null);
-  const timerIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  // Demo süresi sadece backend'den gelen değerle güncellenir
+  const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(
+    isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0 ? demoMinutesRemaining : null
+  );
   const handleDemoTimerUpdateRef = React.useRef<((minutesRemaining: number) => void) | null>(null);
 
   const handleKeyboardPress = () => {
@@ -141,7 +141,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           const calculatedHeight = screenHeight - screenY;
           const baseHeight = calculatedHeight > 100 ? calculatedHeight : (height > 100 ? height : 280);
           const finalHeight = baseHeight + 10;
-          console.log('📱 Android keyboard - screenY:', screenY, 'screenHeight:', screenHeight, 'height:', height, 'final:', finalHeight);
           setKeyboardHeight(finalHeight);
         }
 
@@ -230,12 +229,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           tension: 400,
           friction: 8,
         }).start();
-        console.warn('⚠️ Ses kaydı başlatılamadı');
-      } else {
-        console.log('✅ Ses kaydı başlatıldı (basılı tutuluyor)');
       }
     } catch (error: any) {
-      console.error('❌ Ses kaydı başlatılamadı:', error);
       // Hata durumunda geri al
       setIsRecording(false);
       Animated.spring(microphoneButtonScale, {
@@ -263,9 +258,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     try {
       await aiService.stopLiveTranscription(true);
       setIsRecording(false);
-      console.log('⏸️ Kayıt durduruldu, ses gönderildi');
+      console.log('⏸️ Kayıt durduruldu');
     } catch (error) {
-      console.error('❌ Kayıt durdurulamadı:', error);
       setIsRecording(false);
     }
   };
@@ -284,12 +278,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       if (sent) {
         setConversationText('');
         setIsKeyboardVisible(false);
-        console.log('✅ Text mesajı gönderildi');
       } else {
         setUserText('');
       }
     } catch (error) {
-      console.error('❌ Text mesajı gönderilirken hata:', error);
       setUserText('');
     }
   };
@@ -302,7 +294,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           await videoRef.current.setIsMutedAsync(true);
           await videoRef.current.playAsync();
         } catch (error) {
-          console.error('❌ Ana video başlatılamadı:', error);
+          // Ignore
         }
       }
       if (videoRefTTS.current) {
@@ -311,7 +303,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           await videoRefTTS.current.setIsMutedAsync(true);
           await videoRefTTS.current.playAsync();
         } catch (error) {
-          console.error('❌ TTS video başlatılamadı:', error);
+          // Ignore
         }
       }
     };
@@ -379,29 +371,20 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       isSocketConnectedRef.current = connected;
       setIsSocketConnected(connected);
       
-      if (connected) {
-        if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
-          setCurrentDemoMinutes(demoMinutesRemaining);
-          timerStartTimeRef.current = Date.now();
-          timerInitialMinutesRef.current = demoMinutesRemaining;
-          console.log('📊 WebSocket açıldı, demo süresi gösteriliyor:', demoMinutesRemaining, 'dakika (frontend timer başlatıldı)');
-        }
-      } else {
-        // WebSocket kapandığında tüm timer'ları ve handler'ları temizle
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
+      if (!connected) {
+        // WebSocket kapandığında handler'ı temizle
         if (handleDemoTimerUpdateRef.current) {
           aiService.offDemoTimerUpdate(handleDemoTimerUpdateRef.current);
           handleDemoTimerUpdateRef.current = null;
         }
-        timerStartTimeRef.current = null;
-        timerInitialMinutesRef.current = null;
-        // Demo süresini başlangıç değerine geri döndür
-        setCurrentDemoMinutes(demoMinutesRemaining);
-        console.log('🛑 WebSocket kapandı, frontend timer ve handler\'lar durduruldu');
+        // WebSocket kapalıyken prop'tan gelen değeri göster (fallback)
+        if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
+          setCurrentDemoMinutes(demoMinutesRemaining);
+        } else if (isDemo) {
+          setCurrentDemoMinutes(0);
+        }
       }
+      // WebSocket bağlandığında backend'den gelen değeri bekliyoruz, prop'u kullanmıyoruz
     };
 
     aiService.onSocketConnection(handleSocketConnection);
@@ -415,7 +398,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     const handleDemoTimerUpdate = (minutesRemaining: number) => {
       // WebSocket kapalıysa hiçbir şey yapma
       if (!isSocketConnectedRef.current) {
-        console.log('⚠️ WebSocket kapalı, demo timer güncellemesi yok sayılıyor');
         return;
       }
       
@@ -424,10 +406,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         return;
       }
       
-      setCurrentDemoMinutes(minutesRemaining);
-      timerStartTimeRef.current = Date.now();
-      timerInitialMinutesRef.current = minutesRemaining;
-      console.log('📊 Backend\'den demo süresi güncellendi:', minutesRemaining, 'dakika (frontend timer senkronize edildi)');
+      // Backend'den gelen değer tek kaynak
+      setCurrentDemoMinutes(Math.max(0, minutesRemaining));
     };
 
     handleDemoTimerUpdateRef.current = handleDemoTimerUpdate;
@@ -441,58 +421,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, [isDemo, isSocketConnected]);
 
+  // WebSocket bağlı değilken prop'tan gelen değeri göster (fallback)
   useEffect(() => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-
-    if (!isDemo || !isSocketConnected || timerStartTimeRef.current === null || timerInitialMinutesRef.current === null) {
-      return;
-    }
-
-    timerIntervalRef.current = setInterval(() => {
-      if (!isSocketConnectedRef.current || timerStartTimeRef.current === null || timerInitialMinutesRef.current === null) {
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        timerStartTimeRef.current = null;
-        timerInitialMinutesRef.current = null;
-        return;
-      }
-
-      const elapsedMinutes = (Date.now() - timerStartTimeRef.current) / (1000 * 60);
-      const remainingMinutes = Math.max(0, timerInitialMinutesRef.current - elapsedMinutes);
-      
-      setCurrentDemoMinutes(remainingMinutes);
-
-      if (remainingMinutes <= 0) {
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        timerStartTimeRef.current = null;
-        timerInitialMinutesRef.current = null;
-      }
-    }, 1000);
-
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-    };
-  }, [isDemo, isSocketConnected]);
-
-  useEffect(() => {
-    if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
-      if (!isSocketConnected) {
+    if (!isSocketConnected) {
+      if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
         setCurrentDemoMinutes(demoMinutesRemaining);
+      } else if (isDemo) {
+        setCurrentDemoMinutes(0);
       }
-    } else if (isDemo && (demoMinutesRemaining === null || demoMinutesRemaining <= 0)) {
-      setCurrentDemoMinutes(0);
     }
+    // WebSocket bağlıyken backend'den gelen değer kullanılır, prop yok sayılır
   }, [demoMinutesRemaining, isDemo, isSocketConnected]);
 
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -500,17 +438,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const lastPlayedUriRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const handler = async (audioUri: string) => {
-      // Duplicate kontrolü: Aynı URI'yi tekrar oynatmayı engelle
-      if (isPlayingRef.current || lastPlayedUriRef.current === audioUri) {
-        console.log('⚠️ TTS zaten oynatılıyor veya aynı ses tekrar çağrıldı, yok sayılıyor');
-        return;
-      }
+      const handler = async (audioUri: string) => {
+        // Duplicate kontrolü: Aynı URI'yi tekrar oynatmayı engelle
+        if (isPlayingRef.current || lastPlayedUriRef.current === audioUri) {
+          return;
+        }
 
-      try {
-        isPlayingRef.current = true;
-        lastPlayedUriRef.current = audioUri;
-        console.log('🔊 TTS audio oynatılıyor:', audioUri);
+        try {
+          isPlayingRef.current = true;
+          lastPlayedUriRef.current = audioUri;
+          console.log('🔊 TTS çalışıyor');
         
         setIsTTSPlaying(true);
         
@@ -549,7 +486,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             soundRef.current = null;
             isPlayingRef.current = false;
             lastPlayedUriRef.current = null;
-            console.log('✅ TTS audio oynatma tamamlandı, metinler temizleniyor');
             
             setUserText('');
             setAiText('');
@@ -557,7 +493,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           }
         });
       } catch (error) {
-        console.error('❌ TTS audio oynatılamadı:', error);
         isPlayingRef.current = false;
         lastPlayedUriRef.current = null;
         setIsTTSPlaying(false);
@@ -662,10 +597,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                         const started = await aiService.startLiveTranscription(item.voice, newLanguage);
                         if (started) {
                           setIsRecording(true);
-                          console.log(`✅ Ses kaydı yeni dil ile başlatıldı: ${newLanguage}`);
                         }
                       } catch (error) {
-                        console.error('Yeni dil ile kayıt başlatılamadı:', error);
+                        // Ignore
                       }
                     }, 300);
                   }
@@ -689,10 +623,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <View style={styles.demoTimerHeader}>
               <View style={styles.demoTimerBubble}>
                 {(() => {
-                  // Timer formatını düzelt: dakika:saniye
-                  const minutes = currentDemoMinutes !== null && currentDemoMinutes > 0 
+                  // Backend'den gelen değer tek kaynak, WebSocket bağlı değilse prop'tan fallback
+                  const minutes = currentDemoMinutes !== null 
                     ? currentDemoMinutes 
-                    : (demoMinutesRemaining !== null && demoMinutesRemaining > 0 ? demoMinutesRemaining : 0);
+                    : (isSocketConnected ? 0 : (demoMinutesRemaining !== null && demoMinutesRemaining > 0 ? demoMinutesRemaining : 0));
                   
                   const totalSeconds = Math.floor(minutes * 60);
                   const displayMinutes = Math.floor(totalSeconds / 60);

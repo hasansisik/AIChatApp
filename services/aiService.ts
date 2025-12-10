@@ -10,7 +10,6 @@ const getSTTWebSocketURL = (): string => {
     const protocol = serverUrl.protocol === 'https:' ? 'wss:' : 'ws:';
     const port = serverUrl.port || (protocol === 'wss:' ? '443' : '5001');
     const wsUrl = `${protocol}//${host}${port && port !== '443' && port !== '80' ? `:${port}` : ''}/ws/stt`;
-    console.log(`🔌 STT WebSocket URL: ${wsUrl}`);
     return wsUrl;
   } catch (error) {
     console.warn('⚠️ Server URL parse edilemedi, fallback kullanılıyor:', error);
@@ -105,16 +104,12 @@ class AIService {
       if (this.currentVoice !== newVoice) {
         this.currentVoice = newVoice;
         this.voiceConfigSent = false;
-        console.log(`🎙️ Voice set edildi: ${this.currentVoice}`);
       }
-    } else {
-      console.warn('⚠️ Voice bilgisi boş veya geçersiz');
     }
   }
 
   async prewarmConnection(voice: string) {
     if (!voice || !voice.trim()) {
-      console.warn('⚠️ prewarmConnection: Voice bilgisi boş');
       return;
     }
 
@@ -122,7 +117,7 @@ class AIService {
     try {
       await this.ensureSocket();
     } catch (error) {
-      console.warn('⚠️ prewarmConnection: Socket hazır değil:', error);
+      // Ignore
     }
   }
 
@@ -151,12 +146,11 @@ class AIService {
         const queryString = params.toString();
         const sttBaseUrl = getSTTWebSocketURL();
         const wsUrl = queryString ? `${sttBaseUrl}?${queryString}` : sttBaseUrl;
-        console.log(`🔌 WebSocket bağlantısı kuruluyor: ${wsUrl.replace(/token=[^&]+/, 'token=***')}`);
         this.sttSocket = new WebSocket(wsUrl);
         this.sttSocket.binaryType = 'arraybuffer';
 
         this.sttSocket.onopen = () => {
-          console.log(`✅ WebSocket bağlandı (voice: ${this.currentVoice})`);
+          console.log('✅ WebSocket bağlandı');
           if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && this.currentVoice) {
             try {
               this.sttSocket.send(JSON.stringify({
@@ -165,7 +159,7 @@ class AIService {
               }));
               this.voiceConfigSent = true;
             } catch (error) {
-              console.warn('⚠️ Voice config gönderilemedi:', error);
+              // Ignore
             }
           }
           this.notifySocketConnection(true);
@@ -175,7 +169,6 @@ class AIService {
         this.sttSocket.onmessage = (event: any) => {
           // WebSocket kapalıysa mesajları işleme
           if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
-            console.log('⚠️ WebSocket kapalı, mesaj yok sayılıyor');
             return;
           }
           
@@ -205,8 +198,6 @@ class AIService {
                 // WebSocket hala açıksa demo timer güncellemesini işle
                 if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && message.minutesRemaining !== undefined) {
                   this.notifyDemoTimerUpdate(message.minutesRemaining);
-                } else {
-                  console.log('⚠️ WebSocket kapalı, demo timer güncellemesi yok sayılıyor');
                 }
                 break;
               case 'error':
@@ -216,12 +207,11 @@ class AIService {
                 break;
             }
           } catch (error) {
-            console.error('WebSocket mesaj parse hatası:', error);
+            // Ignore parse errors
           }
         };
 
         this.sttSocket.onerror = (error) => {
-          console.error('❌ WebSocket hatası:', error);
           reject(new Error('WebSocket error'));
         };
 
@@ -255,9 +245,7 @@ class AIService {
         this.sttSocket.onclose = null;
         
         this.sttSocket = null;
-        console.log('✅ [Cleanup] WebSocket kapatıldı');
       } catch (error) {
-        console.warn('⚠️ [Cleanup] WebSocket kapatılamadı:', error);
         this.sttSocket = null;
       }
     }
@@ -301,7 +289,6 @@ class AIService {
           : 'Mikrofon izni bloklanmış. Lütfen ayarlardan izin verin.'
       };
     } catch (error) {
-      console.error('❌ İzin kontrolü hatası:', error);
       return { granted: false, canAskAgain: false, message: 'İzin kontrol edilemedi.' };
     }
   }
@@ -327,19 +314,14 @@ class AIService {
       
       // İzin yoksa veya belirsizse, izin iste
       if (currentPermission.status !== 'granted') {
-        console.log('🔐 Mikrofon izni kontrol ediliyor, durum:', currentPermission.status);
         const permission = await Audio.requestPermissionsAsync();
         
         if (permission.status !== 'granted') {
           const errorMessage = permission.canAskAgain !== false
             ? 'Mikrofon izni reddedildi. Lütfen ayarlardan izin verin.'
             : 'Mikrofon izni bloklanmış. Lütfen uygulama ayarlarından mikrofon iznini etkinleştirin.';
-          console.warn('⚠️ Mikrofon izni reddedildi:', errorMessage, 'canAskAgain:', permission.canAskAgain);
           throw new Error(errorMessage);
         }
-        console.log('✅ Mikrofon izni verildi');
-      } else {
-        console.log('✅ Mikrofon izni zaten verilmiş');
       }
 
       await Audio.setAudioModeAsync({
@@ -354,7 +336,6 @@ class AIService {
       );
 
       this.recording = recording;
-      console.log('✅ Ses kaydı instance başlatıldı');
       return true;
     } catch (error) {
       console.error('❌ Ses kaydı başlatılamadı:', error);
@@ -489,16 +470,15 @@ class AIService {
         try {
           this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
         } catch (error) {
-          console.warn('⚠️ speech_end mesajı gönderilemedi:', error);
+          // Ignore
         }
       }
     } else if (isFinal && !shouldSendAudio) {
-      console.log('⏸️ Kayıt pause edildi, ses gönderilmiyor');
       if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
         try {
           this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
         } catch (error) {
-          console.warn('⚠️ speech_pause mesajı gönderilemedi:', error);
+          // Ignore
         }
       }
     }
@@ -506,7 +486,7 @@ class AIService {
     try {
       await FileSystem.deleteAsync(audioUri, { idempotent: true });
     } catch (error) {
-      console.warn('⚠️ Dosya silinemedi:', error);
+      // Ignore
     }
 
     if (!isFinal && this.isStreaming) {
@@ -520,13 +500,11 @@ class AIService {
     }
     
     if (!voice || !voice.trim()) {
-      console.error('❌ Voice bilgisi gerekli');
       return false;
     }
 
     this.currentVoice = voice.trim();
     this.currentLanguage = language;
-    console.log(`🎙️ Voice: ${this.currentVoice}, Language: ${this.currentLanguage}`);
     
     if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
       this.sttSocket.close();
@@ -543,7 +521,7 @@ class AIService {
 
     this.isStreaming = true;
     this.scheduleChunkDispatch(FIRST_CHUNK_DELAY_MS);
-    console.log(`✅ Ses kaydı başlatıldı`);
+    console.log('✅ Ses kaydı başlatıldı');
     return true;
   }
 
@@ -574,7 +552,7 @@ class AIService {
           this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
         }
       } catch (error) {
-        console.warn('⚠️ Socket mesajı gönderilemedi:', error);
+        // Ignore
       }
     }
   }
@@ -588,7 +566,6 @@ class AIService {
       await this.ensureSocket();
       
       if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
-        console.warn('⚠️ Socket bağlı değil, text mesajı gönderilemedi');
         return false;
       }
     }
@@ -598,12 +575,9 @@ class AIService {
         type: 'text_message',
         text: text.trim()
       });
-      console.log(`📤 Text mesajı gönderiliyor (socket state: ${this.sttSocket.readyState}, ${message.length} bytes): ${text.trim().substring(0, 50)}...`);
       this.sttSocket.send(message);
-      console.log(`✅ Text mesajı gönderildi: ${text.trim().substring(0, 50)}...`);
       return true;
     } catch (error) {
-      console.error('❌ Text mesajı gönderilemedi:', error);
       return false;
     }
   }

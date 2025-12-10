@@ -156,9 +156,6 @@ const AIDetailPage = () => {
         return;
       }
       // canAskAgain true ise, startLiveTranscription içinde izin istenecek
-      console.log('ℹ️ Mikrofon izni henüz verilmemiş, startLiveTranscription içinde istenecek');
-    } else {
-      console.log('✅ Mikrofon izni zaten verilmiş');
     }
 
     Animated.parallel([
