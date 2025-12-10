@@ -173,6 +173,12 @@ class AIService {
         };
 
         this.sttSocket.onmessage = (event: any) => {
+          // WebSocket kapalıysa mesajları işleme
+          if (!this.sttSocket || this.sttSocket.readyState !== WebSocket.OPEN) {
+            console.log('⚠️ WebSocket kapalı, mesaj yok sayılıyor');
+            return;
+          }
+          
           try {
             if (typeof event.data !== 'string') {
               return;
@@ -196,8 +202,11 @@ class AIService {
                 }
                 break;
               case 'demo_timer_update':
-                if (message.minutesRemaining !== undefined) {
+                // WebSocket hala açıksa demo timer güncellemesini işle
+                if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && message.minutesRemaining !== undefined) {
                   this.notifyDemoTimerUpdate(message.minutesRemaining);
+                } else {
+                  console.log('⚠️ WebSocket kapalı, demo timer güncellemesi yok sayılıyor');
                 }
                 break;
               case 'error':
@@ -270,6 +279,33 @@ class AIService {
     }
   }
 
+  async checkMicrophonePermission(): Promise<{ granted: boolean; canAskAgain: boolean; message?: string }> {
+    try {
+      const permission = await Audio.getPermissionsAsync();
+      
+      if (permission.status === 'granted') {
+        return { granted: true, canAskAgain: true };
+      }
+      
+      if (permission.status === 'undetermined') {
+        // İzin henüz istenmemiş, isteyebiliriz
+        return { granted: false, canAskAgain: true };
+      }
+      
+      // İzin reddedilmiş veya bloklanmış
+      return { 
+        granted: false, 
+        canAskAgain: permission.canAskAgain !== false, // canAskAgain undefined olabilir, false değilse true kabul et
+        message: permission.status === 'denied' 
+          ? 'Mikrofon izni reddedildi. Lütfen ayarlardan izin verin.'
+          : 'Mikrofon izni bloklanmış. Lütfen ayarlardan izin verin.'
+      };
+    } catch (error) {
+      console.error('❌ İzin kontrolü hatası:', error);
+      return { granted: false, canAskAgain: false, message: 'İzin kontrol edilemedi.' };
+    }
+  }
+
   private async startRecordingInstance(): Promise<boolean> {
     if (this.isStartingRecording) {
       return false;
@@ -286,9 +322,24 @@ class AIService {
     try {
       this.isStartingRecording = true;
 
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
-        throw new Error('Mikrofon izni reddedildi');
+      // Önce mevcut izin durumunu kontrol et
+      const currentPermission = await Audio.getPermissionsAsync();
+      
+      // İzin yoksa veya belirsizse, izin iste
+      if (currentPermission.status !== 'granted') {
+        console.log('🔐 Mikrofon izni kontrol ediliyor, durum:', currentPermission.status);
+        const permission = await Audio.requestPermissionsAsync();
+        
+        if (permission.status !== 'granted') {
+          const errorMessage = permission.canAskAgain !== false
+            ? 'Mikrofon izni reddedildi. Lütfen ayarlardan izin verin.'
+            : 'Mikrofon izni bloklanmış. Lütfen uygulama ayarlarından mikrofon iznini etkinleştirin.';
+          console.warn('⚠️ Mikrofon izni reddedildi:', errorMessage, 'canAskAgain:', permission.canAskAgain);
+          throw new Error(errorMessage);
+        }
+        console.log('✅ Mikrofon izni verildi');
+      } else {
+        console.log('✅ Mikrofon izni zaten verilmiş');
       }
 
       await Audio.setAudioModeAsync({
@@ -303,14 +354,17 @@ class AIService {
       );
 
       this.recording = recording;
+      console.log('✅ Ses kaydı instance başlatıldı');
       return true;
     } catch (error) {
+      console.error('❌ Ses kaydı başlatılamadı:', error);
       try {
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
         });
       } catch (e) {
+        // Ignore
       }
       return false;
     } finally {

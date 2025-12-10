@@ -5,24 +5,24 @@
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "kamila",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aslanglobal.kamila"
+      "bundleIdentifier": "com.aslanglobal.kamila",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Bu uygulama AI asistanı ile konuşmak ve sesli mesajlar göndermek için mikrofon erişimine ihtiyaç duyar."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.aslanglobal.kamila",
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
-      ],
-      "package": "com.aslanglobal.kamila"
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -43,7 +43,13 @@
       "expo-localization",
       "expo-web-browser",
       "expo-video",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Bu uygulama AI asistanı ile konuşmak ve sesli mesajlar göndermek için mikrofon erişimine ihtiyaç duyar."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

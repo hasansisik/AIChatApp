@@ -6,6 +6,8 @@ import {
   Dimensions,
   Animated,
   Alert,
+  Platform,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -126,7 +128,39 @@ const AIDetailPage = () => {
     }
   };
 
-  const startVideoAnimation = () => {
+  const startVideoAnimation = async () => {
+    // Mikrofon izni kontrolü
+    const permissionCheck = await aiService.checkMicrophonePermission();
+    
+    if (!permissionCheck.granted) {
+      // İzin verilmemiş, ancak istenebilir durumda ise startLiveTranscription içinde isteyecek
+      // Eğer bloklanmışsa, kullanıcıyı ayarlara yönlendir
+      if (!permissionCheck.canAskAgain) {
+        Alert.alert(
+          t('common.permissionRequired') || 'İzin Gerekli',
+          permissionCheck.message || 'Mikrofon izni bloklanmış. Lütfen ayarlardan izin verin.',
+          [
+            { text: t('common.cancel') || 'İptal', style: 'cancel' },
+            {
+              text: t('common.settings') || 'Ayarlar',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+      // canAskAgain true ise, startLiveTranscription içinde izin istenecek
+      console.log('ℹ️ Mikrofon izni henüz verilmemiş, startLiveTranscription içinde istenecek');
+    } else {
+      console.log('✅ Mikrofon izni zaten verilmiş');
+    }
+
     Animated.parallel([
       Animated.timing(gradientOpacity, {
         toValue: 0,
@@ -184,16 +218,14 @@ const AIDetailPage = () => {
   };
 
   useEffect(() => {
-    if (item?.voice) {
-      aiService.prewarmConnection(item.voice);
-    }
-  }, [item?.voice]);
-
-  useEffect(() => {
     return () => {
+      // Sayfa kapandığında cleanup yap
       aiService.cleanup();
     };
   }, []);
+  
+  // prewarmConnection kaldırıldı - WebSocket bağlantısı sadece AIDetailVideoView içinde başlatılacak
+  // Böylece demo timer sadece video görünümü aktif olduğunda başlayacak
 
 
   return (
