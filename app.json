@@ -11,7 +11,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.aslanglobal.kamila",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Bu uygulama AI asistanı ile konuşmak ve sesli mesajlar göndermek için mikrofon erişimine ihtiyaç duyar."
+        "NSMicrophoneUsageDescription": "Bu uygulama AI asistanı ile konuşmak ve sesli mesajlar göndermek için mikrofon erişimine ihtiyaç duyar.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -21,7 +22,8 @@
       },
       "package": "com.aslanglobal.kamila",
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -55,7 +57,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "588bdce1-e11c-4206-b2f6-0e5e61f5486c"
+      }
     }
   }
 }
