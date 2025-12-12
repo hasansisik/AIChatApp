@@ -1,6 +1,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { server } from '@/config';
 
 const getSTTWebSocketURL = (): string => {
@@ -17,8 +18,10 @@ const getSTTWebSocketURL = (): string => {
   }
 };
 
-const CHUNK_INTERVAL_MS = 500;
-const FIRST_CHUNK_DELAY_MS = 300;
+// Daha sık chunk gönderimi için interval azaltıldı (daha hızlı algılama)
+const CHUNK_INTERVAL_MS = 300;
+// İlk chunk'ı daha hızlı göndermek için delay azaltıldı
+const FIRST_CHUNK_DELAY_MS = 200;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
@@ -324,16 +327,61 @@ class AIService {
         }
       }
 
+      // Optimize edilmiş ses modu: Daha iyi algılama için
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
+        shouldDuckAndroid: false, // Android'de ses çıkışını azaltmamak için (daha iyi algılama)
         playThroughEarpieceAndroid: false,
+        staysActiveInBackground: false,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.MEDIUM_QUALITY
-      );
+      // Yüksek kaliteli ses kaydı için özel ayarlar
+      // Android: STT için optimize edilmiş: 16kHz sample rate, mono, yüksek bitrate
+      // iOS: HIGH_QUALITY preset kullan (daha güvenli ve uyumlu)
+      let recording: Audio.Recording;
+      
+      if (Platform.OS === 'android') {
+        try {
+          // Android için özel optimize edilmiş ayarlar
+          const result = await Audio.Recording.createAsync({
+            android: {
+              extension: '.m4a',
+              outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+              audioEncoder: Audio.AndroidAudioEncoder.AAC,
+              sampleRate: 16000, // STT için optimize edilmiş sample rate
+              numberOfChannels: 1, // Mono (STT için yeterli)
+              bitRate: 128000, // Yüksek bitrate (daha iyi kalite)
+            },
+            ios: {
+              extension: '.m4a',
+              outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+              audioQuality: Audio.IOSAudioQuality.HIGH,
+              sampleRate: 44100, // iOS için varsayılan
+              numberOfChannels: 2,
+              bitRate: 128000,
+            },
+            web: {
+              mimeType: 'audio/webm',
+              bitsPerSecond: 128000,
+            },
+          });
+          recording = result.recording;
+        } catch (androidError) {
+          // Android özel config başarısız olursa HIGH_QUALITY preset kullan
+          console.warn('⚠️ Android özel kayıt ayarları başarısız, HIGH_QUALITY preset kullanılıyor:', androidError);
+          const result = await Audio.Recording.createAsync(
+            Audio.RecordingOptionsPresets.HIGH_QUALITY
+          );
+          recording = result.recording;
+        }
+      } else {
+        // iOS ve diğer platformlar için HIGH_QUALITY preset kullan (daha güvenli)
+        const result = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        recording = result.recording;
+      }
 
       this.recording = recording;
       return true;
@@ -458,8 +506,9 @@ class AIService {
     if (shouldSendAudio) {
       try {
         await this.sendBinaryAudio(audioUri);
+        // Final chunk için daha kısa bekleme (daha hızlı işleme)
         if (isFinal) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
       } catch (error) {
       }

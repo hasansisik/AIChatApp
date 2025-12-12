@@ -71,11 +71,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [aiText, setAiText] = React.useState('');
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr');
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
-  // Demo süresi sadece backend'den gelen değerle güncellenir
-  const [currentDemoMinutes, setCurrentDemoMinutes] = React.useState<number | null>(
-    isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0 ? demoMinutesRemaining : null
-  );
-  const handleDemoTimerUpdateRef = React.useRef<((minutesRemaining: number) => void) | null>(null);
+  // Demo süresi saniye cinsinden tutulur, basit geri sayım sayacı
+  const [currentDemoSeconds, setCurrentDemoSeconds] = React.useState<number>(0);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -363,75 +360,39 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     };
   }, []);
 
-  const [isSocketConnected, setIsSocketConnected] = React.useState(false);
-  const isSocketConnectedRef = React.useRef(false);
-
+  // Demo timer: Basit geri sayım sayacı, hiçbir yere bağlı değil
   useEffect(() => {
-    const handleSocketConnection = (connected: boolean) => {
-      isSocketConnectedRef.current = connected;
-      setIsSocketConnected(connected);
-      
-      if (!connected) {
-        // WebSocket kapandığında handler'ı temizle
-        if (handleDemoTimerUpdateRef.current) {
-          aiService.offDemoTimerUpdate(handleDemoTimerUpdateRef.current);
-          handleDemoTimerUpdateRef.current = null;
-        }
-        // WebSocket kapalıyken prop'tan gelen değeri göster (fallback)
-        if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
-          setCurrentDemoMinutes(demoMinutesRemaining);
-        } else if (isDemo) {
-          setCurrentDemoMinutes(0);
-        }
-      }
-      // WebSocket bağlandığında backend'den gelen değeri bekliyoruz, prop'u kullanmıyoruz
-    };
+    if (!isDemo) {
+      setCurrentDemoSeconds(0);
+      return;
+    }
 
-    aiService.onSocketConnection(handleSocketConnection);
-    
+    // Prop'tan gelen dakika değerini saniyeye çevir
+    const initialSeconds = demoMinutesRemaining !== null && demoMinutesRemaining > 0
+      ? Math.floor(demoMinutesRemaining * 60)
+      : 0;
+
+    setCurrentDemoSeconds(initialSeconds);
+
+    // Eğer süre 0 ise timer başlatma
+    if (initialSeconds <= 0) {
+      return;
+    }
+
+    // Her saniye 1 saniye azalt
+    const interval = setInterval(() => {
+      setCurrentDemoSeconds((prevSeconds) => {
+        if (prevSeconds <= 1) {
+          return 0;
+        }
+        return prevSeconds - 1;
+      });
+    }, 1000);
+
     return () => {
-      aiService.offSocketConnection(handleSocketConnection);
+      clearInterval(interval);
     };
   }, [isDemo, demoMinutesRemaining]);
-
-  useEffect(() => {
-    const handleDemoTimerUpdate = (minutesRemaining: number) => {
-      // WebSocket kapalıysa hiçbir şey yapma
-      if (!isSocketConnectedRef.current) {
-        return;
-      }
-      
-      // Demo modu değilse yok say
-      if (!isDemo) {
-        return;
-      }
-      
-      // Backend'den gelen değer tek kaynak
-      setCurrentDemoMinutes(Math.max(0, minutesRemaining));
-    };
-
-    handleDemoTimerUpdateRef.current = handleDemoTimerUpdate;
-    aiService.onDemoTimerUpdate(handleDemoTimerUpdate);
-    
-    return () => {
-      if (handleDemoTimerUpdateRef.current) {
-        aiService.offDemoTimerUpdate(handleDemoTimerUpdateRef.current);
-        handleDemoTimerUpdateRef.current = null;
-      }
-    };
-  }, [isDemo, isSocketConnected]);
-
-  // WebSocket bağlı değilken prop'tan gelen değeri göster (fallback)
-  useEffect(() => {
-    if (!isSocketConnected) {
-      if (isDemo && demoMinutesRemaining !== null && demoMinutesRemaining > 0) {
-        setCurrentDemoMinutes(demoMinutesRemaining);
-      } else if (isDemo) {
-        setCurrentDemoMinutes(0);
-      }
-    }
-    // WebSocket bağlıyken backend'den gelen değer kullanılır, prop yok sayılır
-  }, [demoMinutesRemaining, isDemo, isSocketConnected]);
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const isPlayingRef = useRef(false);
@@ -623,21 +584,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <View style={styles.demoTimerHeader}>
               <View style={styles.demoTimerBubble}>
                 {(() => {
-                  // Backend'den gelen değer tek kaynak, WebSocket bağlı değilse prop'tan fallback
-                  const minutes = currentDemoMinutes !== null 
-                    ? currentDemoMinutes 
-                    : (isSocketConnected ? 0 : (demoMinutesRemaining !== null && demoMinutesRemaining > 0 ? demoMinutesRemaining : 0));
-                  
-                  const totalSeconds = Math.floor(minutes * 60);
-                  const displayMinutes = Math.floor(totalSeconds / 60);
-                  const displaySeconds = totalSeconds % 60;
+                  const displayMinutes = Math.floor(currentDemoSeconds / 60);
+                  const displaySeconds = currentDemoSeconds % 60;
                   
                   return (
                     <ReusableText
                       text={`${t('ai.demo.timer')}: ${displayMinutes}:${String(displaySeconds).padStart(2, '0')}`}
                       family="medium"
                       size={14}
-                      color={isSocketConnected && currentDemoMinutes !== null && currentDemoMinutes > 0 ? Colors.white : Colors.lightWhite}
+                      color={currentDemoSeconds > 0 ? Colors.white : Colors.lightWhite}
                     />
                   );
                 })()}
