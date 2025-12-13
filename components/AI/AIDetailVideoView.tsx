@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
@@ -86,6 +87,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [isSocketReady, setIsSocketReady] = React.useState(false); // WebSocket hazır mı?
   const [isStartingRecording, setIsStartingRecording] = React.useState(false); // Kayıt başlatılıyor mu?
   const demoExpiredShownRef = React.useRef(false); // Demo süresi doldu uyarısı gösterildi mi?
+  const [userTextHeight, setUserTextHeight] = React.useState(0); // Kullanıcı mesajının yüksekliği
 
   const dynamicStyles = React.useMemo(() => ({
     sendButton: {
@@ -819,14 +821,27 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         </View>
         
         {showTranscriptions && userText ? (
-          <View style={styles.userTextContainer}>
+          <View 
+            style={styles.userTextContainer}
+            onLayout={(event) => {
+              const { height } = event.nativeEvent.layout;
+              setUserTextHeight(height);
+            }}
+          >
             <View style={[styles.userTextBubble, dynamicStyles.userTextBubble]}>
-              <ReusableText
-                text={userText}
-                family="regular"
-                size={16}
-                color="#FFFFFF"
-              />
+              <ScrollView
+                style={styles.messageScrollView}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                persistentScrollbar={true}
+              >
+                <ReusableText
+                  text={userText}
+                  family="regular"
+                  size={16}
+                  color="#FFFFFF"
+                />
+              </ScrollView>
             </View>
           </View>
         ) : null}
@@ -835,12 +850,19 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       {showTranscriptions && aiText ? (
         <View style={styles.aiTextContainer}>
           <View style={[styles.aiTextBubble, dynamicStyles.aiTextBubble]}>
-            <ReusableText
-              text={aiText}
-              family="regular"
-              size={16}
-              color="#FFFFFF"
-            />
+            <ScrollView
+              style={styles.messageScrollView}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              persistentScrollbar={true}
+            >
+              <ReusableText
+                text={aiText}
+                family="regular"
+                size={16}
+                color="#FFFFFF"
+              />
+            </ScrollView>
           </View>
         </View>
       ) : null}
@@ -1085,7 +1107,7 @@ const styles = StyleSheet.create({
   userTextContainer: {
     paddingHorizontal: 20,
     alignItems: 'flex-start',
-    marginTop: 10,
+    marginTop: 8,
   },
   demoTimerHeader: {
     position: 'absolute',
@@ -1297,26 +1319,32 @@ const styles = StyleSheet.create({
   },
   userTextBubble: {
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    maxWidth: '80%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: '85%',
     borderWidth: 1,
+    maxHeight: 225,
   },
   aiTextContainer: {
     position: 'absolute',
-    bottom: 200,
+    bottom: 175,
     left: 0,
     right: 0,
     paddingHorizontal: 20,
-    zIndex: 1000,
     alignItems: 'flex-end',
+    zIndex: 1000,
   },
   aiTextBubble: {
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    maxWidth: '80%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: '85%',
     borderWidth: 1,
+    maxHeight: 300,
+  },
+  messageScrollView: {
+    width: '100%',
+    flexGrow: 0,
   },
 });
 

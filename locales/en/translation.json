@@ -443,6 +443,8 @@
     "showTranscriptions": "Show Transcriptions",
     "hideTranscriptions": "Hide Transcriptions",
     "translation": "Translation",
+    "seeMore": "See More",
+    "seeLess": "See Less",
     "demo": {
       "timer": "Demo"
     },
