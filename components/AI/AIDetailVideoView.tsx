@@ -11,6 +11,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
@@ -78,12 +79,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr');
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
   // Demo süresi saniye cinsinden tutulur, basit geri sayım sayacı
-  const [currentDemoSeconds, setCurrentDemoSeconds] = React.useState<number>(0);
+  const [currentDemoSeconds, setCurrentDemoSeconds] = React.useState<number | null>(null);
   const [isVideoLoaded, setIsVideoLoaded] = React.useState(false);
   const [isVideoTTSLoaded, setIsVideoTTSLoaded] = React.useState(false);
   const [showTranscriptions, setShowTranscriptions] = React.useState(true);
   const [isSocketReady, setIsSocketReady] = React.useState(false); // WebSocket hazır mı?
   const [isStartingRecording, setIsStartingRecording] = React.useState(false); // Kayıt başlatılıyor mu?
+  const demoExpiredShownRef = React.useRef(false); // Demo süresi doldu uyarısı gösterildi mi?
 
   const dynamicStyles = React.useMemo(() => ({
     sendButton: {
@@ -508,7 +510,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   // Demo timer: Basit geri sayım sayacı, hiçbir yere bağlı değil
   useEffect(() => {
     if (!isDemo) {
-      setCurrentDemoSeconds(0);
+      setCurrentDemoSeconds(null);
+      demoExpiredShownRef.current = false;
       return;
     }
 
@@ -517,27 +520,64 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       ? Math.floor(demoMinutesRemaining * 60)
       : 0;
 
+    console.log(`⏱️ Demo timer başlatılıyor: ${initialSeconds} saniye`);
     setCurrentDemoSeconds(initialSeconds);
+    demoExpiredShownRef.current = false; // Timer yeniden başladığında ref'i sıfırla
 
     // Eğer süre 0 ise timer başlatma
     if (initialSeconds <= 0) {
+      console.log('⚠️ Demo süresi zaten 0, timer başlatılmıyor');
       return;
     }
 
     // Her saniye 1 saniye azalt
     const interval = setInterval(() => {
       setCurrentDemoSeconds((prevSeconds) => {
-        if (prevSeconds <= 1) {
+        if (prevSeconds !== null && prevSeconds <= 1) {
+          console.log('⏰ Timer 0\'a ulaştı!');
           return 0;
         }
-        return prevSeconds - 1;
+        const newValue = prevSeconds !== null ? prevSeconds - 1 : 0;
+        if (newValue % 10 === 0) {
+          console.log(`⏱️ Kalan süre: ${newValue} saniye`);
+        }
+        return newValue;
       });
     }, 1000);
 
     return () => {
+      console.log('🛑 Timer temizleniyor');
       clearInterval(interval);
     };
   }, [isDemo, demoMinutesRemaining]);
+
+  // Demo süresi dolduğunda uyarı göster
+  useEffect(() => {
+    // currentDemoSeconds null değilse ve 0 ise ve daha önce gösterilmediyse
+    if (isDemo && currentDemoSeconds !== null && currentDemoSeconds === 0 && !demoExpiredShownRef.current) {
+      console.log('⏰ Demo süresi doldu! Alert gösteriliyor...');
+      demoExpiredShownRef.current = true;
+      
+      // Küçük bir gecikme ile alert göster (state güncellemelerinin tamamlanması için)
+      setTimeout(() => {
+        console.log('🚨 Alert gösteriliyor...');
+        Alert.alert(
+          t('demo.expired.title'),
+          t('demo.expired.message'),
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('🔙 Demo süresi doldu, geri dönülüyor...');
+                onGoBack();
+              }
+            }
+          ],
+          { cancelable: false }
+        );
+      }, 100);
+    }
+  }, [isDemo, currentDemoSeconds, t, onGoBack]);
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const isPlayingRef = useRef(false);
@@ -714,33 +754,67 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 value={sttLanguage === 'en'}
                 onValueChange={async (value) => {
                   const newLanguage = value ? 'en' : 'tr';
+                  console.log(`🌍 Dil değiştiriliyor: ${sttLanguage} -> ${newLanguage}`);
+                  
                   const wasRecording = isRecording;
                   
-                  // Eğer kayıt aktifse, önce durdur
+                  // Eğer kayıt aktifse, önce durdur ve temizle
                   if (wasRecording) {
                     try {
+                      console.log('⏸️ Kayıt durduruluyor (dil değiştirme)...');
                       await aiService.stopLiveTranscription(false);
                       setIsRecording(false);
+                      setIsStartingRecording(false);
+                      
+                      // Buton animasyonunu sıfırla
+                      Animated.spring(microphoneButtonScale, {
+                        toValue: 1,
+                        useNativeDriver: true,
+                        tension: 400,
+                        friction: 8,
+                      }).start();
+                      
+                      console.log('✅ Kayıt durduruldu');
                     } catch (error) {
-                      console.error('Dil değiştirirken kayıt durdurulamadı:', error);
+                      console.error('❌ Dil değiştirirken kayıt durdurulamadı:', error);
                     }
                   }
                   
                   // Dil'i güncelle
                   setSttLanguage(newLanguage);
+                  console.log(`✅ Dil ayarlandı: ${newLanguage}`);
                   
-                  // Eğer kayıt aktifse, yeni dil ile yeniden başlat
+                  // Socket'i yeniden başlatmak için kısa bir gecikme
+                  // Bu, socket'in temiz bir durumda olmasını sağlar
                   if (wasRecording) {
-                    setTimeout(async () => {
-                      try {
-                        const started = await aiService.startLiveTranscription(item.voice, newLanguage);
-                        if (started) {
-                          setIsRecording(true);
-                        }
-                      } catch (error) {
-                        // Ignore
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    console.log('🔄 Yeni dil ile kayıt başlatılıyor...');
+                    try {
+                      setIsStartingRecording(true);
+                      
+                      const started = await aiService.startLiveTranscription(item.voice, newLanguage);
+                      if (started) {
+                        setIsRecording(true);
+                        setIsStartingRecording(false);
+                        setIsSocketReady(true);
+                        console.log('✅ Yeni dil ile kayıt başlatıldı');
+                        
+                        // Buton animasyonu
+                        Animated.spring(microphoneButtonScale, {
+                          toValue: 1.08,
+                          useNativeDriver: true,
+                          tension: 400,
+                          friction: 8,
+                        }).start();
+                      } else {
+                        setIsStartingRecording(false);
+                        console.error('❌ Yeni dil ile kayıt başlatılamadı');
                       }
-                    }, 300);
+                    } catch (error) {
+                      setIsStartingRecording(false);
+                      console.error('❌ Yeni dil ile kayıt başlatma hatası:', error);
+                    }
                   }
                 }}
                 trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#2ecc71' }}
@@ -758,7 +832,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             />
           </View>
           
-          {isDemo ? (
+          {isDemo && currentDemoSeconds !== null ? (
             <View style={styles.demoTimerHeader}>
               <View style={[styles.demoTimerBubble, dynamicStyles.demoTimerBubble]}>
                 {(() => {
