@@ -123,7 +123,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     },
     demoTimerBubble: {
       // Demo timer - turuncu arka plan
-      backgroundColor: 'rgba(255, 152, 0, 0.85)',
+      backgroundColor: 'rgba(255, 152, 0, 0.75)',
       borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     demoTimerColor: {
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
   },
   demoTimerHeader: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     right: 20,
     zIndex: 10,
   },
@@ -1054,7 +1054,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
-    paddingTop: 10,
     paddingBottom: 20,
     minHeight: 80,
     position: 'relative',
