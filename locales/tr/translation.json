@@ -438,8 +438,12 @@
     },
     "microphone": {
       "speaking": "Konuş...",
-      "pushToTalk": "Bas Konuş"
+      "pushToTalk": "Bas Konuş",
+      "preparing": "Hazırlanıyor..."
     },
+    "showTranscriptions": "Çevirileri Göster",
+    "hideTranscriptions": "Çevirileri Gizle",
+    "translation": "Çeviri",
     "demo": {
       "timer": "Demo"
     },

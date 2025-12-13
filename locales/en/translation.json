@@ -437,8 +437,12 @@
     },
     "microphone": {
       "speaking": "Speaking...",
-      "pushToTalk": "Push to Talk"
+      "pushToTalk": "Push to Talk",
+      "preparing": "Preparing..."
     },
+    "showTranscriptions": "Show Transcriptions",
+    "hideTranscriptions": "Hide Transcriptions",
+    "translation": "Translation",
     "demo": {
       "timer": "Demo"
     },

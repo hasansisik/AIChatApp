@@ -72,12 +72,17 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [keyboardHeight, setKeyboardHeight] = React.useState(0);
   const [userText, setUserText] = React.useState('');
   const [aiText, setAiText] = React.useState('');
+  const [userOriginalText, setUserOriginalText] = React.useState(''); // Orijinal çeviri metni
+  const [isAIResponding, setIsAIResponding] = React.useState(false); // AI cevap veriyor mu?
   const [sttLanguage, setSttLanguage] = React.useState<'tr' | 'en'>('tr');
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
   // Demo süresi saniye cinsinden tutulur, basit geri sayım sayacı
   const [currentDemoSeconds, setCurrentDemoSeconds] = React.useState<number>(0);
   const [isVideoLoaded, setIsVideoLoaded] = React.useState(false);
   const [isVideoTTSLoaded, setIsVideoTTSLoaded] = React.useState(false);
+  const [showTranscriptions, setShowTranscriptions] = React.useState(true);
+  const [isSocketReady, setIsSocketReady] = React.useState(false); // WebSocket hazır mı?
+  const [isStartingRecording, setIsStartingRecording] = React.useState(false); // Kayıt başlatılıyor mu?
 
   const dynamicStyles = React.useMemo(() => ({
     sendButton: {
@@ -128,7 +133,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       color: Colors.light,
     },
     placeholderColor: Colors.gray,
-  }), [Colors]);
+    transcriptionToggleButton: {
+      backgroundColor: showTranscriptions ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 0, 0, 0.6)',
+      borderColor: showTranscriptions ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 0, 0, 0.8)',
+    },
+  }), [Colors, showTranscriptions]);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -249,6 +258,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, [setIsKeyboardVisible, bottomAreaTranslateY, inputAreaTranslateY]);
 
   const handleMicrophonePressIn = async () => {
+    // Kayıt başlatılıyor durumunu aktif et
+    setIsStartingRecording(true);
+
     // Klavye varsa önce kapat (hızlıca)
     if (isKeyboardVisible) {
       Keyboard.dismiss();
@@ -256,11 +268,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       if (Platform.OS === 'android') {
         setKeyboardHeight(0);
       }
-      // Klavye kapatmayı beklemek yerine hemen kayıt başlat
     }
-    
-    // Optimistic update: Butona basıldığında hemen görsel geri bildirim ver
-    setIsRecording(true);
     
     // Buton animasyonu: Hemen yeşile dön ve hafifçe büyüt (daha hızlı ve smooth)
     Animated.spring(microphoneButtonScale, {
@@ -271,11 +279,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }).start();
     
     try {
-      // Kayıt başlatmayı hemen yap, klavye kapatmayı beklemeyelim
+      // Kayıt başlatmayı hemen yap - bu socket'i de otomatik açacak
       const started = await aiService.startLiveTranscription(item.voice, sttLanguage);
-      if (!started) {
+      if (started) {
+        setIsRecording(true);
+        setIsStartingRecording(false);
+        // Socket başarıyla açıldı
+        setIsSocketReady(true);
+      } else {
         // Eğer kayıt başlatılamazsa, geri al
-        setIsRecording(false);
+        setIsStartingRecording(false);
         Animated.spring(microphoneButtonScale, {
           toValue: 1,
           useNativeDriver: true,
@@ -284,8 +297,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         }).start();
       }
     } catch (error: any) {
+      console.error('❌ Kayıt başlatma hatası:', error);
       // Hata durumunda geri al
-      setIsRecording(false);
+      setIsStartingRecording(false);
       Animated.spring(microphoneButtonScale, {
         toValue: 1,
         useNativeDriver: true,
@@ -296,6 +310,18 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   };
 
   const handleMicrophonePressOut = async () => {
+    // Kayıt başlatılıyor durumundaysa iptal et
+    if (isStartingRecording) {
+      setIsStartingRecording(false);
+      Animated.spring(microphoneButtonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 400,
+        friction: 8,
+      }).start();
+      return;
+    }
+
     if (!isRecording) {
       return;
     }
@@ -377,6 +403,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     initializeVideos();
   }, [isVideoLoaded, isVideoTTSLoaded]);
 
+  // Component mount olduğunda WebSocket'in hazır olmasını bekle
+  // Socket aiService içinde lazy olarak açılıyor, burada sadece durumu dinliyoruz
+  useEffect(() => {
+    console.log('🎬 Video view mount oldu, socket listener aktif');
+  }, []);
+
   // TTS oynatma durumuna göre videoları kontrol et
   useEffect(() => {
     const updateVideos = async () => {
@@ -407,25 +439,58 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
   useEffect(() => {
     const handleTranscription = (text: string) => {
+      // AI cevap veriyorsa STT güncellemelerini yoksay
+      if (isAIResponding) {
+        return;
+      }
+      
       setUserText(text);
+      // Kullanıcı konuştuğunda orijinal metni sakla
+      setUserOriginalText(text);
     };
 
     aiService.onTranscription(handleTranscription);
     return () => {
       aiService.offTranscription(handleTranscription);
     };
-  }, []);
+  }, [isAIResponding]);
+
+  // AI cevabı geldiğinde user text'i güncelle
+  useEffect(() => {
+    if (aiText) {
+      // AI cevap vermeye başladı
+      setIsAIResponding(true);
+      // AI'ın İngilizce cevabını çeviri olarak göster
+      setUserText(`${t('ai.translation')}: ${aiText}`);
+    }
+  }, [aiText, t]);
 
   useEffect(() => {
     const handleStatus = (status: string) => {
       if (status.startsWith('AI: ')) {
-        setAiText(status.substring(4));
+        const aiResponse = status.substring(4);
+        setAiText(aiResponse);
+        // AI cevap vermeye başladı, STT güncellemelerini durdur
+        setIsAIResponding(true);
       }
     };
 
     aiService.onSocketStatus(handleStatus);
     return () => {
       aiService.offSocketStatus(handleStatus);
+    };
+  }, []);
+
+  // WebSocket bağlantı durumunu dinle
+  useEffect(() => {
+    const handleSocketConnection = (isConnected: boolean) => {
+      console.log('🔌 Socket durumu:', isConnected ? 'Bağlı' : 'Bağlantı kesildi');
+      setIsSocketReady(isConnected);
+    };
+
+    aiService.onSocketConnection(handleSocketConnection);
+    return () => {
+      aiService.offSocketConnection(handleSocketConnection);
     };
   }, []);
 
@@ -518,7 +583,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             lastPlayedUriRef.current = null;
             
             setUserText('');
+            setUserOriginalText('');
             setAiText('');
+            setIsAIResponding(false); // AI cevabı bitti, STT tekrar çalışabilir
             setIsTTSPlaying(false);
           }
         });
@@ -701,7 +768,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           ) : null}
         </View>
         
-        {userText ? (
+        {showTranscriptions && userText ? (
           <View style={styles.userTextContainer}>
             <View style={[styles.userTextBubble, dynamicStyles.userTextBubble]}>
               <ReusableText
@@ -715,7 +782,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         ) : null}
       </SafeAreaView>
 
-      {aiText ? (
+      {showTranscriptions && aiText ? (
         <View style={styles.aiTextContainer}>
           <View style={[styles.aiTextBubble, dynamicStyles.aiTextBubble]}>
             <ReusableText
@@ -742,12 +809,27 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <TouchableOpacity style={[styles.circleButton, dynamicStyles.circleButton]} onPress={handleKeyboardPress}>
               <MaterialIcons name="keyboard" size={28} color="#FFFFFF" />
             </TouchableOpacity>
+            
+            {/* Transcription Toggle Button - Icon Only */}
+            <TouchableOpacity 
+              style={[styles.circleButton, dynamicStyles.transcriptionToggleButton]}
+              onPress={() => setShowTranscriptions(!showTranscriptions)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons 
+                name={showTranscriptions ? "subtitles" : "subtitles-off"} 
+                size={28} 
+                color="#FFFFFF" 
+              />
+            </TouchableOpacity>
+            
             <Animated.View
               style={[
                 styles.circleButton,
                 styles.microphoneButton,
-                isRecording && styles.recordingButton,
-                !isRecording && styles.pausedButton,
+                isStartingRecording && styles.preparingButton, // Kayıt başlatılıyorsa sarı
+                isRecording && !isStartingRecording && styles.recordingButton, // Kayıt aktifse yeşil
+                !isRecording && !isStartingRecording && styles.pausedButton, // Normal durumda beyaz
                 {
                   transform: [{ scale: microphoneButtonScale }],
                 },
@@ -760,7 +842,18 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 activeOpacity={1}
                 delayPressIn={0}
               >
-              {isRecording ? (
+              {isStartingRecording ? (
+                <>
+                  <Ionicons name="hourglass-outline" size={28} color="#FFFFFF" />
+                  <ReusableText
+                    text={t('ai.microphone.preparing')}
+                    family="medium"
+                    size={12}
+                    color="#FFFFFF"
+                    style={styles.buttonText}
+                  />
+                </>
+              ) : isRecording ? (
                 <>
                   <Ionicons name="mic" size={28} color="#FFFFFF" />
                   <ReusableText
@@ -1078,6 +1171,10 @@ const styles = StyleSheet.create({
   pausedButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  preparingButton: {
+    backgroundColor: 'rgba(255, 193, 7, 0.8)', // Sarı - Hazırlanıyor
+    borderColor: 'rgba(255, 193, 7, 1)',
   },
   keyboardInputContainer: {
     position: 'absolute',
