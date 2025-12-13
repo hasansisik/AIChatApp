@@ -39,6 +39,8 @@ class TranslationService {
         body.source = sourceLang;
       }
 
+      console.log('🌍 Çeviri isteği gönderiliyor:', url);
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {

@@ -24,6 +24,7 @@ import { useReactiveColors } from '@/hooks/useThemeColor';
 import { Colors as StaticColors } from '@/constants/Colors';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
+import translationService from '@/services/translationService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
 
@@ -460,8 +461,18 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     if (aiText) {
       // AI cevap vermeye başladı
       setIsAIResponding(true);
-      // AI'ın İngilizce cevabını çeviri olarak göster
-      setUserText(`${t('ai.translation')}: ${aiText}`);
+      
+      // AI'ın İngilizce cevabını Türkçeye çevir
+      translationService.translateToTurkish(aiText)
+        .then((translatedText) => {
+          console.log('✅ AI cevabı çevrildi:', translatedText);
+          setUserText(`${t('ai.translation')}: ${translatedText}`);
+        })
+        .catch((error) => {
+          console.error('❌ AI cevabı çeviri hatası:', error);
+          // Hata durumunda orijinal İngilizce metni göster
+          setUserText(`${t('ai.translation')}: ${aiText}`);
+        });
     }
   }, [aiText, t]);
 
