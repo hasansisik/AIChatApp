@@ -48,6 +48,7 @@ class AIService {
   private currentVoice: string | null = null;
   private currentLanguage: 'tr' | 'en' = 'tr';
   private voiceConfigSent = false;
+  private isAndroidSingleRecording = false; // Android için tek kayıt modu
 
   onTranscription(handler: TranscriptionHandler) {
     this.transcriptionHandlers.add(handler);
@@ -577,8 +578,18 @@ class AIService {
     }
 
     this.isStreaming = true;
-    this.scheduleChunkDispatch(FIRST_CHUNK_DELAY_MS);
-    console.log('✅ Ses kaydı başlatıldı');
+    
+    // Android için tek kayıt modu - chunk'lara bölmeden tüm kaydı biriktir
+    if (Platform.OS === 'android') {
+      this.isAndroidSingleRecording = true;
+      console.log('✅ Ses kaydı başlatıldı (Android - tek kayıt modu)');
+    } else {
+      // iOS için chunk-based streaming
+      this.isAndroidSingleRecording = false;
+      this.scheduleChunkDispatch(FIRST_CHUNK_DELAY_MS);
+      console.log('✅ Ses kaydı başlatıldı (iOS - streaming modu)');
+    }
+    
     return true;
   }
 
@@ -590,6 +601,55 @@ class AIService {
     this.isStreaming = false;
     this.clearChunkTimer();
 
+    // Android için özel işlem: Tüm kaydı tek seferde gönder
+    if (Platform.OS === 'android' && this.isAndroidSingleRecording && this.recording) {
+      try {
+        console.log('📤 Android: Kayıt durduruluyor ve STT\'ye gönderiliyor...');
+        
+        // Kaydı durdur ve URI'yi al
+        const audioUri = await this.stopRecordingInstance();
+        
+        if (audioUri && shouldSendAudio) {
+          // Ses dosyasını WebSocket üzerinden gönder
+          await this.sendBinaryAudio(audioUri);
+          
+          // STT'nin işlemesi için kısa bir bekleme
+          await new Promise(resolve => setTimeout(resolve, FINAL_CHUNK_PROCESSING_DELAY_MS));
+          
+          // Speech end sinyali gönder
+          if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+            this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
+          }
+          
+          console.log('✅ Android: Ses STT\'ye gönderildi');
+          
+          // Geçici dosyayı temizle
+          try {
+            await FileSystem.deleteAsync(audioUri, { idempotent: true });
+          } catch (error) {
+            // Ignore
+          }
+        } else if (!shouldSendAudio) {
+          // Ses gönderilmeyecekse sadece pause sinyali gönder
+          if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
+            this.sttSocket.send(JSON.stringify({ type: 'speech_pause' }));
+          }
+        }
+      } catch (error) {
+        console.error('❌ Android: Ses gönderme hatası:', error);
+        // Hata olsa bile kaydı durdur
+        try {
+          await this.stopRecordingInstance();
+        } catch (e) {
+          // Ignore
+        }
+      } finally {
+        this.isAndroidSingleRecording = false;
+      }
+      return;
+    }
+
+    // iOS için mevcut chunk-based işlem
     if (this.recording) {
       try {
         await this.rotateRecording(true, shouldSendAudio);
@@ -612,6 +672,8 @@ class AIService {
         // Ignore
       }
     }
+    
+    this.isAndroidSingleRecording = false;
   }
 
   async sendTextMessage(text: string): Promise<boolean> {
