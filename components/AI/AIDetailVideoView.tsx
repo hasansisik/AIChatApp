@@ -458,6 +458,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       // AI cevap vermeye başladı
       setIsAIResponding(true);
       
+      // NOT: Video ve ses TTS audio geldiğinde birlikte başlayacak (senkronizasyon için)
+      // aiText geldiğinde setIsTTSPlaying(true) yapmıyoruz, TTS audio handler'da yapılacak
+      
       // AI'ın İngilizce cevabını Türkçeye çevir
       translationService.translateToTurkish(aiText)
         .then((translatedText) => {
@@ -568,65 +571,67 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
   useEffect(() => {
       const handler = async (audioUri: string) => {
-        // Duplicate kontrolü: Aynı URI'yi tekrar oynatmayı engelle
-        if (isPlayingRef.current || lastPlayedUriRef.current === audioUri) {
+        // Duplicate kontrolü: Sadece aynı URI kontrolü (isPlayingRef kontrolünü kaldırdık - hızlı başlatma için)
+        if (lastPlayedUriRef.current === audioUri) {
           return;
         }
 
+        // Hemen işaretle
+        isPlayingRef.current = true;
+        lastPlayedUriRef.current = audioUri;
+        
         try {
-          isPlayingRef.current = true;
-          lastPlayedUriRef.current = audioUri;
-        
-        setIsTTSPlaying(true);
-        
-        // Önceki ses varsa temizle
-        if (soundRef.current) {
-          try {
-            await soundRef.current.unloadAsync();
-          } catch (e) {
-            // Ignore
+          // Önceki ses varsa temizle (paralel olarak, await etmeden)
+          const previousSound = soundRef.current;
+          if (previousSound) {
+            soundRef.current = null; // Hemen null yap, temizleme arka planda olsun
+            previousSound.unloadAsync().catch(() => {}); // Hata durumunda ignore
           }
-          soundRef.current = null;
-        }
 
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: false,
-          playThroughEarpieceAndroid: false,
-          staysActiveInBackground: false,
-        });
+          // Audio modunu ayarla (hızlı)
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: false,
+            playThroughEarpieceAndroid: false,
+            staysActiveInBackground: false,
+          });
 
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: audioUri },
-          { shouldPlay: true, volume: 1.0 }
-        );
-        
-        soundRef.current = newSound;
+          // Ses dosyasını hemen yükle ve çal
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: audioUri },
+            { shouldPlay: true, volume: 1.0 }
+          );
+          
+          soundRef.current = newSound;
 
-        newSound.setOnPlaybackStatusUpdate(async (status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            try {
-              await soundRef.current?.unloadAsync();
-            } catch (e) {
-              // Ignore
+          // Video ve ses aynı anda başlasın: Ses hazır olduğunda video'yu değiştir
+          // Sound.createAsync tamamlandığında ses hazır, o anda video'yu da başlat
+          setIsTTSPlaying(true);
+
+          newSound.setOnPlaybackStatusUpdate(async (status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              try {
+                await soundRef.current?.unloadAsync();
+              } catch (e) {
+                // Ignore
+              }
+              soundRef.current = null;
+              isPlayingRef.current = false;
+              lastPlayedUriRef.current = null;
+              
+              setUserText('');
+              setUserOriginalText('');
+              setAiText('');
+              setIsAIResponding(false); // AI cevabı bitti, STT tekrar çalışabilir
+              setIsTTSPlaying(false);
             }
-            soundRef.current = null;
-            isPlayingRef.current = false;
-            lastPlayedUriRef.current = null;
-            
-            setUserText('');
-            setUserOriginalText('');
-            setAiText('');
-            setIsAIResponding(false); // AI cevabı bitti, STT tekrar çalışabilir
-            setIsTTSPlaying(false);
-          }
-        });
-      } catch (error) {
-        isPlayingRef.current = false;
-        lastPlayedUriRef.current = null;
-        setIsTTSPlaying(false);
-      }
+          });
+        } catch (error) {
+          isPlayingRef.current = false;
+          lastPlayedUriRef.current = null;
+          setIsTTSPlaying(false);
+        }
     };
 
     aiService.onTTSAudio(handler);
