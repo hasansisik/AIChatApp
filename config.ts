@@ -14,10 +14,5 @@ const resolveServerBaseURL = () => {
 export const server = resolveServerBaseURL();
 export const aiServer = `${HEROKU_BASE_URL}/`;
 
-// Contact information for purchase
-export const CONTACT_INFO = {
-  whatsapp: "+908503074195", // Replace with actual WhatsApp number
-  phone: "+90 850 307 4195", // Replace with actual phone number
-  whatsappMessage: "Merhaba, EnglishCard satın almak istiyorum."
-};
+// Contact information is now fetched dynamically via Redux settingsActions
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,13 +8,16 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/hooks/useThemeColor';
 import { FontSizes } from '@/constants/Fonts';
 import ReusableText from '@/components/ui/ReusableText';
 import { useTranslation } from 'react-i18next';
-import { CONTACT_INFO } from '@/config';
+import { useDispatch, useSelector } from 'react-redux';
+import { getPublicSettings } from '@/redux/actions/settingsActions';
+import { RootState } from '@/redux/store';
 import HeightSpacer from './HeightSpacer';
 
 interface PurchaseModalProps {
@@ -27,14 +30,33 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+  const dispatch = useDispatch();
+  const { publicSettings, loading } = useSelector((state: RootState) => state.settings);
+
+  useEffect(() => {
+    if (visible && !publicSettings && !loading) {
+      dispatch(getPublicSettings() as any);
+    }
+  }, [visible, publicSettings, loading, dispatch]);
+
+  const contactInfo = publicSettings ? {
+    whatsapp: publicSettings.contactWhatsapp,
+    phone: publicSettings.contactPhone,
+    whatsappMessage: publicSettings.contactWhatsappMessage
+  } : {
+    whatsapp: "+908503074191",
+    phone: "+90 850 307 4195",
+    whatsappMessage: "Merhaba, EnglishCard satın almak istiyorum."
+  };
 
   const handleWhatsApp = async () => {
+    
     try {
       // WhatsApp numarasını temizle (sadece rakamlar)
-      const cleanPhone = CONTACT_INFO.whatsapp.replace(/[^0-9]/g, '');
+      const cleanPhone = contactInfo.whatsapp.replace(/[^0-9]/g, '');
       
       // Önce WhatsApp uygulamasını açmayı dene
-      const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(CONTACT_INFO.whatsappMessage)}`;
+      const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(contactInfo.whatsappMessage)}`;
       
       const canOpen = await Linking.canOpenURL(whatsappUrl);
       
@@ -43,19 +65,19 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
         await Linking.openURL(whatsappUrl);
       } else {
         // WhatsApp uygulaması yok, web WhatsApp'ı aç
-        const webUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(CONTACT_INFO.whatsappMessage)}`;
+        const webUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(contactInfo.whatsappMessage)}`;
         await Linking.openURL(webUrl);
       }
     } catch (err) {
-      console.error('Error opening WhatsApp:', err);
       Alert.alert(t('common.error'), t('common.cannotOpenWhatsApp'));
     }
   };
 
   const handlePhoneCall = async () => {
+    
     try {
       // Telefon numarasını temizle (sadece rakamlar ve +)
-      const phoneNumber = CONTACT_INFO.phone.replace(/[^0-9+]/g, '');
+      const phoneNumber = contactInfo.phone.replace(/[^0-9+]/g, '');
       
       // iOS için telprompt (onay ister), Android için tel (direkt arar)
       const url = Platform.OS === 'ios' ? `telprompt:${phoneNumber}` : `tel:${phoneNumber}`;
@@ -68,7 +90,6 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
         Alert.alert(t('common.error'), t('common.cannotMakeCall'));
       }
     } catch (err) {
-      console.error('Error making phone call:', err);
       Alert.alert(t('common.error'), t('common.cannotMakeCall'));
     }
   };
@@ -100,33 +121,45 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
 
           {/* Content */}
           <View style={styles.content}>
-            <ReusableText
-              text={t('purchase.description')}
-              family="regular"
-              size={FontSizes.medium}
-              color={Colors.text}
-              align="center"
-            />
-            
-            <View style={styles.contactInfo}>
-              <ReusableText
-                text={t('purchase.contactUs')}
-                family="medium"
-                size={FontSizes.medium}
-                color={Colors.text}
-                align="center"
-              />
-              <ReusableText
-                text={CONTACT_INFO.phone}
-                family="regular"
-                size={FontSizes.small}
-                color={Colors.description}
-                align="center"
-              />
-            </View>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <ReusableText
+                  text={t('common.loading')}
+                  family="regular"
+                  size={FontSizes.small}
+                  color={Colors.description}
+                />
+              </View>
+            ) : (
+              <>
+                <ReusableText
+                  text={t('purchase.description')}
+                  family="regular"
+                  size={FontSizes.medium}
+                  color={Colors.text}
+                  align="center"
+                />
+                
+                <View style={styles.contactInfo}>
+                  <ReusableText
+                    text={t('purchase.contactUs')}
+                    family="medium"
+                    size={FontSizes.medium}
+                    color={Colors.text}
+                    align="center"
+                  />
+                  <ReusableText
+                    text={contactInfo?.phone || ""}
+                    family="regular"
+                    size={FontSizes.small}
+                    color={Colors.description}
+                    align="center"
+                  />
+                </View>
 
-            {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
+                {/* Action Buttons */}
+                <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={styles.whatsappButton}
                 onPress={handleWhatsApp}
@@ -154,14 +187,16 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            <ReusableText
-              text={t('purchase.note')}
-              family="regular"
-              size={FontSizes.xSmall}
-              color={Colors.description}
-              align="center"
-            />
-            <HeightSpacer height={5} />
+                <ReusableText
+                  text={t('purchase.note')}
+                  family="regular"
+                  size={FontSizes.xSmall}
+                  color={Colors.description}
+                  align="center"
+                />
+                <HeightSpacer height={5} />
+              </>
+            )}
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -177,7 +212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: Colors.lightWhite,
+    backgroundColor: Colors.background,
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -201,7 +236,11 @@ const styles = StyleSheet.create({
   contactInfo: {
     gap: 8,
     paddingVertical: 10,
-    
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 12,
   },
   buttonContainer: {
     gap: 12,
@@ -218,7 +257,6 @@ const styles = StyleSheet.create({
   },
   phoneButton: {
     flexDirection: 'row',
-    backgroundColor: Colors.lightWhite,
     borderWidth: 2,
     borderColor: Colors.primary,
     paddingVertical: 15,

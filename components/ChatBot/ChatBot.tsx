@@ -242,7 +242,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         );
 
         if (createVisitor.fulfilled.match(visitorResult)) {
-          userId = visitorResult.payload.user_id?.toString() || null;
+          userId = (visitorResult.payload as any)?.user_id?.toString() || null;
           if (!userId) {
             throw new Error(t('chatbot.error.userIdNotFound'));
           }
@@ -263,7 +263,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       // Konuşmaları getirdikten sonra listeyi göster
       // Kullanıcı seçim yapacak veya yeni oluşturacak
       if (getConversations.fulfilled.match(conversationsResult)) {
-        const convs = conversationsResult.payload.conversations;
+        const convs = (conversationsResult.payload as any)?.conversations;
         
         // Eğer konuşma yoksa direkt yeni oluştur ve chat ekranına geç
         if (!convs || convs.length === 0) {
@@ -276,10 +276,12 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
           );
 
           if (createConversation.fulfilled.match(conversationResult)) {
-            const conversationId = conversationResult.payload.conversation_id;
-            // Mesajları getir ve chat ekranına geç
-            await dispatch<any>(getMessages({ conversation_id: conversationId }));
-            setShowConversationList(false); // Chat ekranını göster
+            const conversationId = (conversationResult.payload as any)?.conversation_id;
+            if (conversationId) {
+              // Mesajları getir ve chat ekranına geç
+              await dispatch<any>(getMessages({ conversation_id: conversationId }));
+              setShowConversationList(false); // Chat ekranını göster
+            }
     } else {
             throw new Error(conversationResult.payload || t('chatbot.error.conversationNotCreated'));
           }
@@ -298,15 +300,16 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         );
 
         if (createConversation.fulfilled.match(conversationResult)) {
-          const conversationId = conversationResult.payload.conversation_id;
-          await dispatch<any>(getMessages({ conversation_id: conversationId }));
-          setShowConversationList(false);
+          const conversationId = (conversationResult.payload as any)?.conversation_id;
+          if (conversationId) {
+            await dispatch<any>(getMessages({ conversation_id: conversationId }));
+            setShowConversationList(false);
+          }
       } else {
           throw new Error(conversationResult.payload || t('chatbot.error.conversationNotCreated'));
         }
       }
     } catch (error: any) {
-      console.error('DialogFusion initialization error:', error);
       Alert.alert(t('common.error'), error.message || t('chatbot.error.initializationError'));
     } finally {
       setIsInitializing(false);
@@ -381,7 +384,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         throw new Error(sendResult.payload || t('chatbot.error.messageNotSent'));
       }
     } catch (error: any) {
-      console.error('Mesaj gönderme hatası:', error);
       Alert.alert(t('common.error'), error.message || t('chatbot.error.messageSendError'));
       setBotStatus('online');
     } finally {
@@ -410,8 +412,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
     setIsInitializing(true);
     try {
-      console.log('🔍 [ChatBot] Conversation seçiliyor:', conversationId);
-      
+        
       // Conversation'ı seç
       dispatch({
         type: 'dialogfusion/selectConversation',
@@ -430,7 +431,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       // Chat ekranına geç
       setShowConversationList(false);
     } catch (error: any) {
-      console.error('Conversation seçme hatası:', error);
       Alert.alert(t('common.error'), error.message || t('chatbot.error.conversationLoadError'));
     } finally {
       setIsInitializing(false);
@@ -455,15 +455,16 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
       );
 
       if (createConversation.fulfilled.match(conversationResult)) {
-        const conversationId = conversationResult.payload.conversation_id;
-        // Mesajları getir ve chat ekranına geç
-        await dispatch<any>(getMessages({ conversation_id: conversationId }));
-        setShowConversationList(false);
+        const conversationId = (conversationResult.payload as any)?.conversation_id;
+        if (conversationId) {
+          // Mesajları getir ve chat ekranına geç
+          await dispatch<any>(getMessages({ conversation_id: conversationId }));
+          setShowConversationList(false);
+        }
       } else {
         throw new Error(conversationResult.payload || t('chatbot.error.conversationNotCreated'));
       }
     } catch (error: any) {
-      console.error('Yeni conversation oluşturma hatası:', error);
       Alert.alert(t('common.error'), error.message || t('chatbot.error.conversationNotCreated'));
     } finally {
       setIsInitializing(false);
@@ -491,7 +492,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
 
       // Invalid date kontrolü
       if (isNaN(date.getTime())) {
-        console.warn('⚠️ [ChatBot] Invalid date:', dateString);
         return '';
       }
 
@@ -513,7 +513,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
         return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
         }
       } catch (error) {
-      console.warn('⚠️ [ChatBot] Tarih formatlama hatası:', dateString, error);
       return '';
     }
   };
@@ -644,7 +643,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ visible, onClose }) => {
                       {conversations.map((conv) => {
                         const convId = conv.id || (conv as any).conversation_id || String((conv as any).id);
                         if (!convId) {
-                          console.warn('⚠️ [ChatBot] Conversation ID bulunamadı:', conv);
                           return null;
                         }
                         

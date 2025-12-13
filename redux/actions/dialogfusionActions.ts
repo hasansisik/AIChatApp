@@ -1,8 +1,48 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { server } from "@/config";
 
 const DIALOGFUSION_API_URL = "https://app.dialogfusion.com/script/include/api.php";
-const DIALOGFUSION_TOKEN = "448033a885bb9c4ab0c734ce7546f3824eeff7d5";
+
+// Cache for token to avoid multiple API calls
+let cachedToken: string | null = null;
+let tokenFetchPromise: Promise<string> | null = null;
+
+// Get DialogFusion token from API directly (avoid circular dependency)
+const getDialogFusionToken = async (): Promise<string> => {
+  // Return cached token if available
+  if (cachedToken) {
+    return cachedToken;
+  }
+
+  // If a fetch is already in progress, wait for it
+  if (tokenFetchPromise) {
+    return await tokenFetchPromise;
+  }
+
+  // Start new fetch
+  tokenFetchPromise = (async (): Promise<string> => {
+    try {
+      const response = await axios.get(`${server}/settings/public`);
+      if (response.data.success && response.data.settings.dialogfusionToken) {
+        const token = response.data.settings.dialogfusionToken;
+        cachedToken = token;
+        return token;
+      }
+    } catch (error) {
+      // Fallback to default
+    }
+    
+    // Fallback token
+    const fallbackToken = "448033a885bb9c4ab0c734ce7546f3824eeff7d5";
+    cachedToken = fallbackToken;
+    return fallbackToken;
+  })();
+
+  const result = await tokenFetchPromise;
+  tokenFetchPromise = null; // Reset promise after completion
+  return result;
+};
 
 // Interfaces
 interface CreateVisitorPayload {
@@ -91,20 +131,15 @@ export const createVisitor = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      console.log("👤 [dialogfusionActions] createVisitor: Ziyaretçi kontrol ediliyor/oluşturuluyor...", {
-        first_name,
-        last_name,
-        email,
-      });
-
       // Önce kullanıcının var olup olmadığını kontrol et
       let userId: string | null = null;
+      const token = await getDialogFusionToken();
       
       try {
         const checkUserResponse = await axios.post(
           DIALOGFUSION_API_URL,
           {
-            token: DIALOGFUSION_TOKEN,
+            token,
             function: "get-user-by",
             by: "email",
             value: email,
@@ -114,7 +149,6 @@ export const createVisitor = createAsyncThunk(
         if (checkUserResponse.data.success && checkUserResponse.data.response && checkUserResponse.data.response.id) {
           // Kullanıcı zaten var
           userId = checkUserResponse.data.response.id.toString();
-          console.log("✅ [dialogfusionActions] createVisitor: Mevcut kullanıcı bulundu, user_id:", userId);
           
           return {
             user_id: userId,
@@ -125,14 +159,13 @@ export const createVisitor = createAsyncThunk(
         }
       } catch (checkError) {
         // Kullanıcı bulunamadı, yeni oluşturulacak
-        console.log("ℹ️ [dialogfusionActions] createVisitor: Kullanıcı bulunamadı, yeni oluşturuluyor...");
       }
 
-      // Kullanıcı yoksa yeni oluştur
+      // Kullanıcı yoksa yeni oluştur (token zaten yukarıda çekildi)
       const { data } = await axios.post<CreateVisitorResponse>(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "add-user",
           first_name,
           last_name,
@@ -159,7 +192,6 @@ export const createVisitor = createAsyncThunk(
         return thunkAPI.rejectWithValue("Kullanıcı ID alınamadı");
       }
 
-      console.log("✅ [dialogfusionActions] createVisitor: Ziyaretçi oluşturuldu, user_id:", userId);
 
       return {
         user_id: userId,
@@ -168,7 +200,6 @@ export const createVisitor = createAsyncThunk(
         email,
       };
     } catch (error: any) {
-      console.error("❌ [dialogfusionActions] createVisitor: Hata:", error.response?.data || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Ziyaretçi oluşturulamadı"
       );
@@ -184,15 +215,11 @@ export const createConversation = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      console.log("💬 [dialogfusionActions] createConversation: Konuşma oluşturuluyor...", {
-        user_id,
-        subject,
-      });
-
+      const token = await getDialogFusionToken();
       const { data } = await axios.post<CreateConversationResponse>(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "new-conversation",
           user_id,
           title: subject, // API dokümantasyonuna göre 'title' parametresi kullanılıyor
@@ -208,7 +235,6 @@ export const createConversation = createAsyncThunk(
       // API dokümantasyonuna göre: response.details.id conversation_id'yi içerir
       let conversationId: string | null = null;
       
-      console.log("🔍 [dialogfusionActions] createConversation: Response format:", JSON.stringify(data.response));
 
       if (typeof data.response === 'number') {
         conversationId = data.response.toString();
@@ -232,11 +258,9 @@ export const createConversation = createAsyncThunk(
       }
 
       if (!conversationId) {
-        console.error("❌ [dialogfusionActions] createConversation: Conversation ID bulunamadı, response:", data.response);
         return thunkAPI.rejectWithValue("Konuşma ID alınamadı");
       }
 
-      console.log("✅ [dialogfusionActions] createConversation: Konuşma oluşturuldu, conversation_id:", conversationId);
 
       return {
         conversation_id: conversationId,
@@ -244,7 +268,6 @@ export const createConversation = createAsyncThunk(
         subject,
       };
     } catch (error: any) {
-      console.error("❌ [dialogfusionActions] createConversation: Hata:", error.response?.data || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Konuşma oluşturulamadı"
       );
@@ -260,16 +283,11 @@ export const sendMessage = createAsyncThunk(
     thunkAPI
   ) => {
     try {
-      console.log("📤 [dialogfusionActions] sendMessage: Mesaj gönderiliyor...", {
-        conversation_id,
-        user_id,
-        message: message.substring(0, 50) + "...",
-      });
-
+      const token = await getDialogFusionToken();
       const { data } = await axios.post<SendMessageResponse>(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "send-message",
           conversation_id,
           user_id,
@@ -284,7 +302,6 @@ export const sendMessage = createAsyncThunk(
       // Response formatını kontrol et ve message_id'yi çıkar
       let messageId: string | null = null;
       
-      console.log("🔍 [dialogfusionActions] sendMessage: Response format:", JSON.stringify(data.response));
 
       if (typeof data.response === 'number') {
         messageId = data.response.toString();
@@ -302,11 +319,9 @@ export const sendMessage = createAsyncThunk(
       }
 
       if (!messageId) {
-        console.error("❌ [dialogfusionActions] sendMessage: Message ID bulunamadı, response:", data.response);
         return thunkAPI.rejectWithValue("Mesaj ID alınamadı");
       }
 
-      console.log("✅ [dialogfusionActions] sendMessage: Mesaj gönderildi, message_id:", messageId);
 
       return {
         message_id: messageId,
@@ -315,7 +330,6 @@ export const sendMessage = createAsyncThunk(
         message,
       };
     } catch (error: any) {
-      console.error("❌ [dialogfusionActions] sendMessage: Hata:", error.response?.data || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Mesaj gönderilemedi"
       );
@@ -328,15 +342,12 @@ export const getMessages = createAsyncThunk(
   "dialogfusion/getMessages",
   async ({ conversation_id }: GetMessagesPayload, thunkAPI) => {
     try {
-      console.log("📥 [dialogfusionActions] getMessages: Mesajlar alınıyor...", {
-        conversation_id,
-      });
-
       // get-conversation fonksiyonu mesajları da döndürüyor
+      const token = await getDialogFusionToken();
       const { data } = await axios.post<GetMessagesResponse>(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "get-conversation",
           conversation_id,
         }
@@ -365,14 +376,12 @@ export const getMessages = createAsyncThunk(
         }
       }
 
-      console.log("✅ [dialogfusionActions] getMessages: Mesajlar alındı, toplam:", messages.length);
 
       return {
         conversation_id,
         messages,
       };
     } catch (error: any) {
-      console.error("❌ [dialogfusionActions] getMessages: Hata:", error.response?.data || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Mesajlar alınamadı"
       );
@@ -385,15 +394,9 @@ export const getNewMessages = createAsyncThunk(
   "dialogfusion/getNewMessages",
   async ({ conversation_id, user_id, last_message_id, datetime }: GetNewMessagesPayload, thunkAPI) => {
     try {
-      console.log("🆕 [dialogfusionActions] getNewMessages: Yeni mesajlar kontrol ediliyor...", {
-        conversation_id,
-        user_id,
-        last_message_id,
-        datetime,
-      });
-
+      const token = await getDialogFusionToken();
       const requestBody: any = {
-        token: DIALOGFUSION_TOKEN,
+        token,
         function: "get-new-messages",
         conversation_id,
         user_id, // user_id gerekli
@@ -436,14 +439,12 @@ export const getNewMessages = createAsyncThunk(
         }
       }
 
-      console.log("✅ [dialogfusionActions] getNewMessages: Yeni mesajlar alındı, toplam:", messages.length);
 
       return {
         conversation_id,
         messages,
       };
     } catch (error: any) {
-      console.error("❌ [dialogfusionActions] getNewMessages: Hata:", error.response?.data || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Yeni mesajlar alınamadı"
       );
@@ -456,14 +457,11 @@ export const getConversations = createAsyncThunk(
   "dialogfusion/getConversations",
   async ({ user_id }: GetConversationsPayload, thunkAPI) => {
     try {
-      console.log("📋 [dialogfusionActions] getConversations: Konuşmalar alınıyor...", {
-        user_id,
-      });
-
+      const token = await getDialogFusionToken();
       const { data } = await axios.post<GetConversationsResponse>(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "get-user-conversations",
           user_id,
         }
@@ -476,7 +474,6 @@ export const getConversations = createAsyncThunk(
       // Response bir array veya object olabilir
       let conversations: Conversation[] = [];
       
-      console.log("🔍 [dialogfusionActions] getConversations: Response format:", JSON.stringify(data.response).substring(0, 500));
       
       if (Array.isArray(data.response)) {
         conversations = data.response;
@@ -503,9 +500,7 @@ export const getConversations = createAsyncThunk(
         };
       }).filter((conv: any) => conv.id); // ID'si olmayanları filtrele
 
-      console.log("✅ [dialogfusionActions] getConversations: Konuşmalar alındı, toplam:", conversations.length);
       if (conversations.length > 0) {
-        console.log("🔍 [dialogfusionActions] İlk conversation örneği:", JSON.stringify(conversations[0]));
       }
 
       return {
@@ -513,7 +508,6 @@ export const getConversations = createAsyncThunk(
         conversations,
       };
     } catch (error: any) {
-      console.error("❌ [dialogfusionActions] getConversations: Hata:", error.response?.data || error.message);
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Konuşmalar alınamadı"
       );
@@ -532,16 +526,11 @@ export const setTyping = createAsyncThunk(
   "dialogfusion/setTyping",
   async ({ conversation_id, user_id, is_typing }: SetTypingPayload, thunkAPI) => {
     try {
-      console.log("⌨️ [dialogfusionActions] setTyping: Typing durumu ayarlanıyor...", {
-        conversation_id,
-        user_id,
-        is_typing,
-      });
-
+      const token = await getDialogFusionToken();
       const { data } = await axios.post(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "set-typing",
           conversation_id,
           user_id,
@@ -550,13 +539,11 @@ export const setTyping = createAsyncThunk(
       );
 
       if (!data.success) {
-        console.warn("⚠️ [dialogfusionActions] setTyping: Başarısız, devam ediliyor...");
         // Typing durumu kritik değil, hata olsa bile devam et
       }
 
       return { conversation_id, user_id, is_typing };
     } catch (error: any) {
-      console.warn("⚠️ [dialogfusionActions] setTyping: Hata (devam ediliyor):", error.response?.data || error.message);
       // Typing durumu kritik değil, hata olsa bile devam et
       return { conversation_id, user_id, is_typing };
     }
@@ -577,10 +564,11 @@ export const checkAgentTyping = createAsyncThunk(
   "dialogfusion/checkAgentTyping",
   async ({ conversation_id }: CheckAgentTypingPayload, thunkAPI) => {
     try {
+      const token = await getDialogFusionToken();
       const { data } = await axios.post<CheckAgentTypingResponse>(
         DIALOGFUSION_API_URL,
         {
-          token: DIALOGFUSION_TOKEN,
+          token,
           function: "is-agent-typing",
           conversation_id,
         }
@@ -595,7 +583,6 @@ export const checkAgentTyping = createAsyncThunk(
 
       return { conversation_id, is_typing: isTyping };
     } catch (error: any) {
-      console.warn("⚠️ [dialogfusionActions] checkAgentTyping: Hata (devam ediliyor):", error.response?.data || error.message);
       // Typing durumu kritik değil, hata olsa bile devam et
       return { conversation_id, is_typing: false };
     }

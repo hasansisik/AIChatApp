@@ -67,7 +67,6 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
           }) as any);
           
           if (updateOnboardingData.fulfilled.match(actionResult)) {
-            console.log('Onboarding data saved successfully');
           } else {
             console.error('Failed to save onboarding data:', actionResult.payload);
           }

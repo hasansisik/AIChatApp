@@ -529,6 +529,7 @@
     "save": "Kaydet",
     "continue": "Devam Et",
     "confirm": "Onayla",
-    "errorOccurred": "Bir hata oluştu"
+    "errorOccurred": "Bir hata oluştu",
+    "loading": "Yükleniyor..."
   }
 }

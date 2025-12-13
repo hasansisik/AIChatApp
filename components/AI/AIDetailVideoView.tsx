@@ -300,7 +300,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         }).start();
       }
     } catch (error: any) {
-      console.error('❌ Kayıt başlatma hatası:', error);
       // Hata durumunda geri al
       setIsStartingRecording(false);
       Animated.spring(microphoneButtonScale, {
@@ -344,7 +343,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       
       await aiService.stopLiveTranscription(true);
       setIsRecording(false);
-      console.log('⏸️ Kayıt durduruldu');
     } catch (error) {
       setIsRecording(false);
     }
@@ -379,16 +377,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         return;
       }
       
-      console.log('🎬 Videolar başlatılıyor...');
       
       if (videoRef.current) {
         try {
           await videoRef.current.setIsLoopingAsync(true);
           await videoRef.current.setIsMutedAsync(true);
           await videoRef.current.playAsync();
-          console.log('▶️ Video oynatılıyor');
         } catch (error) {
-          console.error('❌ Video başlatma hatası:', error);
         }
       }
       if (videoRefTTS.current) {
@@ -396,9 +391,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           await videoRefTTS.current.setIsLoopingAsync(true);
           await videoRefTTS.current.setIsMutedAsync(true);
           await videoRefTTS.current.playAsync();
-          console.log('▶️ Video TTS oynatılıyor');
         } catch (error) {
-          console.error('❌ Video TTS başlatma hatası:', error);
         }
       }
     };
@@ -409,7 +402,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   // Component mount olduğunda WebSocket'in hazır olmasını bekle
   // Socket aiService içinde lazy olarak açılıyor, burada sadece durumu dinliyoruz
   useEffect(() => {
-    console.log('🎬 Video view mount oldu, socket listener aktif');
   }, []);
 
   // TTS oynatma durumuna göre videoları kontrol et
@@ -467,11 +459,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       // AI'ın İngilizce cevabını Türkçeye çevir
       translationService.translateToTurkish(aiText)
         .then((translatedText) => {
-          console.log('✅ AI cevabı çevrildi:', translatedText);
           setUserText(`${t('ai.translation')}: ${translatedText}`);
         })
         .catch((error) => {
-          console.error('❌ AI cevabı çeviri hatası:', error);
           // Hata durumunda orijinal İngilizce metni göster
           setUserText(`${t('ai.translation')}: ${aiText}`);
         });
@@ -497,7 +487,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   // WebSocket bağlantı durumunu dinle
   useEffect(() => {
     const handleSocketConnection = (isConnected: boolean) => {
-      console.log('🔌 Socket durumu:', isConnected ? 'Bağlı' : 'Bağlantı kesildi');
       setIsSocketReady(isConnected);
     };
 
@@ -520,13 +509,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       ? Math.floor(demoMinutesRemaining * 60)
       : 0;
 
-    console.log(`⏱️ Demo timer başlatılıyor: ${initialSeconds} saniye`);
     setCurrentDemoSeconds(initialSeconds);
     demoExpiredShownRef.current = false; // Timer yeniden başladığında ref'i sıfırla
 
     // Eğer süre 0 ise timer başlatma
     if (initialSeconds <= 0) {
-      console.log('⚠️ Demo süresi zaten 0, timer başlatılmıyor');
       return;
     }
 
@@ -534,19 +521,16 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     const interval = setInterval(() => {
       setCurrentDemoSeconds((prevSeconds) => {
         if (prevSeconds !== null && prevSeconds <= 1) {
-          console.log('⏰ Timer 0\'a ulaştı!');
           return 0;
         }
         const newValue = prevSeconds !== null ? prevSeconds - 1 : 0;
         if (newValue % 10 === 0) {
-          console.log(`⏱️ Kalan süre: ${newValue} saniye`);
         }
         return newValue;
       });
     }, 1000);
 
     return () => {
-      console.log('🛑 Timer temizleniyor');
       clearInterval(interval);
     };
   }, [isDemo, demoMinutesRemaining]);
@@ -555,12 +539,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   useEffect(() => {
     // currentDemoSeconds null değilse ve 0 ise ve daha önce gösterilmediyse
     if (isDemo && currentDemoSeconds !== null && currentDemoSeconds === 0 && !demoExpiredShownRef.current) {
-      console.log('⏰ Demo süresi doldu! Alert gösteriliyor...');
       demoExpiredShownRef.current = true;
       
       // Küçük bir gecikme ile alert göster (state güncellemelerinin tamamlanması için)
       setTimeout(() => {
-        console.log('🚨 Alert gösteriliyor...');
         Alert.alert(
           t('demo.expired.title'),
           t('demo.expired.message'),
@@ -568,7 +550,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             {
               text: 'OK',
               onPress: () => {
-                console.log('🔙 Demo süresi doldu, geri dönülüyor...');
                 onGoBack();
               }
             }
@@ -593,7 +574,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         try {
           isPlayingRef.current = true;
           lastPlayedUriRef.current = audioUri;
-          console.log('🔊 TTS çalışıyor');
         
         setIsTTSPlaying(true);
         
@@ -673,14 +653,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           shouldPlay={true}
           useNativeControls={false}
           onLoad={() => {
-            console.log('✅ Video yüklendi');
             setIsVideoLoaded(true);
           }}
           onReadyForDisplay={() => {
-            console.log('✅ Video görüntülenmeye hazır');
           }}
           onError={(error) => {
-            console.error('❌ Video yükleme hatası:', error);
             setIsVideoLoaded(true); // Hata durumunda da devam et
           }}
         />
@@ -694,14 +671,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           shouldPlay={true}
           useNativeControls={false}
           onLoad={() => {
-            console.log('✅ Video TTS yüklendi');
             setIsVideoTTSLoaded(true);
           }}
           onReadyForDisplay={() => {
-            console.log('✅ Video TTS görüntülenmeye hazır');
           }}
           onError={(error) => {
-            console.error('❌ Video TTS yükleme hatası:', error);
             setIsVideoTTSLoaded(true); // Hata durumunda da devam et
           }}
         />
@@ -754,14 +728,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                 value={sttLanguage === 'en'}
                 onValueChange={async (value) => {
                   const newLanguage = value ? 'en' : 'tr';
-                  console.log(`🌍 Dil değiştiriliyor: ${sttLanguage} -> ${newLanguage}`);
                   
                   const wasRecording = isRecording;
                   
                   // Eğer kayıt aktifse, önce durdur ve temizle
                   if (wasRecording) {
                     try {
-                      console.log('⏸️ Kayıt durduruluyor (dil değiştirme)...');
                       await aiService.stopLiveTranscription(false);
                       setIsRecording(false);
                       setIsStartingRecording(false);
@@ -774,22 +746,18 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                         friction: 8,
                       }).start();
                       
-                      console.log('✅ Kayıt durduruldu');
                     } catch (error) {
-                      console.error('❌ Dil değiştirirken kayıt durdurulamadı:', error);
                     }
                   }
                   
                   // Dil'i güncelle
                   setSttLanguage(newLanguage);
-                  console.log(`✅ Dil ayarlandı: ${newLanguage}`);
                   
                   // Socket'i yeniden başlatmak için kısa bir gecikme
                   // Bu, socket'in temiz bir durumda olmasını sağlar
                   if (wasRecording) {
                     await new Promise(resolve => setTimeout(resolve, 500));
                     
-                    console.log('🔄 Yeni dil ile kayıt başlatılıyor...');
                     try {
                       setIsStartingRecording(true);
                       
@@ -798,7 +766,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                         setIsRecording(true);
                         setIsStartingRecording(false);
                         setIsSocketReady(true);
-                        console.log('✅ Yeni dil ile kayıt başlatıldı');
                         
                         // Buton animasyonu
                         Animated.spring(microphoneButtonScale, {
@@ -809,11 +776,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                         }).start();
                       } else {
                         setIsStartingRecording(false);
-                        console.error('❌ Yeni dil ile kayıt başlatılamadı');
                       }
                     } catch (error) {
                       setIsStartingRecording(false);
-                      console.error('❌ Yeni dil ile kayıt başlatma hatası:', error);
                     }
                   }
                 }}

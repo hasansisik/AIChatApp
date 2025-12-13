@@ -528,6 +528,7 @@
     "save": "Save",
     "continue": "Continue",
     "confirm": "Confirm",
-    "errorOccurred": "An error occurred"
+    "errorOccurred": "An error occurred",
+    "loading": "Loading..."
   }
 }

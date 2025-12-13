@@ -39,8 +39,6 @@ class TranslationService {
         body.source = sourceLang;
       }
 
-      console.log('🌍 Çeviri isteği gönderiliyor:', url);
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -58,7 +56,6 @@ class TranslationService {
       const data = await response.json();
       
       if (data.translatedText) {
-        console.log('✅ Çeviri başarılı:', text.substring(0, 50), '→', data.translatedText.substring(0, 50));
         return data.translatedText;
       }
 

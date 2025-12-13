@@ -158,7 +158,6 @@ class AIService {
         this.sttSocket.binaryType = 'arraybuffer';
 
         this.sttSocket.onopen = () => {
-          console.log('✅ WebSocket bağlandı');
           if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN && this.currentVoice) {
             try {
               this.sttSocket.send(JSON.stringify({
@@ -224,7 +223,6 @@ class AIService {
         };
 
         this.sttSocket.onclose = () => {
-          console.log('🔌 WebSocket bağlantısı kapandı');
           this.notifySocketConnection(false);
           this.sttSocket = null;
           this.socketReady = null;
@@ -582,12 +580,10 @@ class AIService {
     // Android için tek kayıt modu - chunk'lara bölmeden tüm kaydı biriktir
     if (Platform.OS === 'android') {
       this.isAndroidSingleRecording = true;
-      console.log('✅ Ses kaydı başlatıldı (Android - tek kayıt modu)');
     } else {
       // iOS için chunk-based streaming
       this.isAndroidSingleRecording = false;
       this.scheduleChunkDispatch(FIRST_CHUNK_DELAY_MS);
-      console.log('✅ Ses kaydı başlatıldı (iOS - streaming modu)');
     }
     
     return true;
@@ -604,7 +600,6 @@ class AIService {
     // Android için özel işlem: Tüm kaydı tek seferde gönder
     if (Platform.OS === 'android' && this.isAndroidSingleRecording && this.recording) {
       try {
-        console.log('📤 Android: Kayıt durduruluyor ve STT\'ye gönderiliyor...');
         
         // Kaydı durdur ve URI'yi al
         const audioUri = await this.stopRecordingInstance();
@@ -620,8 +615,6 @@ class AIService {
           if (this.sttSocket && this.sttSocket.readyState === WebSocket.OPEN) {
             this.sttSocket.send(JSON.stringify({ type: 'speech_end' }));
           }
-          
-          console.log('✅ Android: Ses STT\'ye gönderildi');
           
           // Geçici dosyayı temizle
           try {

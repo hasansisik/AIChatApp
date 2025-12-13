@@ -9,9 +9,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
-import { Provider } from "react-redux";
+import { Provider, useDispatch } from "react-redux";
 import { store } from "@/redux/store";
 import { useTheme } from "@/hooks/useThemeColor";
+import { getPublicSettings } from "@/redux/actions/settingsActions";
 import "@/locales/i18n";
 
 
@@ -20,6 +21,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { theme, isDark } = useTheme();
+  const dispatch = useDispatch();
   const [loaded] = useFonts({
     "Poppins-Regular": require("../assets/fonts/Poppins-Regular.ttf"),
     "Poppins-Bold": require("../assets/fonts/Poppins-Bold.ttf"),
@@ -28,6 +30,11 @@ function RootLayoutNav() {
     "Poppins-Medium": require("../assets/fonts/Poppins-Medium.ttf"),
     "Poppins-Thin": require("../assets/fonts/Poppins-Thin.ttf"),
   });
+
+  // Load public settings on app start
+  useEffect(() => {
+    dispatch(getPublicSettings() as any);
+  }, [dispatch]);
 
   useEffect(() => {
     if (loaded) {
