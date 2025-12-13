@@ -18,14 +18,14 @@ const getSTTWebSocketURL = (): string => {
   }
 };
 
-// Chunk interval: Daha sık parçalar = daha hızlı ve akıcı STT algılama
-const CHUNK_INTERVAL_MS = 300; // 400'den 300'e düşürüldü - daha hızlı yanıt
-// İlk chunk'ı göndermek için delay - daha hızlı başlangıç
-const FIRST_CHUNK_DELAY_MS = 150; // 250'den 150'ye düşürüldü
+// Chunk interval: Daha uzun parçalar = daha iyi STT algılama (kelimelerin tamamını yakalamak için)
+const CHUNK_INTERVAL_MS = 400;
+// İlk chunk'ı göndermek için delay
+const FIRST_CHUNK_DELAY_MS = 250;
 // Mikrofon bırakıldığında son kelimeleri yakalamak için ek bekleme
-const FINAL_RECORDING_DELAY_MS = 200; // 150'den 200'e artırıldı - son kelimeleri kaçırma
+const FINAL_RECORDING_DELAY_MS = 150;
 // Final chunk gönderildikten sonra STT'nin işlemesi için bekleme
-const FINAL_CHUNK_PROCESSING_DELAY_MS = 500; // 400'den 500'e artırıldı - daha iyi işleme
+const FINAL_CHUNK_PROCESSING_DELAY_MS = 400;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
@@ -380,42 +380,11 @@ class AIService {
           recording = result.recording;
         }
       } else {
-        // iOS için optimize edilmiş ayarlar
-        try {
-          const result = await Audio.Recording.createAsync({
-            ios: {
-              extension: '.m4a',
-              outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-              audioQuality: Audio.IOSAudioQuality.MAX, // MAX kalite
-              sampleRate: 44100, // iOS için standart
-              numberOfChannels: 1, // Mono - STT için yeterli
-              bitRate: 128000,
-              linearPCMBitDepth: 16,
-              linearPCMIsBigEndian: false,
-              linearPCMIsFloat: false,
-            },
-            android: {
-              extension: '.m4a',
-              outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-              audioEncoder: Audio.AndroidAudioEncoder.AAC,
-              sampleRate: 16000,
-              numberOfChannels: 1,
-              bitRate: 128000,
-            },
-            web: {
-              mimeType: 'audio/webm',
-              bitsPerSecond: 128000,
-            },
-          });
-          recording = result.recording;
-        } catch (iosError) {
-          // iOS özel config başarısız olursa HIGH_QUALITY preset kullan
-          console.warn('⚠️ iOS özel kayıt ayarları başarısız, HIGH_QUALITY preset kullanılıyor:', iosError);
-          const result = await Audio.Recording.createAsync(
-            Audio.RecordingOptionsPresets.HIGH_QUALITY
-          );
-          recording = result.recording;
-        }
+        // iOS ve diğer platformlar için HIGH_QUALITY preset kullan (daha güvenli)
+        const result = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        recording = result.recording;
       }
 
       this.recording = recording;
