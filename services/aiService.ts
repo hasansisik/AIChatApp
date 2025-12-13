@@ -18,10 +18,14 @@ const getSTTWebSocketURL = (): string => {
   }
 };
 
-// Daha sık chunk gönderimi için interval azaltıldı (daha hızlı algılama)
-const CHUNK_INTERVAL_MS = 300;
-// İlk chunk'ı daha hızlı göndermek için delay azaltıldı
-const FIRST_CHUNK_DELAY_MS = 200;
+// Chunk interval: Daha uzun parçalar = daha iyi STT algılama (kelimelerin tamamını yakalamak için)
+const CHUNK_INTERVAL_MS = 400;
+// İlk chunk'ı göndermek için delay
+const FIRST_CHUNK_DELAY_MS = 250;
+// Mikrofon bırakıldığında son kelimeleri yakalamak için ek bekleme
+const FINAL_RECORDING_DELAY_MS = 150;
+// Final chunk gönderildikten sonra STT'nin işlemesi için bekleme
+const FINAL_CHUNK_PROCESSING_DELAY_MS = 400;
 
 type TranscriptionHandler = (text: string) => void;
 type StatusHandler = (status: string) => void;
@@ -407,6 +411,10 @@ class AIService {
         return null;
       }
 
+      // Son kelimeleri yakalamak için kısa bir bekleme
+      // Bu, mikrofon bırakıldığında konuşmanın son kısmının kaybolmasını önler
+      await new Promise(resolve => setTimeout(resolve, FINAL_RECORDING_DELAY_MS));
+
       await this.recording.stopAndUnloadAsync();
       const uri = this.recording.getURI();
       this.recording = null;
@@ -506,9 +514,9 @@ class AIService {
     if (shouldSendAudio) {
       try {
         await this.sendBinaryAudio(audioUri);
-        // Final chunk için daha kısa bekleme (daha hızlı işleme)
+        // Final chunk için daha uzun bekleme - STT'nin tüm kelimeleri işlemesi için
         if (isFinal) {
-          await new Promise(resolve => setTimeout(resolve, 150));
+          await new Promise(resolve => setTimeout(resolve, FINAL_CHUNK_PROCESSING_DELAY_MS));
         }
       } catch (error) {
       }

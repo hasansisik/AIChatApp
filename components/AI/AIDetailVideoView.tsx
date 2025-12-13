@@ -19,7 +19,8 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Switch } from 'react-native';
 import ReusableText from '@/components/ui/ReusableText';
-import { Colors } from '@/hooks/useThemeColor';
+import { useReactiveColors } from '@/hooks/useThemeColor';
+import { Colors as StaticColors } from '@/constants/Colors';
 import { AICategory } from '@/data/AICategories';
 import aiService from '@/services/aiService';
 
@@ -59,6 +60,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   demoMinutesRemaining = null, // Minutes remaining (not seconds)
 }) => {
   const { t } = useTranslation();
+  const Colors = useReactiveColors();
   const textInputRef = useRef<TextInput>(null);
   const videoRef = useRef<Video>(null);
   const videoRefTTS = useRef<Video>(null);
@@ -73,6 +75,57 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
   // Demo süresi saniye cinsinden tutulur, basit geri sayım sayacı
   const [currentDemoSeconds, setCurrentDemoSeconds] = React.useState<number>(0);
+
+  const dynamicStyles = React.useMemo(() => ({
+    sendButton: {
+      backgroundColor: Colors.light,
+      shadowColor: Colors.light,
+    },
+    sendButtonDisabled: {
+      backgroundColor: Colors.light,
+    },
+    keyboardInput: {
+      color: Colors.text,
+      backgroundColor: Colors.lightInput,
+      borderColor: Colors.lightGray,
+    },
+    closeButton: {
+      borderColor: '#FFFFFF',
+    },
+    circleButton: {
+      // Video üzerinde her zaman görünür olması için yarı saydam
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+      borderColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    userTextBubble: {
+      // Kullanıcı mesajı - koyu arka plan, beyaz yazı
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    userTextColor: {
+      color: Colors.light, // Her zaman beyaz
+    },
+    aiTextBubble: {
+      // AI mesajı - mor/mavi arka plan
+      backgroundColor: Colors.primary,
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    aiTextColor: {
+      color: Colors.light, // Her zaman beyaz
+    },
+    demoTimerBubble: {
+      // Demo timer - turuncu arka plan
+      backgroundColor: 'rgba(255, 152, 0, 0.85)',
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    demoTimerColor: {
+      color: Colors.light, // Her zaman beyaz
+    },
+    headerText: {
+      color: Colors.light,
+    },
+    placeholderColor: Colors.gray,
+  }), [Colors]);
 
   const handleKeyboardPress = () => {
     if (!isKeyboardVisible) {
@@ -253,6 +306,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     }).start();
 
     try {
+      // Son kelimeleri yakalamak için kısa bir gecikme
+      // Bu, mikrofon bırakıldığında konuşmanın son kısmının kaybolmasını önler
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       await aiService.stopLiveTranscription(true);
       setIsRecording(false);
       console.log('⏸️ Kayıt durduruldu');
@@ -500,11 +557,11 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         <View style={styles.headerContent}>
           <View style={styles.leftSection}>
             <TouchableOpacity 
-              style={styles.closeButton} 
+              style={[styles.closeButton, dynamicStyles.closeButton]} 
               onPress={onGoBack}
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={24} color={Colors.lightWhite} />
+              <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
             <View style={styles.profileImageContainer}>
@@ -565,8 +622,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                     }, 300);
                   }
                 }}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#4CAF50' }}
-                thumbColor={Colors.white}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#2ecc71' }}
+                thumbColor="#FFFFFF"
                 style={styles.languageSwitch}
               />
             </View>
@@ -575,14 +632,14 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               text={t('ai.liveChat')}
               family="medium"
               size={16}
-              color={Colors.lightWhite}
+              color="#FFFFFF"
               style={styles.liveChatText}
             />
           </View>
           
           {isDemo ? (
             <View style={styles.demoTimerHeader}>
-              <View style={styles.demoTimerBubble}>
+              <View style={[styles.demoTimerBubble, dynamicStyles.demoTimerBubble]}>
                 {(() => {
                   const displayMinutes = Math.floor(currentDemoSeconds / 60);
                   const displaySeconds = currentDemoSeconds % 60;
@@ -592,7 +649,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                       text={`${t('ai.demo.timer')}: ${displayMinutes}:${String(displaySeconds).padStart(2, '0')}`}
                       family="medium"
                       size={14}
-                      color={currentDemoSeconds > 0 ? Colors.white : Colors.lightWhite}
+                      color="#FFFFFF"
                     />
                   );
                 })()}
@@ -603,12 +660,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
         
         {userText ? (
           <View style={styles.userTextContainer}>
-            <View style={styles.userTextBubble}>
+            <View style={[styles.userTextBubble, dynamicStyles.userTextBubble]}>
               <ReusableText
                 text={userText}
                 family="regular"
                 size={16}
-                color={Colors.white}
+                color="#FFFFFF"
               />
             </View>
           </View>
@@ -617,12 +674,12 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
       {aiText ? (
         <View style={styles.aiTextContainer}>
-          <View style={styles.aiTextBubble}>
+          <View style={[styles.aiTextBubble, dynamicStyles.aiTextBubble]}>
             <ReusableText
               text={aiText}
               family="regular"
               size={16}
-              color={Colors.white}
+              color="#FFFFFF"
             />
           </View>
         </View>
@@ -639,8 +696,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       >
         <View style={styles.bottomAreaContent}>
           <View style={styles.iconCirclesContainer}>
-            <TouchableOpacity style={styles.circleButton} onPress={handleKeyboardPress}>
-              <MaterialIcons name="keyboard" size={28} color="white" />
+            <TouchableOpacity style={[styles.circleButton, dynamicStyles.circleButton]} onPress={handleKeyboardPress}>
+              <MaterialIcons name="keyboard" size={28} color="#FFFFFF" />
             </TouchableOpacity>
             <Animated.View
               style={[
@@ -662,23 +719,23 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               >
               {isRecording ? (
                 <>
-                  <Ionicons name="mic" size={28} color="white" />
+                  <Ionicons name="mic" size={28} color="#FFFFFF" />
                   <ReusableText
                     text={t('ai.microphone.speaking')}
                     family="medium"
                     size={12}
-                    color={Colors.white}
+                    color="#FFFFFF"
                     style={styles.buttonText}
                   />
                 </>
               ) : (
                 <>
-                  <Ionicons name="mic-outline" size={28} color="white" />
+                  <Ionicons name="mic-outline" size={28} color="#FFFFFF" />
                   <ReusableText
                     text={t('ai.microphone.pushToTalk')}
                     family="medium"
                     size={12}
-                    color={Colors.white}
+                    color="#FFFFFF"
                     style={styles.buttonText}
                   />
                 </>
@@ -690,7 +747,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               onPress={onGoBack}
               activeOpacity={0.7}
             >
-              <Ionicons name="call" size={28} color="white" />
+              <Ionicons name="call" size={28} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -713,9 +770,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <View style={styles.keyboardInputWrapper}>
               <TextInput
                 ref={textInputRef}
-                style={styles.keyboardInput}
+                style={[styles.keyboardInput, dynamicStyles.keyboardInput]}
                 placeholder={t('ai.input.placeholder')}
-                placeholderTextColor="rgba(11, 11, 11, 0.5)"
+                placeholderTextColor={dynamicStyles.placeholderColor}
                 multiline
                 scrollEnabled={false}
                 value={conversationText}
@@ -727,7 +784,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  !conversationText.trim() && styles.sendButtonDisabled
+                  dynamicStyles.sendButton,
+                  !conversationText.trim() && [styles.sendButtonDisabled, dynamicStyles.sendButtonDisabled]
                 ]}
                 onPress={handleSendText}
                 disabled={!conversationText.trim() || isProcessing}
@@ -753,9 +811,9 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           <View style={styles.keyboardInputWrapper}>
             <TextInput
               ref={textInputRef}
-              style={styles.keyboardInput}
+              style={[styles.keyboardInput, dynamicStyles.keyboardInput]}
               placeholder={t('ai.input.placeholder')}
-              placeholderTextColor="rgba(11, 11, 11, 0.5)"
+              placeholderTextColor={dynamicStyles.placeholderColor}
               multiline
               scrollEnabled={false}
               value={conversationText}
@@ -765,7 +823,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                !conversationText.trim() && styles.sendButtonDisabled
+                dynamicStyles.sendButton,
+                !conversationText.trim() && [styles.sendButtonDisabled, dynamicStyles.sendButtonDisabled]
               ]}
               onPress={handleSendText}
               disabled={!conversationText.trim() || isProcessing}
@@ -790,7 +849,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: screenWidth,
     height: screenHeight,
-    backgroundColor: Colors.black,
+    backgroundColor: '#000000',
   },
   videoContainer: {
     flex: 1,
@@ -838,12 +897,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   demoTimerBubble: {
-    backgroundColor: 'rgba(255, 152, 0, 0.8)',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   headerContent: {
     flexDirection: 'row',
@@ -883,7 +940,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2ecc71',
     marginRight: 6,
   },
   liveChatText: {
@@ -894,7 +951,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: Colors.lightWhite,
+    borderColor: '#FFFFFF',
     overflow: 'hidden',
   },
   profileImage: {
@@ -910,7 +967,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: Colors.lightWhite,
   },
   bottomArea: {
     position: 'absolute',
@@ -945,20 +1001,18 @@ const styles = StyleSheet.create({
   circleButton: {
     padding: 15,
     borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   redCircleButton: {
     backgroundColor: 'rgba(255, 0, 0, 0.6)',
     borderColor: 'rgba(255, 0, 0, 0.8)',
   },
   recordingButton: {
-    backgroundColor: 'rgba(76, 175, 80, 0.9)',
-    borderColor: 'rgba(76, 175, 80, 1)',
-    shadowColor: '#4CAF50',
+    backgroundColor: '#2ecc71',
+    borderColor: '#2ecc71',
+    shadowColor: '#2ecc71',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -968,8 +1022,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   pausedButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   keyboardInputContainer: {
     position: 'absolute',
@@ -998,23 +1052,18 @@ const styles = StyleSheet.create({
   },
   keyboardInput: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.55)',
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    color: 'black',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.white,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1024,7 +1073,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: Colors.white,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -1048,13 +1096,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   userTextBubble: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     maxWidth: '80%',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   aiTextContainer: {
     position: 'absolute',
@@ -1066,13 +1112,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   aiTextBubble: {
-    backgroundColor: 'rgba(75, 0, 130, 0.8)',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     maxWidth: '80%',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 });
 

@@ -25,6 +25,7 @@ import { useCouponAccess } from '@/hooks/useCouponAccess';
 import { checkDemoStatus } from '@/redux/actions/couponActions';
 import { checkDemoExpiration } from '@/redux/reducers/couponReducer';
 import { loadUser } from '@/redux/actions/userActions';
+import { Audio } from 'expo-av';
 
 const AIDetailPage = () => {
   const { t } = useTranslation();
@@ -44,6 +45,7 @@ const AIDetailPage = () => {
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [couponModalVisible, setCouponModalVisible] = useState(false);
   const [couponSelectionModalVisible, setCouponSelectionModalVisible] = useState(false);
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState(false);
   const gradientOpacity = useRef(new Animated.Value(1)).current;
   const bottomAreaOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
@@ -51,6 +53,23 @@ const AIDetailPage = () => {
   const videoOpacity = useRef(new Animated.Value(0)).current;
   
   const { hasAccess, loading: accessLoading, isDemo, isPurchase, minutesRemaining } = useCouponAccess();
+  
+  // Sayfa açılır açılmaz mikrofon izni iste (profile.tsx'deki gibi)
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS !== 'web') {
+        try {
+          const permission = await Audio.requestPermissionsAsync();
+          setHasMicrophonePermission(permission.status === 'granted');
+        } catch (error) {
+          console.error('Mikrofon izni alınamadı:', error);
+          setHasMicrophonePermission(false);
+        }
+      } else {
+        setHasMicrophonePermission(true); // Web için true
+      }
+    })();
+  }, []);
   
   useEffect(() => {
     const checkDemo = async () => {
@@ -88,11 +107,71 @@ const AIDetailPage = () => {
     }
   };
 
-  const handleStartPress = () => {
+  const handleStartPress = async () => {
     if (accessLoading || couponLoading) {
       return;
     }
 
+    // Mikrofon izni kontrolü - eğer izin verilmemişse uyarı göster
+    if (!hasMicrophonePermission) {
+      const permissionCheck = await aiService.checkMicrophonePermission();
+      
+      if (!permissionCheck.granted) {
+        if (!permissionCheck.canAskAgain) {
+          // İzin bloklanmış, ayarlara yönlendir
+          Alert.alert(
+            t('common.permissionRequired') || 'İzin Gerekli',
+            permissionCheck.message || 'Mikrofon izni bloklanmış. Lütfen ayarlardan izin verin.',
+            [
+              { text: t('common.cancel') || 'İptal', style: 'cancel' },
+              {
+                text: t('common.settings') || 'Ayarlar',
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                },
+              },
+            ]
+          );
+        } else {
+          // İzin istenebilir durumda, tekrar iste
+          Alert.alert(
+            t('common.permissionRequired') || 'İzin Gerekli',
+            t('ai.microphone.permissionRequired') || 'Mikrofon izni vermeniz gerekli. Lütfen izin verin.',
+            [
+              { text: t('common.cancel') || 'İptal', style: 'cancel' },
+              {
+                text: t('common.ok') || 'Tamam',
+                onPress: async () => {
+                  try {
+                    const permission = await Audio.requestPermissionsAsync();
+                    setHasMicrophonePermission(permission.status === 'granted');
+                    if (permission.status === 'granted') {
+                      // İzin verildi, devam et
+                      proceedWithStart();
+                    }
+                  } catch (error) {
+                    console.error('Mikrofon izni alınamadı:', error);
+                  }
+                },
+              },
+            ]
+          );
+        }
+        return;
+      } else {
+        // İzin verilmiş, state'i güncelle
+        setHasMicrophonePermission(true);
+      }
+    }
+
+    proceedWithStart();
+  };
+
+  const proceedWithStart = () => {
     const isDemoExpiredCheck = isDemoExpired || 
                                (isDemo && (minutesRemaining === null || minutesRemaining <= 0));
     
@@ -129,16 +208,14 @@ const AIDetailPage = () => {
   };
 
   const startVideoAnimation = async () => {
-    // Mikrofon izni kontrolü
-    const permissionCheck = await aiService.checkMicrophonePermission();
-    
-    if (!permissionCheck.granted) {
-      // İzin verilmemiş, ancak istenebilir durumda ise startLiveTranscription içinde isteyecek
-      // Eğer bloklanmışsa, kullanıcıyı ayarlara yönlendir
-      if (!permissionCheck.canAskAgain) {
+    // Mikrofon izni kontrolü - eğer izin yoksa video açılmasın
+    if (!hasMicrophonePermission) {
+      const permissionCheck = await aiService.checkMicrophonePermission();
+      
+      if (!permissionCheck.granted) {
         Alert.alert(
           t('common.permissionRequired') || 'İzin Gerekli',
-          permissionCheck.message || 'Mikrofon izni bloklanmış. Lütfen ayarlardan izin verin.',
+          t('ai.microphone.permissionRequired') || 'Mikrofon izni vermeniz gerekli. Lütfen izin verin.',
           [
             { text: t('common.cancel') || 'İptal', style: 'cancel' },
             {
@@ -154,8 +231,10 @@ const AIDetailPage = () => {
           ]
         );
         return;
+      } else {
+        // İzin verilmiş, state'i güncelle
+        setHasMicrophonePermission(true);
       }
-      // canAskAgain true ise, startLiveTranscription içinde izin istenecek
     }
 
     Animated.parallel([
@@ -234,7 +313,8 @@ const AIDetailPage = () => {
       />
       
       {/* Initial View (Gradient + Text) or Video View */}
-      {!isGradientVisible ? (
+      {/* Video View sadece izin verildiyse ve gradient gizliyse açılır */}
+      {!isGradientVisible && hasMicrophonePermission ? (
         <Animated.View style={{ flex: 1, opacity: videoOpacity }}>
           <AIDetailVideoView
             item={item}
