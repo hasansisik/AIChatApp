@@ -120,7 +120,7 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
     },
     aiTextBubble: {
       // AI mesajı - mor/mavi arka plan
-      backgroundColor: Colors.primary,
+      backgroundColor: 'rgba(157, 0, 255, 0.65)',
       borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     aiTextColor: {
