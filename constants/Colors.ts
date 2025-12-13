@@ -58,7 +58,7 @@ export const Colors = {
     background: '#121212',
     text: '#FBFBFB',
     transparent: 'transparent',
-    primary: '#0062FF',
+    primary: '#8A2BE2',
     secondary: '#2ecc71',
     error: '#e74c3c',
     info: '#00C8FF',
