@@ -261,9 +261,6 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   }, [setIsKeyboardVisible, bottomAreaTranslateY, inputAreaTranslateY]);
 
   const handleMicrophonePressIn = async () => {
-    // Kayıt başlatılıyor durumunu aktif et
-    setIsStartingRecording(true);
-
     // Klavye varsa önce kapat (hızlıca)
     if (isKeyboardVisible) {
       Keyboard.dismiss();
@@ -273,30 +270,37 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       }
     }
     
-    // Buton animasyonu: Hemen yeşile dön ve hafifçe büyüt (daha hızlı ve smooth)
+    // Kayıt başlatılıyor durumunu aktif et
+    setIsStartingRecording(true);
+    
+    // Buton animasyonu: Hemen büyüt (daha hızlı ve responsive)
     Animated.spring(microphoneButtonScale, {
-      toValue: 1.08,
+      toValue: 1.1, // 1.08'den 1.1'e artırıldı - daha belirgin
       useNativeDriver: true,
-      tension: 400,
-      friction: 8,
+      tension: 500, // 400'den 500'e artırıldı - daha hızlı
+      friction: 7, // 8'den 7'ye düşürüldü - daha az sürtünme
     }).start();
+    
+    console.log('🎤 Mikrofon başlatılıyor...');
     
     try {
       // Kayıt başlatmayı hemen yap - bu socket'i de otomatik açacak
       const started = await aiService.startLiveTranscription(item.voice, sttLanguage);
       if (started) {
+        console.log('✅ Kayıt başlatıldı');
         setIsRecording(true);
         setIsStartingRecording(false);
         // Socket başarıyla açıldı
         setIsSocketReady(true);
       } else {
+        console.warn('⚠️ Kayıt başlatılamadı');
         // Eğer kayıt başlatılamazsa, geri al
         setIsStartingRecording(false);
         Animated.spring(microphoneButtonScale, {
           toValue: 1,
           useNativeDriver: true,
-          tension: 400,
-          friction: 8,
+          tension: 500,
+          friction: 7,
         }).start();
       }
     } catch (error: any) {
@@ -306,8 +310,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       Animated.spring(microphoneButtonScale, {
         toValue: 1,
         useNativeDriver: true,
-        tension: 400,
-        friction: 8,
+        tension: 500,
+        friction: 7,
       }).start();
     }
   };
@@ -315,12 +319,13 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const handleMicrophonePressOut = async () => {
     // Kayıt başlatılıyor durumundaysa iptal et
     if (isStartingRecording) {
+      console.log('⚠️ Kayıt başlatma iptal edildi');
       setIsStartingRecording(false);
       Animated.spring(microphoneButtonScale, {
         toValue: 1,
         useNativeDriver: true,
-        tension: 400,
-        friction: 8,
+        tension: 500,
+        friction: 7,
       }).start();
       return;
     }
@@ -329,23 +334,27 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
       return;
     }
 
+    console.log('🎤 Mikrofon bırakıldı, kayıt durduruluyor...');
+
     // Buton animasyonu: Normal boyuta dön (smooth)
     Animated.spring(microphoneButtonScale, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 400,
-      friction: 8,
+      tension: 500,
+      friction: 7,
     }).start();
 
     try {
-      // Son kelimeleri yakalamak için kısa bir gecikme
+      // Son kelimeleri yakalamak için gecikme
       // Bu, mikrofon bırakıldığında konuşmanın son kısmının kaybolmasını önler
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
+      console.log('⏸️ Kayıt durduruluyor...');
       await aiService.stopLiveTranscription(true);
       setIsRecording(false);
-      console.log('⏸️ Kayıt durduruldu');
+      console.log('✅ Kayıt durduruldu');
     } catch (error) {
+      console.error('❌ Kayıt durdurma hatası:', error);
       setIsRecording(false);
     }
   };
@@ -770,8 +779,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                       Animated.spring(microphoneButtonScale, {
                         toValue: 1,
                         useNativeDriver: true,
-                        tension: 400,
-                        friction: 8,
+                        tension: 500,
+                        friction: 7,
                       }).start();
                       
                       console.log('✅ Kayıt durduruldu');
@@ -802,10 +811,10 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
                         
                         // Buton animasyonu
                         Animated.spring(microphoneButtonScale, {
-                          toValue: 1.08,
+                          toValue: 1.1,
                           useNativeDriver: true,
-                          tension: 400,
-                          friction: 8,
+                          tension: 500,
+                          friction: 7,
                         }).start();
                       } else {
                         setIsStartingRecording(false);
