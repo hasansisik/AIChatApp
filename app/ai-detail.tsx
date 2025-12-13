@@ -237,36 +237,41 @@ const AIDetailPage = () => {
       }
     }
 
-    Animated.parallel([
-      Animated.timing(gradientOpacity, {
-        toValue: 0,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(bottomAreaOpacity, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(textOpacity, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setIsGradientVisible(false);
-      setIsTextVisible(false);
-      Animated.timing(videoOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    });
+    // Önce video opacity'sini 1'e getir (arka planda yüklensin)
+    Animated.timing(videoOpacity, {
+      toValue: 1,
+      duration: 0,
+      useNativeDriver: true,
+    }).start();
+
+    // Kısa bir gecikme ile gradient'i kaldır
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(gradientOpacity, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bottomAreaOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(textOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsGradientVisible(false);
+        setIsTextVisible(false);
+      });
+    }, 100);
   };
 
   const handleHasCoupon = () => {

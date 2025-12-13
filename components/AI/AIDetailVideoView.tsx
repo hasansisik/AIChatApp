@@ -10,6 +10,7 @@ import {
   Platform,
   Keyboard,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
@@ -75,6 +76,8 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
   const [isTTSPlaying, setIsTTSPlaying] = React.useState(false);
   // Demo süresi saniye cinsinden tutulur, basit geri sayım sayacı
   const [currentDemoSeconds, setCurrentDemoSeconds] = React.useState<number>(0);
+  const [isVideoLoaded, setIsVideoLoaded] = React.useState(false);
+  const [isVideoTTSLoaded, setIsVideoTTSLoaded] = React.useState(false);
 
   const dynamicStyles = React.useMemo(() => ({
     sendButton: {
@@ -342,13 +345,21 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
 
   useEffect(() => {
     const initializeVideos = async () => {
+      // Her iki video da yüklendiğinde başlat
+      if (!isVideoLoaded || !isVideoTTSLoaded) {
+        return;
+      }
+      
+      console.log('🎬 Videolar başlatılıyor...');
+      
       if (videoRef.current) {
         try {
           await videoRef.current.setIsLoopingAsync(true);
           await videoRef.current.setIsMutedAsync(true);
           await videoRef.current.playAsync();
+          console.log('▶️ Video oynatılıyor');
         } catch (error) {
-          // Ignore
+          console.error('❌ Video başlatma hatası:', error);
         }
       }
       if (videoRefTTS.current) {
@@ -356,14 +367,15 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           await videoRefTTS.current.setIsLoopingAsync(true);
           await videoRefTTS.current.setIsMutedAsync(true);
           await videoRefTTS.current.playAsync();
+          console.log('▶️ Video TTS oynatılıyor');
         } catch (error) {
-          // Ignore
+          console.error('❌ Video TTS başlatma hatası:', error);
         }
       }
     };
     
     initializeVideos();
-  }, []);
+  }, [isVideoLoaded, isVideoTTSLoaded]);
 
   // TTS oynatma durumuna göre videoları kontrol et
   useEffect(() => {
@@ -541,6 +553,18 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           isLooping={true}
           isMuted={true}
           shouldPlay={true}
+          useNativeControls={false}
+          onLoad={() => {
+            console.log('✅ Video yüklendi');
+            setIsVideoLoaded(true);
+          }}
+          onReadyForDisplay={() => {
+            console.log('✅ Video görüntülenmeye hazır');
+          }}
+          onError={(error) => {
+            console.error('❌ Video yükleme hatası:', error);
+            setIsVideoLoaded(true); // Hata durumunda da devam et
+          }}
         />
         <Video
           ref={videoRefTTS}
@@ -550,7 +574,26 @@ const AIDetailVideoView: React.FC<AIDetailVideoViewProps> = ({
           isLooping={true}
           isMuted={true}
           shouldPlay={true}
+          useNativeControls={false}
+          onLoad={() => {
+            console.log('✅ Video TTS yüklendi');
+            setIsVideoTTSLoaded(true);
+          }}
+          onReadyForDisplay={() => {
+            console.log('✅ Video TTS görüntülenmeye hazır');
+          }}
+          onError={(error) => {
+            console.error('❌ Video TTS yükleme hatası:', error);
+            setIsVideoTTSLoaded(true); // Hata durumunda da devam et
+          }}
         />
+        
+        {/* Loading Indicator - Videolar yüklenene kadar göster */}
+        {(!isVideoLoaded || !isVideoTTSLoaded) && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        )}
       </View>
 
       <SafeAreaView style={styles.header}>
@@ -877,6 +920,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 9999,
   },
   header: {
     position: 'absolute',
