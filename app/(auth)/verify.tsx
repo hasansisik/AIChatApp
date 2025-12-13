@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Toast from "@/components/ui/Toast";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppBar from "@/components/ui/AppBar";
-import { Colors } from "@/hooks/useThemeColor";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { useTranslation } from "react-i18next";
 
 import { FontSizes } from "@/constants/Fonts";
@@ -14,6 +14,7 @@ import ReusableButton from "@/components/ui/ReusableButton";
 import { useDispatch } from "react-redux";
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { againEmail, verifyEmail, loadUser } from "@/redux/actions/userActions";
+import { Colors } from "@/hooks/useThemeColor";
 
 const Verify: React.FC = () => {
   const dispatch = useDispatch();
@@ -21,6 +22,16 @@ const Verify: React.FC = () => {
   const emailString = Array.isArray(email) ? email[0] : email;
   const router = useRouter();
   const { t } = useTranslation();
+  
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const descriptionColor = useThemeColor({}, 'description');
+  const lightColor = useThemeColor({}, 'light');
+  const lightBlackColor = useThemeColor({}, 'lightBlack');
+  const purpleColor = useThemeColor({}, 'purple');
+  const lightWhiteColor = useThemeColor({}, 'lightWhite');
+  const lightGrayColor = useThemeColor({}, 'lightGray');
 
   const [verificationCode, setVerificationCode] = useState("");
   const [otpInputs, setOtpInputs] = useState<string[]>(["", "", "", ""]);
@@ -97,7 +108,7 @@ const Verify: React.FC = () => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor }]}>
         <Toast ref={toastRef} />
         <View>
           {/* Header */}
@@ -117,13 +128,13 @@ const Verify: React.FC = () => {
               text={t("auth.verify.title")}
               family={"bold"}
               size={FontSizes.xLarge}
-              color={Colors.black}
+              color={textColor}
             />
             <ReusableText
               text={t("auth.verify.description")}
               family={"regular"}
               size={FontSizes.small}
-              color={Colors.description}
+              color={descriptionColor}
             />
           </View>
           <HeightSpacer height={50} />
@@ -132,10 +143,14 @@ const Verify: React.FC = () => {
             {otpInputs.map((value, index) => (
               <TextInput
                 key={index}
-                ref={(ref) => (otpRefs.current[index] = ref)}
+                ref={(ref) => { otpRefs.current[index] = ref; }}
                 style={[
                   styles.otpInput,
-                  value ? styles.otpInputFilled : null
+                  { 
+                    backgroundColor,
+                    color: textColor,
+                    borderColor: value ? textColor : lightGrayColor
+                  }
                 ]}
                 value={value}
                 onChangeText={(text) => handleOtpChange(text, index)}
@@ -153,8 +168,8 @@ const Verify: React.FC = () => {
             width={Sizes.screenWidth - 40}
             height={55}
             borderRadius={Sizes.xxlarge}
-            backgroundColor={Colors.purple}
-            textColor={Colors.lightWhite}
+            backgroundColor={purpleColor}
+            textColor={lightWhiteColor}
             textFontFamily={"regular"}
             onPress={submitHandler}
             disable={isLoading}
@@ -165,14 +180,14 @@ const Verify: React.FC = () => {
             text={t("auth.verify.noCode")}
             family={"regular"}
             size={FontSizes.small}
-            color={Colors.description}
+            color={descriptionColor}
           />
           <TouchableOpacity onPress={resendHandler}>
             <ReusableText
               text={t("auth.verify.resend")}
               family={"bold"}
               size={FontSizes.small}
-              color={Colors.lightBlack}
+              color={lightBlackColor}
             />
           </TouchableOpacity>
         </View>
@@ -185,7 +200,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: Colors.white,
     justifyContent: 'space-between'
   },
   wrapper: {
@@ -193,7 +207,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: 'regular',
-    color: Colors.description,
     fontSize: Sizes.small,
     marginTop: 10,
     marginBottom: 5,
@@ -203,12 +216,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     borderWidth: 1,
     borderRadius: 20,
-    borderColor: Colors.lightGray,
     overflow: 'hidden',
   },
   input: {
-    backgroundColor: Colors.white,
-    color: Colors.dark,
   },
   footer: {
     flexDirection: 'row',
@@ -231,11 +241,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    borderColor: '#BBBCBE',
-    backgroundColor: Colors.white,
-  },
-  otpInputFilled: {
-    borderColor: '#000000',
   },
   modalContainer: {
     flexDirection: "column",

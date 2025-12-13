@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/hooks/useThemeColor';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { FontSizes } from '@/constants/Fonts';
 import ReusableText from '@/components/ui/ReusableText';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,12 @@ const CouponSelectionModal: React.FC<CouponSelectionModalProps> = ({
   onNoCoupon,
 }) => {
   const { t } = useTranslation();
+  
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const lightWhiteColor = useThemeColor({}, 'lightWhite');
+  const primaryColor = useThemeColor({}, 'primary');
 
   return (
     <Modal
@@ -38,7 +44,7 @@ const CouponSelectionModal: React.FC<CouponSelectionModalProps> = ({
       <View style={styles.overlay}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
+          style={[styles.modalContainer, { backgroundColor }]}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -46,10 +52,10 @@ const CouponSelectionModal: React.FC<CouponSelectionModalProps> = ({
               text={t('coupon.selection.title')}
               family="bold"
               size={FontSizes.large}
-              color={Colors.text}
+              color={textColor}
             />
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+              <Ionicons name="close" size={24} color={textColor} />
             </TouchableOpacity>
           </View>
 
@@ -59,41 +65,41 @@ const CouponSelectionModal: React.FC<CouponSelectionModalProps> = ({
               text={t('coupon.selection.description')}
               family="regular"
               size={FontSizes.medium}
-              color={Colors.text}
+              color={textColor}
               align="center"
             />
 
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
               <TouchableOpacity
-                style={styles.yesButton}
+                style={[styles.yesButton, { backgroundColor: primaryColor }]}
                 onPress={() => {
                   onClose();
                   onHasCoupon();
                 }}
               >
-                <Ionicons name="checkmark-circle" size={24} color={Colors.lightWhite} />
+                <Ionicons name="checkmark-circle" size={24} color={lightWhiteColor} />
                 <ReusableText
                   text={t('coupon.selection.hasCoupon')}
                   family="medium"
                   size={FontSizes.medium}
-                  color={Colors.lightWhite}
+                  color={lightWhiteColor}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.noButton}
+                style={[styles.noButton, { backgroundColor, borderColor: primaryColor }]}
                 onPress={() => {
                   onClose();
                   onNoCoupon();
                 }}
               >
-                <Ionicons name="close-circle" size={24} color={Colors.primary} />
+                <Ionicons name="close-circle" size={24} color={primaryColor} />
                 <ReusableText
                   text={t('coupon.selection.noCoupon')}
                   family="medium"
                   size={FontSizes.medium}
-                  color={Colors.primary}
+                  color={primaryColor}
                 />
               </TouchableOpacity>
             </View>
@@ -112,14 +118,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: Colors.lightWhite,
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 30, // Extra padding at bottom for keyboard
+    paddingBottom: Platform.OS === 'ios' ? 40 : 30,
     width: '90%',
     maxWidth: 400,
-    marginBottom: 20, // Extra margin for keyboard
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -139,7 +144,6 @@ const styles = StyleSheet.create({
   },
   yesButton: {
     flexDirection: 'row',
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
@@ -148,9 +152,7 @@ const styles = StyleSheet.create({
   },
   noButton: {
     flexDirection: 'row',
-    backgroundColor: Colors.lightWhite,
     borderWidth: 2,
-    borderColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',

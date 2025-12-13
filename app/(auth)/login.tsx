@@ -106,8 +106,23 @@ const Login: React.FC<LoginProps> = () => {
         // Navigate to tabs using router
         router.replace("/(tabs)/tabs");
       } else if (login.rejected.match(actionResult)) {
+        const errorMessage = (actionResult.payload as string) || t("auth.login.error");
         setStatus("error");
-        setMessage((actionResult.payload as string) || t("auth.login.error"));
+        setMessage(errorMessage);
+        
+        // Check if error is about email verification
+        if (errorMessage.toLowerCase().includes('doğrula') || 
+            errorMessage.toLowerCase().includes('verify') ||
+            errorMessage.toLowerCase().includes('e-posta') ||
+            errorMessage.toLowerCase().includes('email')) {
+          // Redirect to verify page after showing error
+          setTimeout(() => {
+            router.push({
+              pathname: "/(auth)/verify",
+              params: { email: values.email },
+            });
+          }, 2000);
+        }
       }
       setTimeout(() => setStatus(null), 5000);
     },

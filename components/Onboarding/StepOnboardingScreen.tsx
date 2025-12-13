@@ -187,7 +187,7 @@ const StepOnboardingScreen: React.FC<StepOnboardingScreenProps> = ({ onComplete 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.lightInput,
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',

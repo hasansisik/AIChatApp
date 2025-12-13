@@ -40,11 +40,6 @@ const TabNavigation = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [chatBotVisible, setChatBotVisible] = useState(false);
   const [onboardingOverrideComplete, setOnboardingOverrideComplete] = useState(false);
-  
-  useEffect(() => {
-    // Check if user has courseCode when Edu tab is accessed
-    // This will be handled in the Edu component itself
-  }, [user]);
 
   // Preload profile picture when user data is available
   useEffect(() => {
@@ -55,8 +50,6 @@ const TabNavigation = () => {
     }
   }, [user?.profile?.picture]);
 
-  // Check if user is authenticated, if not redirect to login
-  // Only redirect if we're still on tabs route (not already redirected to login)
   useEffect(() => {
     const isOnAuthRoute = segments[0] === '(auth)';
     if (!authLoading && !isAuthenticated && !isOnAuthRoute) {
@@ -106,7 +99,7 @@ const TabNavigation = () => {
   
   const styles = StyleSheet.create({
     tabBarStyle: {
-      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.8)', 
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.8)', 
       height: 70,
       paddingTop: 15,
       position: "absolute",

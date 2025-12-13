@@ -247,8 +247,8 @@ const ProfileDetails: React.FC = () => {
               width={Sizes.screenWidth - 40}
               height={55}
               borderRadius={40}
-              backgroundColor={Colors.lightBlack}
-              textColor={Colors.lightWhite}
+              backgroundColor={Colors.primary}
+              textColor={Colors.white}
               textFontSize={FontSizes.small}
               textFontFamily={"medium"}
               disable={loading}

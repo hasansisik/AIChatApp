@@ -249,7 +249,7 @@ const Profile: React.FC = () => {
               </View>
             </View>
             <View style={styles.box}>
-              <Feather name="chevron-right" size={20} />
+              <Feather name="chevron-right" size={20} color={Colors.black} />
             </View>
           </TouchableOpacity>
 
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 10,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 10,
   },

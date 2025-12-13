@@ -34,7 +34,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ title, onPress, icon, color =
       </View>
 
       <View style={styles.box}>
-        <Feather name="chevron-right" size={20} />
+        <Feather name="chevron-right" size={20} color={Colors.black} />
       </View>
     </TouchableOpacity>
   );

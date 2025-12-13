@@ -140,10 +140,10 @@ const PasswordChange: React.FC = () => {
                 <ReusableButton
                   btnText={t('common.confirm')}
                   width={Sizes.screenWidth - 40}
-                  height={46}
-                  borderRadius={Sizes.small}
-                  backgroundColor={Colors.lightBlack}
-                  textColor={Colors.lightWhite}
+                  height={55}
+                  borderRadius={40}
+                  backgroundColor={Colors.primary}
+                  textColor={Colors.white}
                   textFontSize={FontSizes.small}
                   textFontFamily={"medium"}
                   disable={loading}

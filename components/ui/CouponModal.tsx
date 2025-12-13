@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/hooks/useThemeColor';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { FontSizes } from '@/constants/Fonts';
 import ReusableText from '@/components/ui/ReusableText';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +34,15 @@ const CouponModal: React.FC<CouponModalProps> = ({
   const dispatch = useDispatch();
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const descriptionColor = useThemeColor({}, 'description');
+  const lightWhiteColor = useThemeColor({}, 'lightWhite');
+  const lightInputColor = useThemeColor({}, 'lightInput');
+  const lightGrayColor = useThemeColor({}, 'lightGray');
+  const primaryColor = useThemeColor({}, 'primary');
 
   const handleValidateCoupon = async () => {
     if (!couponCode.trim()) {
@@ -94,7 +103,7 @@ const CouponModal: React.FC<CouponModalProps> = ({
       <View style={styles.overlay}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
+          style={[styles.modalContainer, { backgroundColor }]}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -102,10 +111,10 @@ const CouponModal: React.FC<CouponModalProps> = ({
               text={t('coupon.title')}
               family="bold"
               size={FontSizes.large}
-              color={Colors.text}
+              color={textColor}
             />
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+              <Ionicons name="close" size={24} color={textColor} />
             </TouchableOpacity>
           </View>
 
@@ -115,16 +124,16 @@ const CouponModal: React.FC<CouponModalProps> = ({
               text={t('coupon.description')}
               family="regular"
               size={FontSizes.medium}
-              color={Colors.text}
+              color={textColor}
               align="center"
             />
 
             {/* Coupon Input */}
             <View style={styles.inputContainer}>
               <TextInput
-                style={styles.couponInput}
+                style={[styles.couponInput, { backgroundColor: lightInputColor, color: textColor }]}
                 placeholder={t('coupon.placeholder')}
-                placeholderTextColor={Colors.description}
+                placeholderTextColor={descriptionColor}
                 value={couponCode}
                 onChangeText={(text) => setCouponCode(text.toUpperCase())}
                 autoCapitalize="characters"
@@ -136,7 +145,7 @@ const CouponModal: React.FC<CouponModalProps> = ({
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { borderColor: lightGrayColor }]}
                 onPress={handleClose}
                 disabled={loading}
               >
@@ -144,23 +153,27 @@ const CouponModal: React.FC<CouponModalProps> = ({
                   text={t('common.cancel')}
                   family="medium"
                   size={FontSizes.medium}
-                  color={Colors.text}
+                  color={textColor}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                style={[
+                  styles.submitButton, 
+                  { backgroundColor: primaryColor },
+                  loading && { backgroundColor: lightGrayColor }
+                ]}
                 onPress={handleValidateCoupon}
                 disabled={loading || !couponCode.trim()}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color={Colors.lightWhite} />
+                  <ActivityIndicator size="small" color={lightWhiteColor} />
                 ) : (
                   <ReusableText
                     text={t('coupon.submit')}
                     family="medium"
                     size={FontSizes.medium}
-                    color={Colors.lightWhite}
+                    color={lightWhiteColor}
                   />
                 )}
               </TouchableOpacity>
@@ -180,7 +193,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: Colors.lightWhite,
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -202,12 +214,10 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   couponInput: {
-    backgroundColor: Colors.lightInput,
     borderRadius: 12,
     padding: 15,
     fontFamily: 'Poppins-Regular',
     fontSize: FontSizes.medium,
-    color: Colors.text,
     textAlign: 'center',
     letterSpacing: 2,
   },
@@ -223,18 +233,13 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.lightGray,
     alignItems: 'center',
   },
   submitButton: {
     flex: 1,
-    backgroundColor: Colors.primary,
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    backgroundColor: Colors.lightGray,
   },
 });
 
